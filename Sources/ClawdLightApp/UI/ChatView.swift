@@ -206,6 +206,13 @@ struct ChatView: View {
                     icon: session.listening ? "clock" : "moon.zzz",
                     tint: session.listening ? StatusPalette.timeColor : .orange
                 )
+            } else if !session.canSend {
+                notice(
+                    "reading only — turn on \"Let the panel answer your sessions\" "
+                        + "in the panel menu",
+                    icon: "lock",
+                    tint: StatusPalette.timeColor
+                )
             } else if !session.listening {
                 notice(
                     "this conversation is asleep — a message will wait for it, not vanish",
@@ -221,7 +228,7 @@ struct ChatView: View {
             }
 
             HStack(spacing: 8) {
-                if #available(macOS 26.0, *), let service = dictation.service {
+                if session.canSend, #available(macOS 26.0, *), let service = dictation.service {
                     DictationButton(service: service) { heard in
                         // What was heard is appended, not substituted: you may
                         // have typed half the message before reaching for the
@@ -233,7 +240,11 @@ struct ChatView: View {
                     }
                 }
 
-                TextField("Message…", text: $draft, axis: .vertical)
+                TextField(
+                    session.canSend ? "Message…" : "Reading only",
+                    text: $draft, axis: .vertical
+                )
+                .disabled(!session.canSend)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
                     .font(.system(size: 12))
@@ -245,7 +256,7 @@ struct ChatView: View {
                         .font(.system(size: 17))
                 }
                 .buttonStyle(.borderless)
-                .disabled(draft.trimmed.isEmpty)
+                .disabled(draft.trimmed.isEmpty || !session.canSend)
                 .help("Send — it arrives at the end of the session's current turn")
 
                 Button(action: openInEditor) {

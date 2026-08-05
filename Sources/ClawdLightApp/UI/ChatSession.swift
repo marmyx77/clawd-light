@@ -36,6 +36,13 @@ final class ChatSession: ObservableObject {
     /// so instead of showing a spinner for something that will not happen.
     @Published private(set) var listening = false
 
+    /// `true` when answering from the panel is switched on.
+    ///
+    /// Off is the default and the safe resting state — see D15. The composer is
+    /// disabled rather than hidden, because a chat window with no visible way to
+    /// answer reads as broken, and one that accepts text going nowhere is worse.
+    var canSend: Bool { mailbox.isSendingEnabled }
+
     let sessionId: String
     let workspace: Workspace
 

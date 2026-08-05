@@ -205,7 +205,12 @@ it stays open.
 
 ### Writing back
 
-There is a composer, and it writes into the session you are looking at — the real
+**Off by default.** Turn it on from the panel menu → *Let the panel answer your
+sessions*. Until you do, the window reads and nothing else — no listener, no
+mailbox, nothing that can start a turn in your name. The dialog says why before
+you agree to it.
+
+With it on, there is a composer, and it writes into the session you are looking at — the real
 one, running in VS Code, that you have been talking to all along.
 
 ```

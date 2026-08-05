@@ -155,6 +155,7 @@ final class PanelController {
             grouped: preferences.groupsByWorkspace,
             onlyWaiting: preferences.showsOnlyWaiting,
             notificationsEnabled: preferences.notificationsEnabled,
+            messageSendingEnabled: preferences.messageSendingEnabled,
             presenceEnabled: preferences.presenceEnabled,
             mutedUntil: preferences.mutedUntil,
             hasHidden: !preferences.hiddenWorkspaces.isEmpty,
@@ -399,6 +400,7 @@ final class PanelController {
                 self?.rebuildContent()
             },
             toggleNotifications: { [weak self] in self?.toggleNotifications() },
+            toggleMessageSending: { [weak self] in self?.toggleMessageSending() },
             togglePresence: { [weak self] in self?.togglePresence() },
             muteForAnHour: { [weak self] in
                 self?.preferences.mutedUntil = Date().addingTimeInterval(3600)
@@ -434,6 +436,52 @@ final class PanelController {
         preferences.notificationsEnabled = wanted
         onNotificationToggle?(wanted)
         rebuildContent()
+    }
+
+    /// Turns answering from the panel on or off.
+    ///
+    /// Turning it **on** registers the delivery hook; turning it off removes it,
+    /// so the resting state of a machine that never opted in has no listener, no
+    /// mailbox and no way for anything to start a turn in the user's name.
+    ///
+    /// The dialog says what it costs, because this is the one switch here whose
+    /// default is about safety rather than noise.
+    private func toggleMessageSending() {
+        let wanted = !preferences.messageSendingEnabled
+
+        if wanted {
+            guard Alerts.confirm(
+                title: "Let the panel answer your sessions?",
+                message: """
+                You will be able to type and dictate into the conversation window, \
+                and the message will reach the session at the end of its next turn.
+
+                What it costs: delivery works through a file in ~/.clawd-light/inbox, \
+                and the reader cannot tell who wrote it. While this is on, anything \
+                running under your account can start a turn that speaks with your \
+                voice and your tools. Other accounts on this Mac are kept out; \
+                processes of your own cannot be.
+
+                Off, there is no listener and no mailbox at all — and the window \
+                still shows you every conversation.
+                """,
+                confirmTitle: "Turn on"
+            ) else { return }
+        }
+
+        preferences.messageSendingEnabled = wanted
+        reinstallHooksForMessageSending()
+        rebuildContent()
+    }
+
+    /// Re-registers the hooks so the delivery listener follows the switch.
+    private func reinstallHooksForMessageSending() {
+        guard installer.isInstalled() else { return }
+        do {
+            try installer.install(includeMessageDelivery: preferences.messageSendingEnabled)
+        } catch {
+            store.reportError(error.localizedDescription)
+        }
     }
 
     private func togglePresence() {

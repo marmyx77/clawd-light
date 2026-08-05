@@ -14,10 +14,18 @@ import Foundation
 struct MailboxWriter {
 
     private let fileManager: FileManager
+    private let isEnabled: () -> Bool
 
-    init(fileManager: FileManager = .default) {
+    /// - Parameter isEnabled: whether the user has turned sending on. Checked on
+    ///   every call rather than captured, because the switch can be flipped while
+    ///   a window is open.
+    init(fileManager: FileManager = .default, isEnabled: @escaping () -> Bool = { false }) {
         self.fileManager = fileManager
+        self.isEnabled = isEnabled
     }
+
+    /// `true` when the user has allowed the panel to answer.
+    var isSendingEnabled: Bool { isEnabled() }
 
     // MARK: - Opening and closing
 
@@ -27,6 +35,7 @@ struct MailboxWriter {
     /// which sessions cost a waiting process. Everything else pays one file test.
     @discardableResult
     func open(sessionId: String) -> Result<Void, MailboxError> {
+        guard isEnabled() else { return .failure(.disabled) }
         guard let paths = Mailbox.paths(for: sessionId) else {
             return .failure(.invalidSessionId(sessionId))
         }
@@ -73,6 +82,7 @@ struct MailboxWriter {
     /// which is the behaviour a chat wants, and the reason this is a file and not
     /// a socket.
     func send(_ text: String, to sessionId: String) -> Result<Void, MailboxError> {
+        guard isEnabled() else { return .failure(.disabled) }
         guard let paths = Mailbox.paths(for: sessionId) else {
             return .failure(.invalidSessionId(sessionId))
         }

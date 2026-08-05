@@ -361,11 +361,21 @@ free.
   says so — *"this session is dormant"* — instead of showing a spinner for
   something that will never happen. It resolves itself the moment anything happens
   in that session.
-- **The mailbox has no authentication.** Dropping a file in it starts a turn that
-  speaks in the user's voice with their tools. Permissions are `0700`/`0600`, like
-  the access token, which stops another account on the machine — and stops nothing
-  running as the user. There is no fix available: the reader is a shell script
-  Claude Code spawns and it cannot know who wrote the file.
+- **The mailbox has no authentication, so the whole feature is off by default.**
+  Dropping a file in it starts a turn that speaks in the user's voice with their
+  tools. Permissions are `0700`/`0600`, like the access token, which stops another
+  account on the machine — and stops nothing running as the user. There is no fix
+  available: the reader is a shell script Claude Code spawns and it cannot know who
+  wrote the file.
+
+  So the switch decides, and it starts **off**. While it is off the listener is not
+  registered at all: no hook, no mailbox, nothing on the machine that can start a
+  turn in your name. Turning it on shows a dialog that states the trade in those
+  words. The window reads everything either way.
+
+  This follows [D8](#d8--the-features-that-ask-for-permissions-start-off), and for
+  a sharper reason than the features it joins: those default off to avoid being a
+  nuisance, this one defaults off because it is a capability.
 
 **What it looks like on the way back.** A delivered message returns wearing a
 `task-notification` origin, the same envelope a background agent gets. The window

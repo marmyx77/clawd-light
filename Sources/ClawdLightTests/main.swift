@@ -41,6 +41,8 @@ let suites: [TestSuite] = [
     MailboxSuite.suite,
     MailboxPermissionSuite.suite,
     MailboxReapSuite.suite,
+    MailboxDisabledSuite.suite,
+    MessageDeliverySwitchSuite.suite,
     DictationLocaleSuite.suite,
     DictationAvailabilitySuite.suite,
     MarkdownParserSuite.suite,

@@ -440,3 +440,74 @@ enum MailboxReapSuite {
         },
     ])
 }
+
+/// Sending is off unless the user turned it on.
+enum MailboxDisabledSuite {
+
+    static let suite = TestSuite("Sending off by default", [
+
+        // Not a nicety. Dropping a file in the mailbox starts a turn that speaks
+        // in the user's voice with their tools, and the reader — a shell script
+        // Claude Code spawns — cannot tell who wrote it. Off is the safe state.
+        TestCase("A refusal names itself and says where the switch is") { t in
+            let description = MailboxError.disabled.description
+            t.expect(!description.isEmpty, "silent refusal")
+            t.expect(description.contains("panel menu"), "no way to act on it: \(description)")
+        },
+
+        TestCase("Disabled is a distinct outcome, not a generic failure") { t in
+            // The window shows different words for "off" and "no window open", and
+            // conflating them would send somebody hunting the wrong thing.
+            t.expect(MailboxError.disabled != MailboxError.notDelivered("x"), "distinct")
+            t.expect(MailboxError.disabled != MailboxError.empty, "distinct")
+        },
+    ])
+}
+
+/// Turning message delivery off has to actually remove it.
+enum MessageDeliverySwitchSuite {
+
+    private static let hookPath = "/Users/dev/.clawd-light/hook.sh"
+    private static let rewakePath = "/Users/dev/.clawd-light/rewake.sh"
+
+    private static func registered(_ settings: [String: Any]) -> [String] {
+        let groups = (settings["hooks"] as? [String: Any])?["Stop"] as? [[String: Any]] ?? []
+        return groups.flatMap { ($0["hooks"] as? [[String: Any]]) ?? [] }
+            .compactMap { $0["command"] as? String }
+    }
+
+    static let suite = TestSuite("Message delivery switch", [
+
+        TestCase("On registers the listener") { t in
+            let settings = HookConfigMerger.install(
+                into: [:], scriptPath: hookPath, rewakeScriptPath: rewakePath,
+                registerMessageDelivery: true
+            )
+            t.expect(registered(settings).contains(rewakePath), "listener")
+        },
+
+        // The defect this suite exists for. Passing no path meant the cleanup did
+        // not know about the listener, so switching off left it registered and
+        // running while the interface reported it was off.
+        TestCase("Off removes a listener that was already there") { t in
+            let on = HookConfigMerger.install(
+                into: [:], scriptPath: hookPath, rewakeScriptPath: rewakePath,
+                registerMessageDelivery: true
+            )
+            let off = HookConfigMerger.install(
+                into: on, scriptPath: hookPath, rewakeScriptPath: rewakePath,
+                registerMessageDelivery: false
+            )
+            t.expect(!registered(off).contains(rewakePath), "the listener must be gone")
+            t.expect(registered(off).contains(hookPath), "the traffic light stays")
+        },
+
+        TestCase("Off twice is still off") { t in
+            let settings = HookConfigMerger.install(
+                into: [:], scriptPath: hookPath, rewakeScriptPath: rewakePath,
+                registerMessageDelivery: false
+            )
+            t.expectEqual(registered(settings), [hookPath], "only the traffic light")
+        },
+    ])
+}

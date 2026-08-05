@@ -20,7 +20,7 @@ final class ChatWindowController: NSObject, NSWindowDelegate {
 
     private let store: StateStore
     private let preferences: Preferences
-    private let mailbox = MailboxWriter()
+    private lazy var mailbox = MailboxWriter { [preferences] in preferences.messageSendingEnabled }
     private let raiseInEditor: (SessionState) -> Void
 
     init(

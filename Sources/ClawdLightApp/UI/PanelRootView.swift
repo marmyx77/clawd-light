@@ -10,6 +10,7 @@ struct PanelActions {
     let toggleGrouping: () -> Void
     let toggleOnlyWaiting: () -> Void
     let toggleNotifications: () -> Void
+    let toggleMessageSending: () -> Void
     let togglePresence: () -> Void
     let muteForAnHour: () -> Void
     let clearMute: () -> Void
@@ -29,6 +30,7 @@ struct PanelFlags {
     let grouped: Bool
     let onlyWaiting: Bool
     let notificationsEnabled: Bool
+    let messageSendingEnabled: Bool
     let presenceEnabled: Bool
     let mutedUntil: Date?
     let hasHidden: Bool
@@ -116,6 +118,11 @@ struct PanelRootView: View {
         Divider()
 
         if flags.hooksInstalled {
+            Button(
+                check(flags.messageSendingEnabled, "Let the panel answer your sessions…"),
+                action: actions.toggleMessageSending
+            )
+
             Button("Remove the hooks from Claude Code", action: actions.uninstallHooks)
         } else {
             Button("Install the hooks in Claude Code…", action: actions.installHooks)

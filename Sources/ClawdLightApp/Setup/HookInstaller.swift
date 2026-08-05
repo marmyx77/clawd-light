@@ -62,12 +62,17 @@ struct HookInstaller {
     /// Writes the hook script and registers it in `settings.json`.
     /// - Returns: the path of the backup created, if `settings.json` already existed.
     @discardableResult
+    /// - Parameter includeMessageDelivery: registers the second `Stop` hook that
+    ///   carries messages from the chat window into a session. **Off unless the
+    ///   user has turned sending on**: while it is off there is no listener and no
+    ///   mailbox, so nothing on the machine can start a turn in their name.
     func install(
         port: UInt16 = AppConfig.listenPort,
-        includeToolEvents: Bool = false
+        includeToolEvents: Bool = false,
+        includeMessageDelivery: Bool = false
     ) throws -> URL? {
         try writeScript(port: port)
-        try writeRewakeScript()
+        if includeMessageDelivery { try writeRewakeScript() }
 
         let settings = try readSettings()
         let backup = try backupSettingsIfNeeded()
@@ -80,6 +85,7 @@ struct HookInstaller {
             into: settings,
             scriptPath: scriptPath,
             rewakeScriptPath: rewakeScriptPath,
+            registerMessageDelivery: includeMessageDelivery,
             events: events
         )
         try writeSettings(updated)

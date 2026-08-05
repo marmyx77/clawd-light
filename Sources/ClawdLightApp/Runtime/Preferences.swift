@@ -21,6 +21,7 @@ struct Preferences {
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
         static let mutedUntil = "notify.mutedUntil"
+        static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
         static let calmBlinkWorkspaces = "panel.calmBlink"
     }
@@ -175,6 +176,23 @@ struct Preferences {
     var presenceEnabled: Bool {
         get { defaults.bool(forKey: Key.presenceEnabled) }
         nonmutating set { defaults.set(newValue, forKey: Key.presenceEnabled) }
+    }
+
+    /// `true` when the panel is allowed to send messages into sessions.
+    ///
+    /// **Off by default**, and it is the only feature here whose default is about
+    /// safety rather than noise. Delivery works by leaving a file in
+    /// `~/.clawd-light/inbox/`, and the reader is a shell script Claude Code
+    /// spawns — it cannot know who wrote that file. Permissions keep other
+    /// accounts out and cannot keep out anything running as you, so while this is
+    /// on, any process on your machine can start a turn that speaks in your voice,
+    /// with your tools.
+    ///
+    /// While it is off, the message listener is **not registered at all**: no
+    /// hook, no listener, no mailbox. The chat window still reads everything.
+    var messageSendingEnabled: Bool {
+        get { defaults.bool(forKey: Key.messageSendingEnabled) }
+        nonmutating set { defaults.set(newValue, forKey: Key.messageSendingEnabled) }
     }
 
     // MARK: - Persisted sets

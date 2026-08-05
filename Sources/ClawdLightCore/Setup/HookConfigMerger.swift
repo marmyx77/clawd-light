@@ -46,14 +46,21 @@ public enum HookConfigMerger {
     ///   the traffic light hook on purpose: that one must return in milliseconds,
     ///   this one waits for minutes, and putting both behaviours in one script
     ///   would mean the traffic light inherits the waiting.
+    /// - Parameter registerMessageDelivery: whether the listener should end up
+    ///   registered. It is **always** removed first regardless, which is what makes
+    ///   turning the feature off actually turn it off: passing `nil` for the path
+    ///   instead left the previous registration in place, and the switch reported
+    ///   success while the hook kept running.
     public static func install(
         into settings: [String: Any],
         scriptPath: String,
         rewakeScriptPath: String? = nil,
+        registerMessageDelivery: Bool = true,
         events: [String] = defaultEvents
     ) -> [String: Any] {
         // Clean up any previous installation first, so that changing the event
-        // list doesn't leave orphaned registrations behind.
+        // list — or switching message delivery off — doesn't leave orphaned
+        // registrations behind.
         var result = uninstall(
             from: settings, scriptPaths: [scriptPath, rewakeScriptPath].compactMap { $0 }
         )
@@ -64,7 +71,7 @@ public enum HookConfigMerger {
             hooks[event] = existing + [matcherGroup(scriptPath: scriptPath)]
         }
 
-        if let rewakeScriptPath, events.contains("Stop") {
+        if let rewakeScriptPath, registerMessageDelivery, events.contains("Stop") {
             let existing = (hooks["Stop"] as? [[String: Any]]) ?? []
             hooks["Stop"] = existing + [rewakeGroup(scriptPath: rewakeScriptPath)]
         }

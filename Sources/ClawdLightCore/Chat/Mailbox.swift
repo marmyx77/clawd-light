@@ -146,6 +146,8 @@ public enum MailboxError: Error, Equatable, CustomStringConvertible {
     case tooLarge(Int)
     case invalidSessionId(String)
     case notDelivered(String)
+    /// Sending is switched off. The default, and a deliberate one.
+    case disabled
 
     public var description: String {
         switch self {
@@ -157,6 +159,8 @@ public enum MailboxError: Error, Equatable, CustomStringConvertible {
             return "not a usable session id: \(id)"
         case .notDelivered(let reason):
             return reason
+        case .disabled:
+            return "answering from the panel is off — turn it on in the panel menu"
         }
     }
 }
