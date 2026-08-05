@@ -1,0 +1,638 @@
+# Traps
+
+The catalogue of the real defects found in this project. Each one with its
+**symptom**, **cause**, **correction** and **lesson**.
+
+It is the most useful document in the folder, because every entry is time you
+won't have to spend again. They are ordered by how much they teach, not by
+severity.
+
+---
+
+## The five lessons, one line each
+
+1. **Verifying with the wrong tool is not verifying.** Four defects survived a
+   check made with a medium different from the one the app actually uses.
+2. **A fake success costs more than an error.** Most of the time lost here came
+   from operations that said "done" without having done it.
+3. **What you don't run is what breaks.** Three defects out of nine were in the
+   one file that was never executed.
+4. **A file's timestamp is not a sign of life.** Three separate defects, found in
+   one hour, all of them reading `mtime` where a pid was sitting right there.
+5. **Inferring a state is inventing one.** Two regressions in a single evening,
+   both from deducing what a session was doing instead of measuring it.
+
+---
+
+# A timestamp is not a heartbeat
+
+Three defects, the same mistake, three different files. Grouped because finding
+the second one should have made the third obvious, and it did not.
+
+## Five projects that vanished on their eighth day
+
+**Symptom.** Projects disappeared from the column while their VS Code windows were
+open and their sessions were working. No error, no gap in the log. On the machine
+where it was found, five at once.
+
+**Cause.** A lock in `~/.claude/ide/` was believed only while it was younger than
+seven days:
+
+```swift
+public func isFresh(at now: Date, maxAge: TimeInterval = .sevenDays) -> Bool {
+    now.timeIntervalSince(lockModifiedAt) <= maxAge
+}
+```
+
+But a lock is written **once**, when the window connects, and never touched again.
+Its age measures how long the window has been open — and leaving a window open for
+a fortnight is ordinary. The rule was expressing "this lock is probably orphaned",
+which was a real concern, with a number that answered a different question.
+
+**Correction.** The lock carries the editor's `pid`, and always did — the field was
+parsed on day one and read by nobody. If that process is running, the window
+exists, whatever the file's age. Age survives only as the fallback for a lock with
+no usable pid, which is the case the rule was invented for.
+
+**Lesson.** When a file carries a pid, the pid is the answer. `mtime` tells you
+when something was written, which is only the same as "is it alive" for files that
+are rewritten — and none of these are.
+
+## A session that had been working for a week reported a week of silence
+
+**Symptom.** A session actively working was invisible in the column, and stayed so
+until its turn ended.
+
+**Cause.** Adoption from the filesystem took its timestamp from
+`~/.claude/sessions/<pid>.json`, which — exactly like the lock — is written at
+startup and never again. A session opened seven days ago reported seven days of
+silence, and the twelve-hour staleness rule removed it on sight. Measured:
+transcript **1.3 minutes** old, session file **173.6 hours**.
+
+**Correction.** Two changes, and both were needed. The activity timestamp now
+comes from the **transcript**, which grows with every message and every tool
+result. And pruning never removes a session whose process is confirmed running:
+pruning exists to drop what cannot be accounted for, and a live pid is accounting
+for it.
+
+**Lesson.** The same one again, one file later.
+
+## A hook that hit nothing, and said nothing
+
+**Symptom.** A turn finished and the light did not go green. Intermittent,
+maddening, and indistinguishable from the traffic light being broken.
+
+**Cause.** A signal whose `cwd` matches no editor window is discarded — correctly,
+because there is no row to put it on — and it was discarded **in silence**. After
+restarting the Mac, a VS Code window writes no lock until its Claude panel
+reconnects, so every hook from that window fell into a hole for as long as it took.
+
+**Correction.** The behaviour is unchanged. The log now names the folder nobody
+claimed. Diagnosing this cost an evening; the next one costs reading a line.
+
+**Lesson.** Discarding is a decision, and a decision that leaves no trace is
+indistinguishable from a fault. Every `guard … else { return }` on the path of an
+external signal deserves the question: *if this fires a hundred times, how would
+anybody know?*
+
+---
+
+# Inventing a state
+
+## Red while working, then yellow for everything
+
+**Symptom.** Two regressions on consecutive attempts, both shipped to the user,
+both worse than what they replaced.
+
+**Cause.** Adoption has to give a session a state before any hook has spoken, and
+`idle` was the honest placeholder. When the pruning fix made adopted rows survive,
+that placeholder became visible: sessions hard at work showed **red**. The
+correction was to infer — "the transcript moved in the last forty-five seconds,
+therefore a turn is in flight" — and it was wrong for a reason that only shows up
+on a restart: a transcript is appended for plenty of things that are not a turn,
+**resuming a session among them**. Reboot, twelve sessions resume at once, twelve
+files move at once, and the whole column turns yellow.
+
+**Correction.** The inference was removed. `idle` is not a guess dressed as a fact;
+it is the absence of information, and the first hook replaces it. The transcript's
+timestamp is kept for the **clock**, where it is evidence, and kept away from the
+**colour**, where it was a guess.
+
+**Lesson.** A column that is uniformly wrong is worse than one that is uniformly
+cautious: the panel exists to make one session stand out, and if everything is
+yellow nothing does. When tempted to derive a state from a proxy, ask what the
+proxy does on the day everything happens at once.
+
+**And the meta-lesson**, which cost more than the defects: both regressions were
+made quickly, under the pressure of a user watching something broken. The fix that
+worked came from the opposite move — stopping, replaying a real turn through the
+real hook script on a real live session, and watching it across two realignment
+cycles. Thirty seconds of measurement cleared three suspects and found the cause.
+
+## A red test, hidden by my own grep
+
+**Symptom.** A test had been failing for a day. Every check said everything passed.
+
+**Cause.** The verification was `./Scripts/test.sh | grep -E "tests passed|failed"
+| head -3` — and `head -3` cut off the summary line, leaving three green ticks from
+the middle of a suite.
+
+**Correction.** Read the tail, not the head. The summary is the last line for a
+reason.
+
+**Lesson.** This project has already shipped a test script that reported success
+after running zero tests, and the entry for it is in this same file. The trap is
+not the script: it is trusting a filtered view of a result. Twice now.
+
+---
+
+# Checks made with the wrong tool
+
+## Title matching, broken for a whole day with ten green tests
+
+**Symptom.** The click always led to the wrong window. Ten tests on the
+recognition were green.
+
+**Cause.** `NSAppleScript` returns the window list as an AppleScript list, and on
+a list **`stringValue` is `nil`**. The code split it on `", "` and always got a
+single empty element: no window was ever recognized, and the click always fell
+back to the second strategy.
+
+**Why nobody had noticed.** The manual check had been done with `osascript` from
+a terminal, which **serializes the list into text**. The tests covered the
+function, the manual check covered a different transport, and nobody covered the
+joint between the two.
+
+**Correction.** Read the descriptor's elements:
+
+```swift
+if descriptor.numberOfItems > 0 {
+    let titles = (1...descriptor.numberOfItems).compactMap {
+        descriptor.atIndex($0)?.stringValue
+    }
+}
+```
+
+**Lesson.** It is the origin of the entire e2e suite and of the `focus` command,
+which prints the titles actually read.
+
+---
+
+## "I have the permissions", said by Terminal
+
+**Symptom.** `clawd-light focus clawd-light` from a terminal answered
+`✓ window raised`. The clicked panel did something else.
+
+**Cause.** When you launch a binary from a terminal, macOS does **not** attribute
+the TCC permissions to that binary: it attributes them to the *responsible
+process*, which is Terminal. The check proved that Terminal can raise the window,
+not that the app can.
+
+**Correction.** The app's log records at startup what **the app itself** sees:
+
+```
+signature=stable accessibility=granted
+```
+
+**Lesson.** Same shape as the previous defect, in a different domain. When you
+verify something that depends on the process's identity, **that process** has to
+be the one answering.
+
+---
+
+## The socket that looked local
+
+**Symptom.** None: the project ran for days with a socket reachable from the
+whole network.
+
+**Cause.** `NWParameters.acceptLocalOnly` looks like it says "this machine only"
+and actually says "this network link only" — that is, the Wi-Fi the Mac is
+attached to.
+
+```
+clawd-lig 32486 dev 4u IPv6 ... TCP *:9877 (LISTEN)
+```
+
+Anyone who got there could inject signals and drive the panel; with the read
+endpoint it would have become a listing of the open projects.
+
+**Correction.** `parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port:)`.
+
+**Lesson.** Found by looking at `lsof`, not by re-reading the code. An e2e case
+now queries `lsof` against the live process: it verifies the **fact**, not the
+intention.
+
+---
+
+## The index that moves
+
+**Symptom.** The click raised the wrong window — typically the last one used
+before switching applications. **Every other time.**
+
+**Cause.** Raising was two distinct Apple Events: one to read the titles, one to
+`AXRaise` on `window <index>`. The list arrives in depth order, and **that order
+changes on its own** as soon as the focus moves — that is, exactly while you
+click a floating panel. The index computed against the first list pointed
+elsewhere.
+
+**How I told it apart from a permissions problem.** The log showed **zero
+fallbacks**: the AppleScript was *succeeding*. Had it been a permission I would
+have read `AppleScript failed`.
+
+**Correction.** Raise **by title**, which is an identity rather than a position:
+
+```applescript
+set candidate to (every window whose name is "…")
+perform action "AXRaise" of item 1 of candidate
+```
+
+**Side effect, and its correction.** Putting a title inside a script means
+putting a **file name** in it, which isn't text you decide.
+`AppleScriptString.escaped`, with six tests including a title built to break out
+of the string.
+
+**Lesson.** Intermittency is information, not an annoyance: it almost always
+means something changes between two steps you thought were atomic.
+
+---
+
+# Fake successes
+
+## `activate()` returning `true` without activating
+
+**Symptom.** Click on the traffic light: nothing happened, and nothing said so.
+
+**Cause.** `NSRunningApplication.activate()` invoked from an *accessory* app that
+isn't frontmost is ignored by macOS — and **returns `true` anyway**.
+
+**Correction.** `/usr/bin/open -b <bundle>`, which is a system process and does
+have the right to activate. **With no path**: `open -b <bundle> <folder>` asks it
+to *open* that folder and materializes a new window for it.
+
+---
+
+## An alert shown after a success
+
+**Symptom.** "The Accessibility permission is missing" after a click that worked.
+
+**Cause.** `return openViaCLI(path:) ?? error` — `nil` meant success, and
+`nil ?? error` returns `error`.
+
+**Correction.** `FocusResult`, a three-case enum (`raised`, `activatedOnly`,
+`failed`), because they deserve different reactions: silence, a note in the menu,
+an alert.
+
+**Lesson.** Flattening different outcomes onto `Error?` produced **two** defects
+in this file. When the cases deserve different reactions, they deserve a type.
+
+---
+
+## The fallback that always fired
+
+**Symptom.** Every click opened a new VS Code window, with no project.
+
+**Cause.** The fallback sat behind an `@autoclosure`, but the call site wrote
+`fallback: { … }()` — the trailing parentheses **invoked the closure
+immediately**, so `open` ran even after a successful raise.
+
+**Correction.** Explicit guards, and out with the abstraction that hid the order.
+
+**Lesson.** On a path where the order of the steps is the thing that matters,
+writing it out explicitly is worth more than not repeating yourself.
+
+---
+
+## The test script that ran nothing and said it passed
+
+**Symptom.** None. `./Scripts/test.sh` printed `0 tests passed` for the
+end-to-end suite and exited 0. Running `swift run ClawdLightE2E` by hand gave 66.
+
+**Cause.** The runner picked the filter as "the first argument not starting with
+`--`". The script invokes it as `--port 9899`, so `9899` became the filter, no
+suite matched, and an empty run is a passing run.
+
+**Correction.** The filter now skips the value of `--port` as well.
+
+**Lesson.** Verified in reverse, as the rule requires: with the defect back,
+`--port 9899` gives 0; with the fix, 66. But the deeper point is that **a green
+result from having run nothing is the worst kind of fake success**: a failure gets
+looked at, and zero passing tests get read as "all fine". Any runner that reports
+a count should be suspected the day that count is zero.
+
+---
+
+## The script that said "✓ created" without having created
+
+**Symptom.** The stable signature didn't work, and the build fell back to ad-hoc
+**silently**. You find out days later, from a click that stops working.
+
+**Cause.** The script printed the success right after the import. When the import
+failed, the error scrolled past.
+
+**Correction.** It signs a probe file and compares the `Authority` before
+declaring success.
+
+**Lesson.** It is the same shape as the alert-after-success, in bash.
+
+---
+
+# Wrong semantics
+
+## Four events that stated falsehoods
+
+| Event | Before | Now |
+|---|---|---|
+| `StopFailure` | `ready` (green) | `failed`. A turn cut down by a rate limit produced nothing to read. Exception: `max_output_tokens`, where the text exists and is merely incomplete |
+| `Notification(idle_prompt)` | `ready` (green) | nothing. It is an inactivity timer, not an answer: it invented answers that never arrived |
+| `SessionStart(source: compact)` | `idle` (red) | nothing. Compaction fires **mid-turn**: it cleared the yellow of a working session |
+| `Notification(elicitation_dialog)` | ignored | `awaiting`. An MCP dialog blocks as much as a permission request |
+
+**Lesson.** Every event has to be mapped by asking *what it proves*, not *what
+the name suggests*.
+
+---
+
+## The immortal yellow
+
+**Symptom.** Yellow rows that stayed that way forever.
+
+**Cause.** Pruning exempted `working` — "a long turn is not a dead session". But
+**`Stop` doesn't fire when you interrupt a turn with Esc**, and no other hook
+covers it.
+
+**Correction.** The threshold applies to every state. If it gets it wrong, the
+damage is bounded: on the next signal the reducer recreates the row.
+
+---
+
+## The green that came back during the work
+
+**Symptom.** A forty-five minute background workflow, and a green traffic light
+for the whole duration.
+
+**Cause.** The plan said "`Stop` resets the subagent counter". Implementing it
+revealed that the real sequence is:
+
+```
+SubagentStart ×N → Stop → … work … → SubagentStop ×N
+```
+
+Resetting on `Stop` restores green **exactly during** the work.
+
+**Correction.** The displayed state is **derived** from the counter. It follows on
+its own that when the last agent finishes, the green set aside resurfaces.
+
+**Lesson.** A plan written before the implementation can be wrong, and the
+implementation is where you find out. The entry in
+[04 decisions](04-decisions.md#d2--the-displayed-state-is-derived-not-stored) was
+rewritten, not deleted.
+
+---
+
+## The downgrade that erased the error
+
+**Symptom.** A `failed` session went back to "working", and the cause of the
+error vanished.
+
+**Cause.** The protection from late signals was hooked to `blocksDowngrade`,
+false for `failed`. A late `PostToolUse` — the tail of the turn that had just
+been cut down — downgraded it.
+
+The reason `failed` wasn't in `blocksDowngrade` was a good one: if the turn
+**resumes**, yellow is the correct information. But a trailing signal is not a
+resumption.
+
+**Correction.** `shouldKeep` tells the two cases apart. Two tests pin both down.
+
+---
+
+# Platform defects
+
+## The crash the e2e suite couldn't see
+
+**Symptom.** `swift run ClawdLightApp` died at startup.
+
+```
+*** Terminating app due to uncaught exception 'NSInternalInconsistencyException',
+    reason: 'bundleProxyForCurrentProcess is nil'
+8  ClawdLightApp  AppDelegate.startNotifier(for:)
+```
+
+**Cause.** `UNUserNotificationCenter.current()` outside a `.app` bundle **does not
+return nil**: it raises an exception and terminates the process. The guard was
+there inside `SessionNotifier`, and missing on the line assigning the delegate.
+
+**Why no test saw it.** The entire e2e suite runs `--headless`, and `--headless`
+skips `startInterface()`. The test run never went through the branch with the
+interface on.
+
+**Correction.** The guard, plus an e2e case that starts the binary **without**
+`--headless` and checks it is alive after two and a half seconds. Tested in
+reverse: red with `code 6` (SIGABRT), green with the fix.
+
+**Lesson.** A mode introduced to make something testable can create a branch no
+test walks through.
+
+---
+
+## PKCS#12 that macOS can't read
+
+**Symptom.**
+
+```
+SecKeychainItemImport: MAC verification failed during PKCS12 import (wrong password?)
+```
+
+**Cause.** Two, overlapping. OpenSSL 3 encrypts by default with AES-256 and
+computes the MAC with SHA-256, which the Security framework can't digest. And
+with an empty password, "no password" and "a zero-length password" are two
+different things in the MAC computation.
+
+**Correction.** `-legacy` and a temporary random password. LibreSSL doesn't know
+`-legacy` but already has the right defaults: the script tries and falls back.
+
+**Lesson.** The error message pointed at the password. The problem was the
+algorithm.
+
+---
+
+## `codesign` hanging
+
+**Symptom.** The script never returned. No output, no error.
+
+**Cause.** If the private key isn't in the "partition list", macOS opens an
+*"allow access?"* dialog. In a non-interactive script that dialog reaches nobody.
+
+**Correction.** `security set-key-partition-list -S apple-tool:,apple:,codesign:`,
+plus a **deadline** on every signing. `-T /usr/bin/codesign` at import time isn't
+enough in the `login` keychain, even though it is enough in one created on the
+spot.
+
+---
+
+## `«$VAR»` breaking bash
+
+**Symptom.**
+
+```
+line 141: NAME�: unbound variable
+```
+
+**Cause.** In UTF-8 `»` is `0xC2 0xBB`, and bash 5.3 under `C.UTF-8` **swallows
+the `0xC2` byte into the variable name**, looking for one that doesn't exist.
+With `set -u` the script dies.
+
+**Correction.** Braces: `«${NAME}»`. All occurrences fixed with
+`\$[A-Za-z_]\w*(?=[^\x00-\x7F])`.
+
+**The detail that teaches the most.** In `build-app.sh` the faulty line was in the
+"sign with a stable identity" branch, **never executed** until that day. The
+defect had been there for hours and woke up at the exact moment the certificate
+appeared.
+
+---
+
+## `grep -q` under `pipefail`
+
+**Symptom.** "✗ The signature doesn't appear to be issued by…" on a perfectly
+valid signature. **Intermittently.**
+
+**Cause.** `grep -q` exits at the first match and closes the pipe. `codesign`
+still has five lines to write, receives SIGPIPE, exits with **141**, and
+`pipefail` fails the pipeline *even though the match was there*.
+
+It is a race: it depends on who gets there first. The first isolated attempt
+returned `0` and made me discard the correct hypothesis; only reproducing the
+exact sequence surfaced `exit 141`.
+
+**Correction.** Write to a file and grep the file. Verified with **ten
+consecutive runs**.
+
+**Lesson.** A defect that works one time in two isn't disproved by a single
+attempt.
+
+---
+
+## The shortcut that registers and never arrives
+
+**Symptom.** Pressing the combination gets an answer from the foreground
+application — recent tabs in one browser, the search bar in VS Code — and the
+panel doesn't react.
+
+**Cause.** `RegisterEventHotKey` returns `noErr` and the event is never
+delivered. Verified with two independent binaries using the same standard recipe,
+with the panel alive and the registration confirmed in the log: zero events
+received.
+
+**How much it cost to find out.** Three wasted rounds, for two reasons:
+
+1. The first few times **the shortcut was simply switched off** — nobody had
+   turned it on, and what the user pressed went to the foreground application.
+   The code wasn't even in play.
+2. The log recorded the action but not the **keypress**, so "it never arrived"
+   and "it arrived and found nothing" were indistinguishable.
+
+**Correction.** The feature was removed. See
+[04 decisions · N6](04-decisions.md#n6--a-global-shortcut-inside-the-app).
+
+**The lessons, which apply beyond this case.**
+
+*Log the cause, not just the effect.* A log that says what happened afterwards
+doesn't help you work out whether something happened before.
+
+*Before diagnosing, check the feature is switched on.* It sounds obvious; it cost
+two rounds.
+
+*A test that needs two synchronized people isn't a test.* Two probes came back
+empty because whoever was watching and whoever was pressing weren't coordinated.
+The third version became a command the user runs themselves — whoever presses is
+also watching, and the silence stops being ambiguous.
+
+*Key codes are positions, not characters.* Code 50 is "the key to the left of
+the 1": on a US keyboard it prints a backtick, on an Italian one a backslash.
+Telling somebody to "press the backtick" when they don't have that symbol is a
+sure way to make something that works look broken.
+
+---
+
+## `String(format:)` ignoring the width
+
+**Symptom.** Columns jammed together in `clawd-light sessions`.
+
+**Cause.** `String(format:)` honors a width on C's numeric and textual
+placeholders, but **ignores** it on `%@`.
+
+**Correction.** `String.padded(to:)`.
+
+---
+
+## Two installations in the same second
+
+**Symptom.** The second installation failed with a message about the backup while
+the problem looked like something else.
+
+**Cause.** The backup name carries the date down to the second, and `copyItem`
+refuses to overwrite. You meet it by installing, uninstalling and reinstalling in
+three clicks.
+
+**Correction.** A counter. **Found by an e2e test**, not by hand.
+
+---
+
+## Two tabs instead of one
+
+**Symptom.** "New conversation here" opened two tabs.
+
+**Cause.** The path raised the window passing the `sessionId` — so it opened the
+existing tab — and immediately afterwards opened a new one.
+
+**Correction.** A parameter to skip opening the tab, used only from there.
+
+**Lesson.** **No test could have seen it**: the deep link runs as a separate
+process and nobody observes its effect. Against that category the only tool is
+re-reading the path in full.
+
+---
+
+## The unreadable timestamp
+
+**Symptom.** The timestamp in the row couldn't be read.
+
+**Cause.** `.tertiary` over an `NSVisualEffectView` gets attenuated a second time
+by vibrancy.
+
+**Correction.** `Color.primary.opacity(0.62)`, with the hierarchy achieved
+through font **weight** instead of fading the color.
+
+---
+
+# Environment traps
+
+## The locked screen
+
+Screenshots and accessibility **both lie** with the screen locked: the first
+capture the lock screen, the second returns zero windows even with the
+permissions granted.
+
+It cost ten rounds of diagnosis on an "invisible" panel that was visible, and was
+then nearly mistaken for a recognition regression.
+
+**Always check before concluding:**
+
+```swift
+(CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"]
+```
+
+Hence the dedicated `noWindowsVisible` error, distinct from `windowNotFound`.
+
+## The stale build
+
+A new bundle does not replace the running process. An app started an hour earlier
+is **indistinguishable** from a revoked permission.
+
+Before diagnosing a click that doesn't work: `ps -o etime`.
+
+## The ad-hoc signature
+
+It changes on every build, macOS considers the app a different one, the
+authorizations lapse **while still showing the switch as on**.

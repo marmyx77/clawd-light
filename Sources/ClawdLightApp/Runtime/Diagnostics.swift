@@ -1,0 +1,49 @@
+import ClawdLightCore
+import Foundation
+
+/// File-based diagnostic log.
+///
+/// An app with no Dock icon and no main window has nowhere to show what it is
+/// doing, and `NSLog` from a process launched via `open` is hard to recover. A
+/// file in a known place solves both problems when the panel behaves unexpectedly.
+enum Diagnostics {
+
+    /// Only active when the environment variable is set, so normal use doesn't
+    /// write to disk on every event.
+    static var isEnabled: Bool {
+        ProcessInfo.processInfo.environment["CLAWD_LIGHT_DEBUG"] != nil
+    }
+
+    static var logURL: URL {
+        AppConfig.supportDirectory.appendingPathComponent("debug.log")
+    }
+
+    /// Truncates the file at startup: it is always the latest run that matters.
+    static func startSession() {
+        guard isEnabled else { return }
+        try? FileManager.default.createDirectory(
+            at: AppConfig.supportDirectory, withIntermediateDirectories: true
+        )
+        try? Data().write(to: logURL)
+        log("session started")
+    }
+
+    static func log(_ message: String) {
+        guard isEnabled else { return }
+
+        let formatter = ISO8601DateFormatter()
+        let line = "\(formatter.string(from: Date())) \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+
+        // A diagnostic log that brings the app down would be worse than the
+        // problem it exists to diagnose: every write error is swallowed here.
+        do {
+            let handle = try FileHandle(forWritingTo: logURL)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: data)
+        } catch {
+            try? data.write(to: logURL)
+        }
+    }
+}

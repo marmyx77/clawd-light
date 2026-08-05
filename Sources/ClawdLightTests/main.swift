@@ -1,0 +1,55 @@
+import Foundation
+import TestKit
+
+// Suite entry point: `swift run ClawdLightTests [filter]`.
+// The filter is optional and selects by suite or case name.
+
+let suites: [TestSuite] = [
+    PathNormalizerSuite.suite,
+    HookPayloadDecoderSuite.suite,
+    IDELockParserSuite.suite,
+    WorkspaceResolverSuite.suite,
+    IDELockLivenessSuite.suite,
+    WindowTitleMatcherSuite.suite,
+    SessionDeepLinkSuite.suite,
+    RelativeTimeSuite.suite,
+    StateReducerSuite.suite,
+    ReducerFixesSuite.suite,
+    LivePruningSuite.suite,
+    OrderingSuite.suite,
+    LiveSessionSuite.suite,
+    ReconcileSuite.suite,
+    StopFailureReasonSuite.suite,
+    CompactDurationSuite.suite,
+    TrafficLightStateSuite.suite,
+    SessionStatusSuite.suite,
+    ColumnLayoutSuite.suite,
+    SlotAssignmentSuite.suite,
+    ColumnSlotSuite.suite,
+    IDEKindSuite.suite,
+    AppleScriptEscapeSuite.suite,
+    SubagentSuite.suite,
+    AccessTokenSuite.suite,
+    SessionsPayloadSuite.suite,
+    HTTPRequestParserSuite.suite,
+    HookConfigMergerSuite.suite,
+    TranscriptDecoderSuite.suite,
+    ConversationSuite.suite,
+    TranscriptLocatorSuite.suite,
+    TranscriptTailSuite.suite,
+    DeliveredMessageSuite.suite,
+    MailboxSuite.suite,
+    MailboxPermissionSuite.suite,
+    MailboxReapSuite.suite,
+    DictationLocaleSuite.suite,
+    DictationAvailabilitySuite.suite,
+    MarkdownParserSuite.suite,
+    MarkdownSummarySuite.suite,
+    TranscriptPreviewSuite.suite,
+    RewakeScriptSuite.suite,
+    RewakeRegistrationSuite.suite,
+    HookScriptBuilderSuite.suite,
+]
+
+let filter = CommandLine.arguments.dropFirst().first
+exit(TestRunner.runAndReport(suites, filter: filter))

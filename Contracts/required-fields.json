@@ -1,0 +1,176 @@
+{
+  "_comment": [
+    "What clawd-light consumes from Claude Code, as data.",
+    "",
+    "One entry per hook event, listing the payload fields the app actually reads.",
+    "The check asserts PRESENCE of what we consume, never absence of what we don't:",
+    "Claude Code adding a field is not a breakage, removing one is.",
+    "",
+    "Every entry here has a matching record in assumptions.md that says where we",
+    "depend on it and what breaks if it goes away."
+  ],
+  "verifiedAgainst": "2.1.220",
+  "verifiedOn": "2026-07-31",
+  "events": {
+    "SessionStart": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "source"
+    ],
+    "UserPromptSubmit": [
+      "session_id",
+      "hook_event_name",
+      "cwd"
+    ],
+    "Stop": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "last_assistant_message"
+    ],
+    "SessionEnd": [
+      "session_id",
+      "hook_event_name",
+      "cwd"
+    ],
+    "SubagentStart": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "agent_id"
+    ],
+    "SubagentStop": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "agent_id"
+    ]
+  },
+  "_eventsNotProbed": {
+    "_comment": [
+      "These fire only under conditions a probe cannot force cheaply.",
+      "They stay under unit test with recorded shapes; the live probe skips them",
+      "and says so, rather than passing silently."
+    ],
+    "Notification": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "notification_type"
+    ],
+    "StopFailure": [
+      "session_id",
+      "hook_event_name",
+      "cwd",
+      "error_type"
+    ]
+  },
+  "nonInteractiveEntrypoints": [
+    "sdk",
+    "sdk-cli",
+    "sdk-ts",
+    "sdk-py",
+    "print"
+  ],
+  "sessionFileFields": [
+    "sessionId",
+    "cwd",
+    "kind",
+    "entrypoint",
+    "pid"
+  ],
+  "lockFileFields": [
+    "workspaceFolders",
+    "ideName"
+  ],
+  "transcript": {
+    "_comment": [
+      "The session transcript: a JSONL file whose path arrives in every hook",
+      "payload as `transcript_path`. It is what the chat window renders.",
+      "",
+      "Unlike the hook payloads, this one can be checked for free and at scale:",
+      "the files are already on disk, by the thousand. The check samples the most",
+      "recent ones and asserts the invariants below still hold.",
+      "",
+      "The load-bearing one is `humanOrigin`. A transcript record of type `user`",
+      "is USUALLY not a human message \u2014 it is a tool result. On this machine the",
+      "ratio was 1683 tool results to 119 real prompts. Telling them apart by",
+      "anything other than `origin.kind` means rendering tool output as if the",
+      "user had typed it."
+    ],
+    "recordFields": [
+      "type",
+      "uuid",
+      "timestamp",
+      "sessionId",
+      "message"
+    ],
+    "humanOrigin": {
+      "field": "origin",
+      "key": "kind",
+      "value": "human"
+    },
+    "assistantBlocks": [
+      "text",
+      "thinking",
+      "tool_use"
+    ],
+    "userBlocks": [
+      "text",
+      "tool_result",
+      "image",
+      "document"
+    ],
+    "titleRecord": {
+      "type": "ai-title",
+      "field": "aiTitle"
+    },
+    "_sampleSize": 40
+  },
+  "extensionPatterns": {
+    "_comment": "Substrings that must still be present in the VS Code extension bundle.",
+    "uriHandlerPath": "\"/open\"",
+    "sessionParameter": "get(\"session\")",
+    "promptParameter": "get(\"prompt\")"
+  },
+  "extensionOpportunities": {
+    "_comment": [
+      "Patterns whose DISAPPEARANCE is good news, not a breakage.",
+      "",
+      "The extension currently refuses to apply a prompt to a session whose panel",
+      "is already open, and says so to the user. That single refusal is what makes",
+      "the Codex-style 'act on the running agent' features unreachable \u2014 see",
+      "decision N7. If it ever goes away, the door opens.",
+      "",
+      "The checker reports these separately and never fails on them."
+    ],
+    "promptRefusedOnOpenSession": "Your prompt was not applied"
+  },
+  "rewake": {
+    "_comment": [
+      "The mechanism that carries a message from the chat window into a running",
+      "session: a second Stop hook marked asyncRewake, spawned detached, whose",
+      "stdout becomes the message and whose exit code 2 sends it.",
+      "",
+      "These option names are @internal in Claude Code. They can be renamed",
+      "without deprecation, and when they are, the feature stops working in",
+      "SILENCE: no error, no log, the message simply never arrives. That is the",
+      "worst failure shape there is, and it is the entire reason this section",
+      "exists. The check greps the shipped binary for the names.",
+      "",
+      "Verified by reproduction on 2026-08-01: an idle session, a message written",
+      "from an unrelated process, a full turn with tool use 30 seconds later."
+    ],
+    "hookOptions": [
+      "asyncRewake",
+      "rewakeMessage",
+      "rewakeSummary"
+    ],
+    "deliverySignals": [
+      "task-notification",
+      "enqueuePendingNotification"
+    ],
+    "exitCodeThatSends": 2
+  }
+}

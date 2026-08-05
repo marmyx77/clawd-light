@@ -1,0 +1,497 @@
+# The assumptions
+
+clawd-light depends on things nobody promised. This file names every one of them,
+says **where the code leans on it** and **what breaks when it goes away**.
+
+It exists so that "Claude Code updated and something is off" becomes a ten-minute
+repair instead of a rediscovery. `Scripts/check-contract.sh` mechanises the part
+that can be mechanised; this file carries the part that can't — the *why*, and the
+arrow back into the code.
+
+**Verified against Claude Code 2.1.220 / extension 2.1.220-darwin-arm64, on
+2026-07-31.**
+
+How to read a record:
+
+- **How verified** — `probe` means a real session was recorded and the field
+  observed; `binary` means read out of the shipped code; `runtime` means watched
+  working on this machine. Nothing here says "documented", because none of it is.
+- **Failure mode** — what you would actually see. This matters more than the
+  assumption: the ones that fail *loudly* are cheap, the ones that fail *silently*
+  are what this file is for.
+
+---
+
+## hook.events · the eight events fire
+
+**We assume** `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`,
+`StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop` are delivered to a
+registered command hook.
+
+**Depends at** [HookConfigMerger.swift:21](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L21) ·
+[StateReducer.swift](../Sources/ClawdLightCore/Reducer/StateReducer.swift)
+
+**How verified** — `probe`. Six of the eight recorded live; `Notification` and
+`StopFailure` need conditions a probe can't force cheaply and stay on recorded
+shapes under unit test. The checker says so instead of passing silently.
+
+**Failure mode** — **silent**. An event that stops firing doesn't error; the row
+just stops moving. This is the assumption the live probe exists for.
+
+---
+
+## hook.payload.core · every payload carries session_id, hook_event_name, cwd
+
+**Depends at** [HookPayloadDecoder.swift:66](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L66)
+
+**How verified** — `probe`.
+
+**Failure mode** — **loud**. The decoder rejects the payload and the server
+answers 400. You would see it in the panel's error note.
+
+---
+
+## hook.stop.message · Stop carries last_assistant_message
+
+**Depends at** [HookPayloadDecoder.swift:86](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L86)
+
+**How verified** — `probe`. Recorded as `"pong"` from a session asked to reply
+with exactly that.
+
+**Failure mode** — quiet but harmless: the row tooltip loses its preview. Nothing
+else depends on it.
+
+---
+
+## hook.subagent.shape · SubagentStart/Stop carry agent_id and agent_type
+
+**Depends at** [HookSignal.swift:84](../Sources/ClawdLightCore/Models/HookSignal.swift#L84) ·
+[SessionState.swift:77](../Sources/ClawdLightCore/Models/SessionState.swift#L77)
+
+**How verified** — `probe`. A session was made to launch one general-purpose
+agent; both events recorded, with `agent_id`, `agent_type`, and on the stop also
+`agent_transcript_path` and `last_assistant_message`.
+
+**Failure mode** — **silent, and the worst one**. The whole derived-state design
+rests here: without these two events the counter never moves, `Stop` is taken
+literally, and a session with agents working in the background shows **green** —
+"there is an answer to read" — for as long as the work lasts. That is the most
+expensive lie the column can tell.
+
+---
+
+## hook.subagent.ordering · Stop can arrive before SubagentStop
+
+**We assume** the parent turn can return control while its agents keep working.
+
+**Depends at** [SessionState.swift:77](../Sources/ClawdLightCore/Models/SessionState.swift#L77)
+— the reason `status` is computed rather than stored.
+
+**How verified** — `runtime`, on real background workflows. The probe records the
+*foreground* ordering (`SubagentStart → SubagentStop → Stop`), which is the other
+case and does not contradict it.
+
+**Failure mode** — if this stopped being true, nothing breaks: the derived state
+degrades to the stored one. This assumption only costs us if it is *forgotten*,
+not if it changes.
+
+---
+
+## hook.sessionstart.source · SessionStart carries source, and `compact` fires mid-turn
+
+**Depends at** [StateReducer.swift:185](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L185)
+
+**How verified** — `probe` for the field (`source: startup`); `binary` for the
+`compact` value.
+
+**Failure mode** — **silent**. If `source` disappeared, a context compaction would
+be read as a session start and would clear the yellow of a working session, sinking
+it to the bottom of the column.
+
+---
+
+## entrypoint.transport · the entrypoint is NOT in the payload
+
+**We assume** `CLAUDE_CODE_ENTRYPOINT` exists only in the environment, which is why
+the hook script copies it into a header.
+
+**Depends at** [HookScriptBuilder.swift:28](../Sources/ClawdLightCore/Setup/HookScriptBuilder.swift#L28)
+
+**How verified** — `probe`. No recorded payload contains it.
+
+**Failure mode** — quiet: the filter loses its input and every session is admitted.
+A deny-list that admits too much shows rows, it doesn't hide them.
+
+---
+
+## entrypoint.values · the non-interactive values
+
+**We assume** `sdk`, `sdk-cli`, `sdk-ts`, `sdk-py`, `print` are sessions nobody is
+watching, and everything else deserves a row.
+
+**Depends at** [AppConfig.swift:131](../Sources/ClawdLightCore/Config/AppConfig.swift#L131)
+
+**How verified** — `probe` + `binary`. **This record is the reason the harness
+exists.** The list had been written from the documentation and was missing
+`sdk-cli`, which is what `claude -p` really reports. The first live run found it.
+
+Two things learned in the same minute:
+
+- `CLAUDE_CODE_ENTRYPOINT` is **inherited by child processes**. A probe launched
+  from inside a Claude Code session records the *parent's* value and proves
+  nothing. The harness scrubs the variable; the first recording, before it did,
+  claimed `claude -p` reports `claude-vscode`.
+- The binary contains nine values: `print`, `sdk`, `cli`, `vscode`, `jetbrains`,
+  `claude-vscode`, `sdk-ts`, `sdk-cli`, `sdk-py`. `cli` is deliberately admitted —
+  that is `claude` from VS Code's integrated terminal, decision D3.
+
+**Failure mode** — one row too many. By design: this is exactly why the list is a
+deny-list and not an allow-list.
+
+---
+
+## sessions.file · ~/.claude/sessions/&lt;pid&gt;.json exists, named after the PID
+
+**We assume** one file per live process, whose name is the PID, containing
+`sessionId`, `cwd`, `kind`, `entrypoint`; and that the files survive the process,
+so liveness needs `kill(pid, 0)`.
+
+**Depends at** [LiveSession.swift:82](../Sources/ClawdLightCore/Workspace/LiveSession.swift#L82) ·
+[LiveSessionReader.swift:58](../Sources/ClawdLightApp/Runtime/LiveSessionReader.swift#L58)
+
+**How verified** — `runtime`, continuously: it is one of the two sources the column
+is built from.
+
+**Failure mode** — **silent and slow**. Without this source the hooks alone never
+report what disappeared: closing a Claude panel leaves a clickable row pointing
+nowhere, and the column starts empty at every launch.
+
+---
+
+## ide.lock · ~/.claude/ide/&lt;port&gt;.lock maps a folder to a window
+
+**We assume** one lock per connected window, carrying `workspaceFolders`,
+`ideName` and `pid`; that `ideName` is `vscode.env.appName` (so forks write their
+own); that `pid` is the **editor's** process and therefore does not identify a
+window on its own — every window of one VS Code shares it; and that the file is
+written **once**, when the window connects, and never touched again.
+
+**Depends at** [IDEWindow.swift:43](../Sources/ClawdLightCore/Workspace/IDEWindow.swift#L43)
+· [IDEWindowReader.swift:29](../Sources/ClawdLightApp/Runtime/IDEWindowReader.swift#L29)
+
+**How verified** — `runtime`. The write-once property was measured the hard way:
+locks 7.98 days old belonging to a VS Code that had been running continuously.
+
+**That last property is the load-bearing one.** A lock's age says how long the
+window has been open, not whether it is still there — and windows stay open for
+weeks. Believing a lock only while it was young made five projects disappear from
+the column on their eighth day, silently. Liveness is `kill(pid, 0)`; age is only
+the fallback for a lock with no usable pid, which is the orphan case the rule was
+invented for. See [Traps](../docs/07-traps.md).
+
+**Failure mode** — **silent**. No lock matching a `cwd` means the session's hooks
+are discarded and no row appears. The drop is now logged by name, which is the
+difference between reading a line and bisecting the app.
+
+---
+
+## sessions.file.mtime · the session file's timestamp is frozen at startup
+
+**We assume** `~/.claude/sessions/<pid>.json` is written when the session starts
+and **never rewritten**, so its modification time is not a sign of activity.
+
+**Depends at** [LiveSessionReader.swift:52](../Sources/ClawdLightApp/Runtime/LiveSessionReader.swift#L52)
+— which is why activity is read from the transcript instead.
+
+**How verified** — `runtime`, by measuring both at once on a session that was
+working: transcript **1.3 minutes** old, session file **173.6 hours**.
+
+**Failure mode** — **silent, and it hides sessions**. Taking this file's age as
+"time since last activity" makes every long-lived session look stale, and the
+twelve-hour rule then removes it while it is working.
+
+**If this ever changes** — if Claude Code starts touching the file on activity —
+nothing breaks: the reader takes the **later** of the two timestamps.
+
+---
+
+## extension.deeplink · vscode://Anthropic.claude-code/open reads session
+
+**Depends at** [SessionDeepLink.swift:26](../Sources/ClawdLightCore/Workspace/SessionDeepLink.swift#L26)
+
+**How verified** — `binary`, in `extension.js`.
+
+**Failure mode** — quiet, and already handled: the deep link is a bonus on top of
+raising the window, never a replacement, and it ships **off by default**. If it
+breaks, the click still takes you to the right window.
+
+---
+
+## extension.prompt · a prompt cannot be sent to an already-open session
+
+**We assume** the `prompt` parameter is applied **only when a new panel is
+created**. When a panel for that session already exists, the extension refuses and
+tells the user so.
+
+**How verified** — `binary`. The refusal is a user-facing string in the shipped
+code:
+
+> `"Session is already open. Your prompt was not applied — enter it manually."`
+
+**Why this record exists** — it is the answer to "can clawd-light send a command to
+a running agent", and the answer is no, through this channel. The one case where
+it would be useful — a session that is open and waiting — is exactly the case the
+extension refuses. See decision N7.
+
+**Failure mode** — none: we depend on nothing here. This record is tracked in
+`required-fields.json` under `extensionOpportunities`, where the **disappearance**
+of the refusal is reported as an opening rather than a breakage.
+
+---
+
+## extension.newconversation · a new conversation opens, and a prompt only prefills
+
+**We assume** `/open` **without** a `session` parameter creates a fresh Claude tab,
+and that a `prompt` given alongside it is **prefilled into the composer, not
+submitted**.
+
+**Depends at** [SessionDeepLink.swift](../Sources/ClawdLightCore/Workspace/SessionDeepLink.swift)
+— the new-conversation URL, reached from the row menu and from `clawd-light new`.
+
+**How verified** — `binary`, followed all the way through the extension:
+
+```
+URI /open → primaryEditor.open → createPanel(session, prompt)
+          → setupPanel(panel, session, prompt)
+          → getHtmlForWebview(…, prompt, …)     → <div id="root" data-initial-prompt="…">
+          → webview: initialPrompt → setInputText(…)   ← prefills, does not send
+```
+
+**Why this record exists** — it settles the second half of the N7 question. The
+prompt channel is not merely restricted to new conversations; even there it only
+puts text in the box. A key that opens a tab with text you must then confirm is
+not a command key, which is why `clawd-light new` sends no prompt at all.
+
+**Failure mode** — none in the direction that matters. If a future version started
+*submitting* the prompt, an unchanged clawd-light would keep opening empty
+conversations, which is the same behaviour it has today.
+
+---
+
+## hook.background_tasks · Stop reports shells still running
+
+**We assume** `Stop` carries `background_tasks`, a list of the background shells
+alive at the end of the turn.
+
+**Depends at** — nothing. **Deliberately unused**, and the reasoning is worth
+keeping because it looks like the subagent bug and isn't.
+
+**How verified** — `probe`. A session told to run `sleep 45` in the background
+produced, on `Stop`:
+
+```json
+[{"id":"befqfrl0r","type":"shell","status":"running",
+  "description":"Sleep for 45 seconds","command":"sleep 45"}]
+```
+
+**Why we don't use it** — with subagents, `Stop` fired while the session was still
+producing the answer, so green ("there is an answer to read") was a lie. Here the
+turn genuinely ended and the answer genuinely exists; a shell continuing in the
+background does not block you and does not change what you should do, which is go
+and read it. Green is correct. Using this signal would trade a true state for a
+more detailed one, which is not the trade this panel makes.
+
+---
+
+## hook.effort · Stop reports the reasoning level, and it cannot be set from outside
+
+**We assume** `effort.level` arrives on `Stop`, and that changing it requires
+either `claude --effort <level>` at session start or `/effort` typed into the
+session.
+
+**Depends at** — nothing.
+
+**How verified** — `probe` for the field (`{'level': 'high'}`); `binary` and
+`claude --help` for the two ways to set it.
+
+**Why it is recorded** — it is the Codex Micro's rotary dial. The dial's value is
+changing effort **mid-flight**, and that needs text delivered to a running
+session, which N7 rules out. We can read the level and never write it, so the
+feature reduces to a badge nobody asked for.
+
+---
+
+## transcript.path · every payload carries transcript_path, and it is absolute
+
+**We assume** each hook payload carries `transcript_path`, pointing at the
+session's JSONL transcript.
+
+**Depends at** [HookPayloadDecoder.swift:88](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L88)
+
+**How verified** — `probe`. Present on all 12 invocations in the golden recording,
+across all 8 event types.
+
+**Failure mode** — **silent, and it degrades rather than breaks**: without the
+path the chat window falls back to `transcript.location`, and if that fails too it
+says it has no transcript. The traffic light is untouched. This is deliberate —
+the column is the product, the chat window is a feature.
+
+---
+
+## transcript.human · origin.kind == "human" is the only proof of who spoke
+
+**We assume** a transcript record was typed by a person **if and only if** it
+carries `origin: {"kind": "human"}`.
+
+**Depends at** [TranscriptDecoder.swift:63](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L63)
+
+**How verified** — `runtime`, at scale: 7042 transcripts scanned. `origin.kind`
+takes three shapes — `human`, `task-notification`, absent.
+
+**Why nothing else will do** — a record of type `user` is usually not a message.
+The protocol files tool results, hook context and injected reminders under the
+same role. The tempting shortcut ("no `toolUseResult`, therefore a person") was
+measured across 60 recent transcripts: it promotes **579** records against **209**
+real ones. Nearly three fabricated user messages for every genuine one.
+
+**Failure mode** — **silent and bad**: if the field is renamed, every conversation
+goes empty; if its meaning shifts, the window starts attributing machine output to
+the user, and there is nothing on screen to suggest it is lying. The static check
+fails when no human record is found in 40 transcripts, which is the loud version
+of the first case and the best available proxy for the second.
+
+---
+
+## transcript.location · the transcript path is derivable from cwd and session id
+
+**We assume** a session's transcript lives at
+`~/.claude/projects/<cwd, every non-alphanumeric character replaced by "-">/<session-id>.jsonl`.
+
+**Depends at** [TranscriptLocator.swift:35](../Sources/ClawdLightCore/Transcript/TranscriptLocator.swift#L35)
+
+**How verified** — `runtime`: **7065 of 7066** transcripts on the machine matched.
+
+**Why it exists** — sessions adopted from `~/.claude/sessions/` carry no
+transcript path, and after a restart of clawd-light that is every session. Without
+this the chat window would stay empty until the next prompt.
+
+**The one exception, and why it is handled** — a session running in a git worktree
+reports the **main** repository as its `cwd` while the transcript is filed under
+the worktree. The derived path is therefore a *candidate*: the caller checks it
+exists and otherwise reports no transcript. Trusting it blindly would show an
+empty conversation for a session that has plenty to say.
+
+**Failure mode** — **quiet**: a changed rule means adopted sessions stop opening,
+while sessions with a live hook keep working. Not covered by the static check —
+it is a naming convention, not a field, and the file-exists check is what makes
+being wrong harmless.
+
+---
+
+## transcript.blocks · content is a list of typed blocks
+
+**We assume** `message.content` is either a string or a list of blocks, and that
+`text` / `tool_use` on the assistant side and `text` / `tool_result` / `image` /
+`document` on the user side cover what needs rendering.
+
+**Depends at** [TranscriptDecoder.swift:110](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L110)
+
+**How verified** — `runtime`, 40 transcripts sampled by the static check on every
+run. New block types are **reported, not failed**: an unknown block draws a
+placeholder, which is the right outcome for a dependency that grows.
+
+**Failure mode** — **visible**: a new content type shows up as a gap in a bubble.
+The check names it on the next run.
+
+---
+
+## rewake.mechanism · a Stop hook with asyncRewake outlives the turn, and exit 2 sends
+
+**We assume** that a `Stop` hook carrying `"asyncRewake": true` is spawned
+**detached**, survives the turn that launched it, and that when it later exits
+with code **2** its stdout is enqueued as the session's next turn. The message
+arrives wrapped in `<task-notification>` with `rewakeMessage` as its preamble.
+
+**Depends at** [RewakeScriptBuilder.swift:60](../Sources/ClawdLightCore/Setup/RewakeScriptBuilder.swift#L60)
+· [HookConfigMerger.swift:160](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L160)
+
+**How verified** — `runtime`, by reproduction on 2026-08-01. Three times, twice
+through the shipped scripts: a session idle for thirty seconds, a message written
+by an unrelated process, and one second later a `queue-operation enqueue`, a
+`user` record with `origin.kind == "task-notification"`, a tool call and an
+answer. The recorded envelope is in `golden/delivered-message.json`.
+
+Also `binary`: the option names and the delivery path are grepped out of the
+shipped CLI on every contract run.
+
+**The names are `@internal`** — Claude Code owes us no deprecation for them.
+
+**Failure mode** — **silent, and total**. Nothing errors. The composer accepts
+your message, the file is written, and no listener ever comes to collect it. This
+is the worst failure shape in the project, and it is why the check greps the
+binary rather than trusting the version number.
+
+**What it is NOT** — a way to wake a dormant session. A listener can only be born
+at the end of a turn, so a session doing nothing arms nothing. The window reports
+that state rather than spinning.
+
+---
+
+## rewake.envelope · a delivered message returns as a task-notification
+
+**We assume** a message we delivered comes back in the transcript as a `user`
+record with `origin.kind == "task-notification"`, its `message.content` a **bare
+string** containing our `rewakeMessage` preamble followed by the text.
+
+**Depends at** [TranscriptDecoder.swift:75](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L75)
+
+**How verified** — `runtime`, recorded verbatim in `golden/delivered-message.json`
+and asserted by `DeliveredMessageSuite`.
+
+**Why the preamble is load-bearing twice** — it is what makes the model treat the
+message as the user's turn rather than as an injection (instruction-shaped
+phrasing was refused eight times out of eight during the investigation), **and**
+it is the only thing that tells our own messages apart from a background agent
+reporting in on the way back.
+
+**Failure mode** — **visible but wrong**: if the envelope changes, your own
+messages start appearing in the conversation as system notes. Nothing breaks; the
+window just stops giving you credit for what you wrote.
+
+**A trap already sprung** — the first version of the tests invented a
+`content` shaped as a list of blocks. It passed happily against a shape Claude
+Code does not produce. Fixtures for this record come from the recording, not from
+imagination.
+
+---
+
+## presence.file · CLAUDE_CLIENT_PRESENCE_FILE suppresses phone push notifications
+
+**Depends at** [PresenceFile.swift:23](../Sources/ClawdLightApp/Runtime/PresenceFile.swift#L23)
+
+**How verified** — `binary` only. **Never verified at runtime**, and the feature
+ships off by default partly for that reason. Inspection also turned up a
+`/client/presence` endpoint and a `[presence] pulse` heartbeat, which suggests the
+file is one signal among several rather than the mechanism.
+
+**Failure mode** — **silent, and the bad direction**: if the file stops being read,
+nothing tells you; if the detection is wrong, the result is not one notification
+too many but a notification **lost**, and lost notifications go unnoticed.
+
+---
+
+# When one of these breaks
+
+1. Run `./Scripts/check-contract.sh --live`. It names the record.
+2. Read the record here: it says where the code leans and what the symptom is.
+3. Fix the code, then **re-record**: `./Scripts/check-contract.sh --record`.
+4. Update the record: `verifiedAgainst`, and what you learned.
+
+A legitimate Claude Code change will show up as a failure until somebody blesses
+it. That is not a defect of the method — it is the method.
+
+## What this cannot do
+
+It cannot catch what nobody thought to write down here. The list grows the way it
+started: something breaks, and the record is written **before** the fix, so the
+next person gets the reasoning and not just the patch.

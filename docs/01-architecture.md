@@ -1,0 +1,270 @@
+# Architecture
+
+## The problem, stated properly
+
+With a dozen VS Code windows open, each holding one or more Claude Code sessions,
+finding out **which one is waiting for you** means going through all of them. The
+cost is not the time spent looking: it's that you stop looking, and the answers
+just sit there.
+
+clawd-light answers one question — *which window needs me?* — and supports one
+gesture: clicking on it and ending up there.
+
+Everything else in the project follows from that. When a feature doesn't help
+answer that question or make that gesture reliable, it doesn't get in.
+
+## The complete flow of an event
+
+```
+ ┌─ Claude Code ────────────────────────────────────────────────┐
+ │  a turn changes state: starts, finishes, blocks, fails       │
+ └──────────────────────────┬───────────────────────────────────┘
+                            │ runs the registered hook
+                            ▼
+ ┌─ ~/.clawd-light/hook.sh ─────────────────────────────────────┐
+ │  reads the JSON on stdin, adds CLAUDE_CODE_ENTRYPOINT        │
+ │  as a header, POSTs to localhost, **always exits 0**         │
+ └──────────────────────────┬───────────────────────────────────┘
+                            │ HTTP
+                            ▼
+ ┌─ SignalServer ───────────────────────────────────────────────┐
+ │  NWListener bound to 127.0.0.1, minimal HTTP parser          │
+ └──────────────────────────┬───────────────────────────────────┘
+                            ▼
+ ┌─ HookPayloadDecoder ─────────────────────────────────────────┐
+ │  validates strictly → HookSignal, or refuses                 │
+ └──────────────────────────┬───────────────────────────────────┘
+                            ▼
+ ┌─ WorkspaceResolver ──────────────────────────────────────────┐
+ │  cwd + ~/.claude/ide/*.lock → which window hosts it          │
+ └──────────────────────────┬───────────────────────────────────┘
+                            ▼
+ ┌─ StateReducer ───────────────────────────────────────────────┐
+ │  (state, action) → new state. A pure function.               │
+ └──────────────────────────┬───────────────────────────────────┘
+                            ▼
+ ┌─ StateStore (@MainActor) ────────────────────────────────────┐
+ │  @Published state  ──┬──→  SwiftUI redraws the column        │
+ │                      └──→  SnapshotBox → GET /sessions       │
+ └──────────────────────────────────────────────────────────────┘
+```
+
+And in parallel, independently, every five seconds:
+
+```
+ ┌─ ~/.claude/sessions/<pid>.json ──────────────────────────────┐
+ │  one file per live Claude Code process                       │
+ └──────────────────────────┬───────────────────────────────────┘
+                            │ kill(pid, 0) for each of them
+                            ▼
+                   reconcile  →  adopt  →  prune
+```
+
+## Why two sources and not one
+
+This is the project's structural decision, and it is worth understanding before
+anything else.
+
+**The hooks report what *happens*.** They are precise, timely, and they know the
+semantics: only a hook can tell "the turn finished" apart from "the turn was cut
+down by a rate limit".
+
+**The hooks never report what *disappeared*, nor what was already there.** Close
+a Claude panel and no event tells you. Start the app halfway through the day and
+the twelve sessions already open are invisible.
+
+With only the first source the column fills with dead rows leading nowhere, and
+starts empty every time. With only the second you would know *who exists* but not
+*what state they're in*.
+
+The periodic realignment does three things, in this order:
+
+| Action | What it does | Why in this order |
+|---|---|---|
+| `reconcile(alive:)` | keeps only the sessions with a live process | remove the dead first |
+| `adopt(_:)` | inserts the sessions never seen, as `idle` | then add the new… |
+| `prune` | drops whatever has been silent for 12 hours | …and finally prune |
+
+`adopt` **never overwrites** an existing row: what the hooks know is always more
+precise than a deduction from the filesystem. Without that rule, a ready answer
+would turn red on its own five seconds later.
+
+`reconcile` with an **empty set is ignored**. An empty set almost always means
+the directory read failed, not that every session vanished at the same instant.
+Taking it literally would empty the column at the first I/O error.
+
+## The four layers
+
+### `ClawdLightCore` — pure domain
+
+No `import AppKit`, no network or filesystem access, no clock: `now` is always a
+parameter. Everything that **decides** lives here: how a payload is interpreted,
+which window matches a workspace, what color a traffic light takes, how the
+column is composed.
+
+It is pure not for elegance but because it is the only part that can be verified
+in milliseconds and without opening any windows. Every time a decision slipped
+out of here, it became invisible to the tests.
+
+### `ClawdLightApp` — the shell
+
+AppKit, SwiftUI, Network.framework, AppleScript, `UserNotifications`.
+It does I/O and draws. It **does not decide**: when logic turns up in here, it
+belongs in Core.
+
+The practical rule: if a function contains an `if` answering a domain question
+("does this session deserve a traffic light?"), it is in the wrong place.
+
+### `ClawdLightTests` — domain
+
+242 cases, instantaneous. They verify Core.
+
+### `ClawdLightE2E` — the real chain
+
+66 cases. They launch **the production binary** against a fake home and talk to
+it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
+payload on stdin: in between sit bash, `curl`, the socket, the parser, the
+decoder and the reducer.
+
+They exist because in this project the worst defects have never been inside a
+function: they were in the **seams** between a function and the world. See
+[07 traps](07-traps.md).
+
+## The state machine
+
+Five states, ordered by urgency — the order in which they appear in the column:
+
+| # | State | Meaning | Color |
+|---|---|---|---|
+| 0 | `awaiting` | blocks the work: a permission or an MCP dialog | blinking amber |
+| 1 | `ready` | there is an answer to read | green |
+| 2 | `failed` | turn cut down, nothing to read | solid red |
+| 3 | `working` | processing | yellow |
+| 4 | `idle` | at rest | dim red |
+
+Three properties govern the behavior, and they live on `SessionStatus`:
+
+- **`urgencyRank`** — the column's ordering
+- **`clearsOnFocus`** — whether a click clears it (`awaiting`, `ready`, `failed`)
+- **`blocksDowngrade`** — whether it resists a late signal (`awaiting`, `ready`)
+
+`failed` is deliberately outside `blocksDowngrade`: if the turn **resumes**,
+yellow is the correct information and red would be a leftover. But a late
+`PostToolUse` is not a resumption, and the reducer tells the two cases apart
+explicitly — see `StateReducer.shouldKeep`.
+
+### The displayed state is derived
+
+`SessionState` has no `status` field. It has `baseStatus` — what the hooks say —
+and it **computes** what you see:
+
+```swift
+public var status: SessionStatus {
+    guard activeSubagents > 0 else { return baseStatus }
+    return baseStatus == .awaiting ? .awaiting : .working
+}
+```
+
+The reason lies with background agents. The real sequence is:
+
+```
+SubagentStart ×N → Stop (the parent turn returns control)
+                 → … the agents work for tens of minutes …
+                 → SubagentStop ×N
+```
+
+Taking that `Stop` literally paints **green** — "there is an answer to read" —
+onto a session that is still working. Deriving instead of storing also solves the
+way back: when the last agent finishes, the green that was set aside resurfaces
+on its own, without anyone having to remember it.
+
+The counter resets at the **next prompt**, not at the end of the turn: that is a
+certain boundary, and it doubles as a safety net if a `SubagentStop` gets lost
+along the way.
+
+## From the column to the rows
+
+`ColumnLayout.render(state, options)` is a pure function turning the state into
+what gets drawn. It does four things at once, because they are interdependent:
+
+1. **groups** by project (on by default: 22 sessions across 12 windows)
+2. **filters** "only what's waiting", if asked — but **never** the pinned projects
+3. **sorts**: pinned, then urgency, then the longest wait, then name
+4. **sets aside** the hidden ones into a summary that **lights up** if one of them
+   asks for attention
+
+The delicate point is `ColumnRow.sessionIdsToClear`: a click marks as seen **only
+the sessions that were in the most urgent state**. Without that limit, opening a
+project to answer a permission would erase the ready answer of another session in
+the same project — and grouping would become a loss of information instead of a
+reduction in noise.
+
+## Getting back to the window
+
+This is the gesture that justifies the widget, and it is the most fragile part.
+Two strategies, in order:
+
+**1. Raise the exact window**, via System Events. Requires Accessibility *and*
+Automation. Recognition happens in Swift (`WindowTitleMatcher`, scores
+100/50/10), and all AppleScript receives is the **title** to look for:
+
+```applescript
+set candidate to (every window whose name is "…")
+perform action "AXRaise" of item 1 of candidate
+```
+
+By title and **not by index**: reading the titles and raising are two distinct
+Apple Events, and between the two the window order changes on its own. See
+[07 traps](07-traps.md#the-index-that-moves).
+
+**2. Fallback**: `open -b <bundle>`, with no path. Brings the editor to the front
+without being able to create windows. It doesn't raise the right one, but it does
+no harm.
+
+The three outcomes (`raised`, `activatedOnly`, `failed`) are an explicit type
+rather than an `Error?`, because they deserve different reactions: silence, a
+note in the menu, an alert. Flattening them has already produced two defects.
+
+## Concurrency
+
+Two contexts, and two boundaries to cross:
+
+| Context | Who lives there |
+|---|---|
+| **main actor** | state, views, everything that touches windows |
+| **server queue** (concurrent) | socket, HTTP parsing |
+
+**Server → state, reading**: goes through `SnapshotBox`, a lock-protected box the
+store fills on every change. There is no waiting in either direction, so no
+deadlock is possible.
+
+**Server → main, writing** (`POST /next`, which has to raise windows): goes
+through `AppDelegate.onMain(timeout:)`, which enqueues a `DispatchWorkItem` and
+waits at most two seconds, **cancelling it** on expiry. A `main.sync` would work
+today and would seize up the day somebody, on the main queue, waits for the
+server's queue.
+
+That timeout protects the server's queue, **not** the main actor: if `focus` gets
+stuck on an AppleScript to an unresponsive app, the interface freezes anyway. It
+is the same risk a click on a row already carries — `/next` doesn't add it, it
+only adds a way to trigger it from outside.
+
+## The transport
+
+`POST /signal` — the hooks' entry point. **Without authentication**, and that is
+a choice: the script runs as the user and could read the token, but a hook that
+fails authentication would block a Claude Code turn for the sake of a decorative
+widget. The risk is asymmetric.
+
+`GET /sessions` — the state as JSON. **With a token**, because it exposes the
+names and paths of the open projects.
+
+`POST /next` — raises the next waiting session. **With a token**: it is the only
+route that acts outside the process.
+
+`GET /health` — free, it only tells you whether the app is alive.
+
+The socket is bound to `127.0.0.1` via `requiredLocalEndpoint`. The
+`acceptLocalOnly` flag, which looks like it would do the same thing, limits to the
+**local network** and not to the machine — see
+[07 traps](07-traps.md#the-socket-that-looked-local).
