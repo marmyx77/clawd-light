@@ -40,6 +40,13 @@ public struct HookSignal: Sendable, Equatable {
     /// Cause of the interruption, only populated for `StopFailure`.
     public let failureReason: StopFailureReason?
 
+    /// How many background shells were still running when the turn ended.
+    ///
+    /// Present on `Stop`. A turn can finish with work still going: the session
+    /// writes its recap, hands control back, and a shell keeps running — later
+    /// waking the session with a notification and another turn.
+    public let runningBackgroundTasks: Int
+
     /// Absolute path of the session's JSONL transcript.
     ///
     /// Present on **every** event. It is the only way to reach what was actually
@@ -57,6 +64,7 @@ public struct HookSignal: Sendable, Equatable {
         lastAssistantMessage: String? = nil,
         sessionSource: String? = nil,
         failureReason: StopFailureReason? = nil,
+        runningBackgroundTasks: Int = 0,
         transcriptPath: String? = nil
     ) {
         self.sessionId = sessionId
@@ -68,6 +76,7 @@ public struct HookSignal: Sendable, Equatable {
         self.lastAssistantMessage = lastAssistantMessage
         self.sessionSource = sessionSource
         self.failureReason = failureReason
+        self.runningBackgroundTasks = runningBackgroundTasks
         self.transcriptPath = transcriptPath
     }
 

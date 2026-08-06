@@ -86,6 +86,7 @@ public enum HookPayloadDecoder {
             lastAssistantMessage: optionalString(object, key: "last_assistant_message"),
             sessionSource: optionalString(object, key: "source"),
             failureReason: failureReason(in: object, event: event),
+            runningBackgroundTasks: runningBackgroundTasks(in: object),
             transcriptPath: absolutePath(object, key: "transcript_path")
         )
     }
@@ -103,6 +104,16 @@ public enum HookPayloadDecoder {
         let raw = optionalString(object, key: "error_type")
             ?? optionalString(object, key: "error")
         return StopFailureReason.from(rawValue: raw)
+    }
+
+    /// Counts the background shells still running at the end of the turn.
+    ///
+    /// Only `running` counts. A finished task is in the list too, and treating it
+    /// as live would leave the row yellow for ever — the same stuck-counter failure
+    /// the subagent design has a safety net for.
+    private static func runningBackgroundTasks(in object: [String: Any]) -> Int {
+        guard let tasks = object["background_tasks"] as? [[String: Any]] else { return 0 }
+        return tasks.filter { ($0["status"] as? String) == "running" }.count
     }
 
     // MARK: - Helpers

@@ -214,7 +214,20 @@ public enum StateReducer {
             return .working
 
         case .stop:
-            return .ready
+            // A turn that ends with shells still running has **not** finished the
+            // work, and green means two things at once: there is something to read,
+            // and nothing more is coming. The second half is false here.
+            //
+            // This was examined on the first day and deliberately left alone, on
+            // the reasoning that the turn had genuinely ended and an answer
+            // genuinely existed. Use overruled it: the session writes a recap, the
+            // light goes green, and the actual work carries on for minutes —
+            // exactly the lie the subagent correction exists to prevent, arriving
+            // by a different door.
+            //
+            // Green comes back on its own. The task finishes, wakes the session
+            // with a notification, and that turn ends with nothing running.
+            return signal.runningBackgroundTasks > 0 ? .working : .ready
 
         case .stopFailure:
             // A turn that was cut down produced nothing to read: showing it green

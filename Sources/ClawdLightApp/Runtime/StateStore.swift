@@ -70,7 +70,28 @@ final class StateStore: ObservableObject {
             )
         }
 
+        let before = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
         apply(.signal(signal, workspace: workspace), now: now)
+        let after = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
+
+        // Every signal, and what it did to the colour.
+        //
+        // This is the instrument the project spent three separate evenings without.
+        // "The light is wrong" could only be answered by reasoning about which of
+        // eight events might have arrived in what order — and reasoning is exactly
+        // what produced the wrong answers, twice. One line per hook turns that into
+        // reading.
+        //
+        // It names the **transition**, not the payload: the question is always
+        // "what turned it that colour", never "what were the bytes".
+        let subagent = signal.isFromSubagent ? " [subagent]" : ""
+        let source = signal.sessionSource.map { " source=\($0)" } ?? ""
+        let kind = signal.notificationKind.map { "/\($0.rawValue)" } ?? ""
+        Diagnostics.log(
+            "signal \(signal.event.rawValue)\(kind) "
+                + "session=\(signal.sessionId.prefix(8)) "
+                + "\(before) -> \(after)\(subagent)\(source)"
+        )
     }
 
     /// The user opened the session: the unread states are cleared.

@@ -47,6 +47,14 @@ tried, and turned out to be exactly the wrong behavior.
 **Cost accepted:** a lost `SubagentStop` leaves the counter hanging and the row
 yellow. Mitigated by resetting at the **next prompt**, which is a certain boundary.
 
+**The same rule, later, through a second door.** Background shells do it too: the
+turn ends, the recap is written, and `run_in_background` work carries on. `Stop`
+carries `background_tasks`, and any of them `running` now keeps the row working.
+That case was examined on day one and dismissed with a coherent argument — that a
+turn had ended and an answer existed — which answered the wrong question. Green
+asserts *there is something to read* **and** *nothing more is coming*; only the
+first was ever true there. See [Traps](07-traps.md).
+
 ---
 
 ## D3 · The criterion is where it runs, not how it was started

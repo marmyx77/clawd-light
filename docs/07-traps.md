@@ -389,6 +389,40 @@ rewritten, not deleted.
 
 ---
 
+## Green while a background shell was still working
+
+**Symptom.** A session showed green — "there is an answer to read" — while it was
+plainly still working. Reported by the person using it, not by a test.
+
+**Cause.** Not subagents, which the column already handles. Background shells. A
+turn can end with `run_in_background` work still going: the session writes a
+recap, hands control back, `Stop` fires, and the shell carries on for minutes
+before waking the session with a notification and another turn.
+
+The field that says so, `background_tasks`, was found on the **first day** of the
+project, probed, documented — and deliberately not used. The reasoning was
+written down: *"the turn genuinely ended and an answer genuinely exists, so green
+is correct."*
+
+**Correction.** A `Stop` reporting any task with `status == "running"` leaves the
+row working. Green returns on its own when the task finishes and the following
+turn ends clean, so there is no counter to get stuck.
+
+**Lesson.** The reasoning was coherent and wrong, because it answered the wrong
+question. Green does not mean "a turn ended". It means "there is something to read
+**and nothing more is coming**", and only the second half was checked. When a
+signal has two claims in it, a correct-looking argument about one of them proves
+nothing about the other.
+
+**And the second lesson, which is about who finds these.** This one was invisible
+to every test and every probe, because both were written by the person who had
+already decided it was fine. It surfaced from somebody using the thing for a week
+and saying *"it goes green while it's working"* — and their first guess at the
+cause was subagents, which was wrong, and it did not matter. The observation was
+right; the diagnosis was mine to get right.
+
+---
+
 ## The downgrade that erased the error
 
 **Symptom.** A `failed` session went back to "working", and the cause of the

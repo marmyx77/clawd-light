@@ -281,10 +281,10 @@ conversations, which is the same behaviour it has today.
 ## hook.background_tasks · Stop reports shells still running
 
 **We assume** `Stop` carries `background_tasks`, a list of the background shells
-alive at the end of the turn.
+alive at the end of the turn, each with a `status`.
 
-**Depends at** — nothing. **Deliberately unused**, and the reasoning is worth
-keeping because it looks like the subagent bug and isn't.
+**Depends at** [HookPayloadDecoder.swift:114](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L114)
+· [StateReducer.swift:214](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L214)
 
 **How verified** — `probe`. A session told to run `sleep 45` in the background
 produced, on `Stop`:
@@ -294,13 +294,24 @@ produced, on `Stop`:
   "description":"Sleep for 45 seconds","command":"sleep 45"}]
 ```
 
-**Why we don't use it** — with subagents, `Stop` fired while the session was still
-producing the answer, so green ("there is an answer to read") was a lie. Here the
-turn genuinely ended and the answer genuinely exists; a shell continuing in the
-background does not block you and does not change what you should do, which is go
-and read it. Green is correct. Using this signal would trade a true state for a
-more detailed one, which is not the trade this panel makes.
+**This record used to say "deliberately unused", and that was wrong.** The
+reasoning was that the turn had genuinely ended and an answer genuinely existed,
+so green was correct. Use overruled it: green claims two things — there is
+something to read, **and nothing more is coming** — and with a shell still running
+the second half is false. The session writes its recap, the light goes green, and
+the work carries on for minutes. It is the same lie the subagent correction exists
+to prevent, arriving through a different door.
 
+A `Stop` reporting any task with `status == "running"` therefore leaves the row
+**working**. Green returns on its own when the task finishes, wakes the session
+with a notification, and that turn ends with nothing running — so there is no
+counter to get stuck, which the subagent design needed a safety net for.
+
+Only `running` counts. Finished tasks stay in the list.
+
+**Failure mode** — **silent, and the expensive direction**. If the field
+disappeared, or `status` changed vocabulary, every turn would look clean and the
+green-during-work lie comes straight back.
 ---
 
 ## hook.effort · Stop reports the reasoning level, and it cannot be set from outside

@@ -325,3 +325,90 @@ enum LivePruningSuite {
         },
     ])
 }
+
+/// A turn that ends with shells still running has not finished the work.
+///
+/// The same lie as green-during-subagents, arriving by a different door: the
+/// session writes its recap, hands control back, and a background shell carries on
+/// for minutes. Green claims two things — there is something to read, and nothing
+/// more is coming — and the second half is false.
+///
+/// Examined on the first day and deliberately left alone, on the reasoning that
+/// the turn had genuinely ended. Use overruled the reasoning.
+enum BackgroundTaskSuite {
+
+    private static let workspace = Workspace(path: "/dev/project")
+
+    private static func stop(runningTasks: Int) -> HookSignal {
+        HookSignal(
+            sessionId: "s1",
+            event: .stop,
+            cwd: "/dev/project",
+            entrypoint: "claude-vscode",
+            lastAssistantMessage: "here is the recap",
+            runningBackgroundTasks: runningTasks
+        )
+    }
+
+    private static func apply(_ signal: HookSignal) -> SessionStatus? {
+        StateReducer.reduce(
+            .empty, action: .signal(signal, workspace: workspace), now: Date()
+        ).sessions["s1"]?.status
+    }
+
+    static let suite = TestSuite("Background tasks", [
+
+        TestCase("A turn with nothing running goes green") { t in
+            t.expectEqual(apply(stop(runningTasks: 0)), .ready, "status")
+        },
+
+        // The case the user found by using it.
+        TestCase("A turn with a shell still running stays yellow") { t in
+            t.expectEqual(apply(stop(runningTasks: 1)), .working, "green would be a lie")
+        },
+
+        TestCase("Several running shells are still just working") { t in
+            t.expectEqual(apply(stop(runningTasks: 4)), .working, "status")
+        },
+
+        // Green comes back on its own: the task finishes, wakes the session, and
+        // that turn ends with nothing running. No counter to get stuck.
+        TestCase("Green returns when the next turn ends clean") { t in
+            let now = Date()
+            let busy = StateReducer.reduce(
+                .empty, action: .signal(stop(runningTasks: 1), workspace: workspace), now: now
+            )
+            let after = StateReducer.reduce(
+                busy,
+                action: .signal(stop(runningTasks: 0), workspace: workspace),
+                now: now.addingTimeInterval(60)
+            )
+            t.expectEqual(after.sessions["s1"]?.status, .ready, "status")
+        },
+
+        // Only `running` counts. A finished task left in the list would hold the
+        // row yellow for ever — the stuck-counter failure the subagent design
+        // needed a safety net for.
+        TestCase("Only the running ones count") { t in
+            let payload: [String: Any] = [
+                "session_id": "s1", "hook_event_name": "Stop", "cwd": "/dev/project",
+                "background_tasks": [
+                    ["id": "a", "type": "shell", "status": "completed"],
+                    ["id": "b", "type": "shell", "status": "failed"],
+                ],
+            ]
+            let data = try! JSONSerialization.data(withJSONObject: payload)
+            let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
+            t.expectEqual(signal?.runningBackgroundTasks, 0, "finished tasks are not work")
+        },
+
+        TestCase("A payload with no background tasks at all is fine") { t in
+            let payload: [String: Any] = [
+                "session_id": "s1", "hook_event_name": "Stop", "cwd": "/dev/project",
+            ]
+            let data = try! JSONSerialization.data(withJSONObject: payload)
+            let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
+            t.expectEqual(signal?.runningBackgroundTasks, 0, "absent means none")
+        },
+    ])
+}

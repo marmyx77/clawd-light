@@ -16,6 +16,7 @@ let suites: [TestSuite] = [
     StateReducerSuite.suite,
     ReducerFixesSuite.suite,
     LivePruningSuite.suite,
+    BackgroundTaskSuite.suite,
     OrderingSuite.suite,
     LiveSessionSuite.suite,
     ReconcileSuite.suite,
