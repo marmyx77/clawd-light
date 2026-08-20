@@ -29,3 +29,11 @@ swift run ClawdLightTests "$@"
 echo
 echo "▸ End-to-end tests (port $PORT)"
 .build/debug/ClawdLightE2E --port "$PORT" "$@"
+
+# Third, because documentation that states figures is documentation that can be
+# wrong, and nothing else in this repository would ever notice. Twenty-one of the
+# forty-seven figures in the code map had drifted before this ran for the first
+# time. Cheap, offline, and it has no opinion about the prose.
+echo
+echo "▸ Documentation"
+"$ROOT/Scripts/check-docs.sh"

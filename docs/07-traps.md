@@ -326,6 +326,33 @@ a count should be suspected the day that count is zero.
 
 ---
 
+## Twenty-one figures that had quietly stopped being true
+
+**Symptom.** None. The code map states a line count for every file, a total for
+every target, how many test cases there are and what the longest file is. Asked
+whether the documentation was up to date, a script found **21 of 47** figures
+stale, some by half: `PanelController.swift` was documented at 407 lines and was
+557, `StateStore.swift` at 149 and was 227.
+
+**Cause.** Every one of them was written by hand, and nothing in the repository
+had any reason to look at them again.
+
+**Correction.** [`Scripts/check-docs.sh`](../Scripts/check-docs.sh), run by
+`Scripts/test.sh`: it verifies the per-target totals, the per-file sizes, the test
+counts, the "no file exceeds N lines" sentence, that every relative link resolves,
+and that no suite exists which the runner never calls. It does **not** rewrite
+anything — a number that drifted usually means the prose around it drifted too,
+and only a person can tell whether a file grew a responsibility or six lines.
+
+**Lesson.** This one arrived by accusing somebody else first. The criticism aimed
+at tmux — that `tty_default_features` is a hand-maintained table describing
+something that moves, with no test that any of it is still true — was accurate, and
+was equally true of this repository's own code map, written by the same hand that
+made the criticism. *A standard you can state for someone else's project is a
+standard your own is already being measured against.* Checking took twenty minutes.
+
+---
+
 ## The script that said "✓ created" without having created
 
 **Symptom.** The stable signature didn't work, and the build fell back to ad-hoc

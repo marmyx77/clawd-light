@@ -1,18 +1,18 @@
 # Code map
 
-~17,000 lines of Swift across five targets. For each file: what it contains, why
+~17,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/    4,087 lines · 36 files   pure logic, zero AppKit
-  ClawdLightApp/     6,638 lines · 37 files   shell: AppKit, network, windows
-  ClawdLightTests/   4,332 lines · 24 files   364 cases, instantaneous
-  ClawdLightE2E/     1,680 lines ·  9 files    75 cases, the real binary
-  TestKit/             227 lines ·  3 files   minimal assertions
+  ClawdLightCore/   4,238 lines · 36 files   pure logic, zero AppKit
+  ClawdLightApp/    6,776 lines · 37 files   shell: AppKit, network, windows
+  ClawdLightTests/  4,666 lines · 26 files   386 cases, instantaneous
+  ClawdLightE2E/    1,680 lines ·  9 files   75 cases, the real binary
+  TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 590 lines. The limit the project sets itself is 800.
+No file exceeds 583 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 157
+### `AppConfig.swift` · 210
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -43,7 +43,7 @@ The five states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 194
+### `SessionState.swift` · 214
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -54,7 +54,7 @@ before changing anything here: it is the heart of the subagent correction.
 > **Touching the computation of `status`** risks reintroducing green during
 > background work. Coverage: `SubagentSuite`.
 
-### `ColumnLayout.swift` · 260
+### `ColumnLayout.swift` · 300
 From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
@@ -81,7 +81,7 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 113
+### `HookSignal.swift` · 137
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -127,7 +127,7 @@ thing: one assistant record holds an answer *and* six tool calls.
 > "N earlier messages not shown". A reader has to be able to tell a short
 > conversation from a truncated one.
 
-### `TranscriptDecoder.swift` · 210
+### `TranscriptDecoder.swift` · 257
 Record → entries. The point where a second stream of external data enters the
 domain, and it fails **quietly**: an unrecognised record yields nothing rather
 than an error, because Claude Code adds record types between releases.
@@ -150,7 +150,7 @@ a candidate the caller has to find on disk.
 
 ## `Chat/`
 
-### `Mailbox.swift` · 220
+### `Mailbox.swift` · 264
 Where a message waits between the composer and the session it is for, what may be
 sent, what may become a filename, `ensureDirectory` — which `lstat`s the path and
 refuses anything that is not a real directory of ours — and `MailboxReaper`, the
@@ -180,7 +180,7 @@ Which language to listen in, and what the microphone button is able to do.
 
 ## `Markdown/`
 
-### `MarkdownBlock.swift` · `MarkdownParser.swift` · 220
+### `MarkdownBlock.swift` · `MarkdownParser.swift` · 240
 Splitting an answer into blocks. Deliberately not a general markdown
 implementation: what Claude writes, and anything unrecognised becomes a paragraph
 — its own source text, readable — rather than disappearing.
@@ -194,7 +194,7 @@ implementation: what Claude writes, and anything unrecognised becomes a paragrap
 
 ## `Parsing/`
 
-### `HookPayloadDecoder.swift` · 128
+### `HookPayloadDecoder.swift` · 176
 The only point where external data enters the domain. Strict validation: no
 required field is ever inferred or filled in with a default.
 
@@ -203,7 +203,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 297
+### `StateReducer.swift` · 344
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -223,7 +223,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 101
+### `SessionsPayload.swift` · 124
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -233,7 +233,7 @@ token protects and what it doesn't: read it before quoting it elsewhere.
 
 ## `Setup/`
 
-### `HookConfigMerger.swift` · 127
+### `HookConfigMerger.swift` · 180
 Adds and removes the hooks in `settings.json` **working on dictionaries**, not on
 files: the I/O lives in the shell, so this logic — which modifies an important
 user file — stays verifiable.
@@ -241,7 +241,7 @@ user file — stays verifiable.
 ### `HookScriptBuilder.swift`
 Generates `hook.sh`. See [02 Claude Code](02-claude-code.md#the-hook-script).
 
-### `RewakeScriptBuilder.swift` · 130
+### `RewakeScriptBuilder.swift` · 126
 Generates `rewake.sh`, the second `Stop` hook that carries a message into a
 running session. Its stdout **is** the message; exit code **2** is the send.
 
@@ -282,7 +282,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 300
+### `main.swift` · `AppDelegate.swift` · 282
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -301,20 +301,20 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 149 | `@MainActor`, `@Published`, periodic realignment |
-| `Preferences.swift` | 224 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
-| `SnapshotBox.swift` | 32 | lock-protected copy for the server |
+| `StateStore.swift` | 227 | `@MainActor`, `@Published`, periodic realignment |
+| `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
+| `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
-| `LocalClient.swift` | 122 | talks to the live instance for `sessions` and `next` |
-| `SessionNotifier.swift` | 178 | `awaiting` notifications, anti-duplicate memory, gate |
-| `TranscriptReader.swift` | 108 | follows one transcript by byte offset; resets when the file shrinks |
-| `TranscriptPreviewReader.swift` | 108 | the last thing said, from the file's tail, cached on its size |
-| `IDEWindowReader.swift` | 75 | reads the locks and **confirms them against the editor's process**, not the file's age |
-| `MailboxWriter.swift` | 180 | the panel's end of the mailbox; carries out the reaper's verdict |
-| `DictationService.swift` | 300 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
-| `PresenceFile.swift` | 92 | presence file, deleted on shutdown |
+| `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
+| `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
+| `TranscriptReader.swift` | 89 | follows one transcript by byte offset; resets when the file shrinks |
+| `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
+| `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
+| `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
+| `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
+| `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
-| `LiveSessionReader.swift` | 70 | reads the live sessions; takes activity from the **transcript**, not the session file |
+| `LiveSessionReader.swift` | 90 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `Diagnostics.swift` | | file log, active only with `CLAWD_LIGHT_DEBUG` |
 
 > **`SessionNotifier`**: the `announced` memory has to be updated **even with the
@@ -323,7 +323,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 ## `Server/`
 
-### `SignalServer.swift` · 320
+### `SignalServer.swift` · 319
 Seven routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
@@ -338,7 +338,7 @@ deliberately not a general-purpose one.
 
 ## `Focus/`
 
-### `VSCodeFocuser.swift` · 397
+### `VSCodeFocuser.swift` · 393
 The most delicate file. Two strategies, three explicit outcomes.
 
 > **To be read in full before touching it.** Every long comment in here
@@ -355,7 +355,7 @@ The most delicate file. Two strategies, three explicit outcomes.
 
 ## `Setup/`
 
-### `HookInstaller.swift` · 187
+### `HookInstaller.swift` · 239
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail.
 
@@ -363,19 +363,19 @@ installations in the same second used to fail.
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 407 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 222 | one row: dot, name, badge, timestamp, menu |
-| `TrafficLightColumn.swift` | 188 | the column, the hidden summary, the filter note |
-| `PanelRootView.swift` | 163 | the general menu |
-| `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
-| `StatusPalette.swift` | 99 | colors and measurements |
+| `PanelController.swift` | 557 | holds everything together; row and panel actions |
+| `TrafficLightRow.swift` | 266 | one row: dot, name, badge, timestamp, menu |
+| `TrafficLightColumn.swift` | 187 | the column, the hidden summary, the filter note |
+| `PanelRootView.swift` | 175 | the general menu |
+| `TrafficLightDot.swift` | 49 | the dot and the silenceable blink |
+| `StatusPalette.swift` | 107 | colors and measurements |
 | `FloatingPanel.swift` | 45 | non-activating `NSPanel` |
-| `ChatWindowController.swift` | 140 | owns the one extended window; opened on request |
-| `ChatShell.swift` | 187 | every conversation, the selection, and what each costs |
-| `ChatShellView.swift` | 215 | the two columns, and one row of the list |
-| `ChatSession.swift` | 200 | one conversation: transcript on disk + status from the hooks + the composer's state |
-| `ChatView.swift` | 250 | bubbles, activity lines, the composer |
-| `MarkdownView.swift` | 175 | draws the blocks; inline markup goes to `AttributedString` |
+| `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
+| `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
+| `ChatShellView.swift` | 205 | the two columns, and one row of the list |
+| `ChatSession.swift` | 213 | one conversation: transcript on disk + status from the hooks + the composer's state |
+| `ChatView.swift` | 306 | bubbles, activity lines, the composer |
+| `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 95 | the microphone, and the box that hides the macOS-26 seam |
 | `Alerts.swift` | | dialogs |
 
@@ -388,9 +388,11 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 364 cases
+## `ClawdLightTests/` — 386 cases
 
-One suite per domain area. The most important ones:
+One suite per domain area, and one file per group of them: `MailboxSuite.swift`
+held ten suites and 610 lines, three of which were about dictation and the rewake
+script, before it was split. The most important ones:
 
 | Suite | Covers |
 |---|---|
