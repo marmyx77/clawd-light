@@ -81,7 +81,18 @@ public enum Mailbox {
 
     /// Creates the mailbox with the right permissions, and repairs them if a
     /// previous version — or somebody's umask — left them wider.
+    ///
+    /// Checks *what it is repairing* first. Creating narrowly and being narrow are
+    /// not the same thing: `createDirectory` succeeds against a symlink that was
+    /// already in place, and the `chmod` that follows lands on the link's target —
+    /// so a directory this app was never asked to touch gets its permissions
+    /// rewritten. tmux makes the same check on its socket directory before it will
+    /// run at all, and refuses with "directory %s has unsafe permissions".
+    ///
+    /// This does not stop a process running as the user; nothing on this design
+    /// can. What it stops is the app acting as that process's hands.
     public static func ensureDirectory(using fileManager: FileManager) throws {
+        try verifyNothingUnsafeExists(at: directory)
         try fileManager.createDirectory(
             at: directory,
             withIntermediateDirectories: true,
@@ -90,6 +101,25 @@ public enum Mailbox {
         try fileManager.setAttributes(
             [.posixPermissions: directoryPermissions], ofItemAtPath: directory.path
         )
+    }
+
+    /// Refuses anything at `url` that is not a real directory belonging to us.
+    ///
+    /// `lstat` and not `stat`, which is the whole point: `stat` follows the symlink
+    /// and reports on the target, answering a question nobody asked. Absent is fine —
+    /// that is the first run.
+    private static func verifyNothingUnsafeExists(at url: URL) throws {
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else {
+            // Anything other than "it isn't there" is an answer we cannot read, and
+            // proceeding blind is what this function exists to prevent.
+            guard errno == ENOENT else { throw MailboxError.unsafeDirectory(url.path) }
+            return
+        }
+        let kind = info.st_mode & S_IFMT
+        guard kind == S_IFDIR, info.st_uid == getuid() else {
+            throw MailboxError.unsafeDirectory(url.path)
+        }
     }
 
     /// Narrows a mailbox file to its owner.
@@ -141,13 +171,24 @@ public enum Mailbox {
     }
 }
 
-public enum MailboxError: Error, Equatable, CustomStringConvertible {
+/// Why a message could not be queued.
+///
+/// `LocalizedError` and not merely `CustomStringConvertible`: both callers wrap
+/// what they catch in `error.localizedDescription`, and Foundation answers that,
+/// for a plain Swift enum, with "The operation couldn't be completed. (error 5.)".
+/// The sentence below is the only place that says what actually happened, and
+/// without this conformance it is replaced by a number on the way to the user.
+public enum MailboxError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case empty
     case tooLarge(Int)
     case invalidSessionId(String)
     case notDelivered(String)
     /// Sending is switched off. The default, and a deliberate one.
     case disabled
+    /// Something is already at the mailbox path that is not a directory of ours.
+    case unsafeDirectory(String)
+
+    public var errorDescription: String? { description }
 
     public var description: String {
         switch self {
@@ -161,6 +202,8 @@ public enum MailboxError: Error, Equatable, CustomStringConvertible {
             return reason
         case .disabled:
             return "answering from the panel is off — turn it on in the panel menu"
+        case .unsafeDirectory(let path):
+            return "\(path) is not a directory belonging to this user — refusing to use it"
         }
     }
 }

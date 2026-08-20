@@ -301,6 +301,103 @@ enum MailboxPermissionSuite {
     ])
 }
 
+/// What the mailbox path is, before anything is written through it.
+///
+/// Borrowed from tmux, which does the same check on its socket directory and
+/// refuses to run without it: `lstat`, then `S_ISDIR`, then `st_uid == uid`
+/// (tmux.c, "directory %s has unsafe permissions"). Creating narrowly is not the
+/// same as *being* narrow — `createDirectory` succeeds against a symlink that was
+/// already there, and the `chmod` that follows lands on whatever the link points
+/// at. Nothing here stops a process running as the user, and nothing can; what it
+/// stops is this app widening a directory somewhere else on its behalf.
+enum MailboxDirectorySafetySuite {
+
+    /// Runs `body` with the mailbox rooted in a fresh throwaway home.
+    private static func inTemporaryHome(_ body: (URL) -> Void) {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("clawd-mailbox-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        setenv(AppConfig.homeOverrideVariable, root.path, 1)
+        defer { unsetenv(AppConfig.homeOverrideVariable) }
+
+        try? FileManager.default.createDirectory(
+            at: Mailbox.directory.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        body(root)
+    }
+
+    static let suite = TestSuite("Mailbox directory safety", [
+
+        TestCase("A clean directory is created and accepted") { t in
+            inTemporaryHome { _ in
+                t.expectNoThrow("first run") {
+                    try Mailbox.ensureDirectory(using: .default)
+                }
+                t.expectNoThrow("second run over its own directory") {
+                    try Mailbox.ensureDirectory(using: .default)
+                }
+            }
+        },
+
+        // The one that was missing. Without the lstat this passes silently and
+        // chmods the link's target to 0700 — a directory the app was never asked
+        // to touch.
+        TestCase("A symlink where the mailbox should be is refused") { t in
+            inTemporaryHome { root in
+                let elsewhere = root.appendingPathComponent("elsewhere")
+                try? FileManager.default.createDirectory(
+                    at: elsewhere,
+                    withIntermediateDirectories: true,
+                    attributes: [.posixPermissions: 0o755]
+                )
+                try? FileManager.default.createSymbolicLink(
+                    at: Mailbox.directory, withDestinationURL: elsewhere
+                )
+
+                t.expectThrows(MailboxError.unsafeDirectory(Mailbox.directory.path)) {
+                    try Mailbox.ensureDirectory(using: .default)
+                }
+
+                let mode = (try? FileManager.default.attributesOfItem(
+                    atPath: elsewhere.path
+                ))?[.posixPermissions] as? NSNumber
+                t.expectEqual(mode?.int16Value, 0o755, "the link target was modified")
+            }
+        },
+
+        // Both callers of `ensureDirectory` wrap what they catch in
+        // `error.localizedDescription`, and for a plain Swift enum Foundation
+        // answers that with "The operation couldn't be completed. (error 5.)" —
+        // so the one sentence that says what actually went wrong is replaced by a
+        // number, at the exact moment somebody needs it.
+        TestCase("The error carries its own sentence into localizedDescription") { t in
+            for error: MailboxError in [
+                .unsafeDirectory("/tmp/x"), .disabled, .empty, .tooLarge(9),
+                .invalidSessionId("../x"), .notDelivered("no listener"),
+            ] {
+                t.expectEqual(
+                    (error as Error).localizedDescription,
+                    error.description,
+                    "\(error) loses its message when wrapped"
+                )
+            }
+        },
+
+        TestCase("A plain file where the mailbox should be is refused by name") { t in
+            inTemporaryHome { _ in
+                FileManager.default.createFile(
+                    atPath: Mailbox.directory.path, contents: Data("x".utf8)
+                )
+                t.expectThrows(MailboxError.unsafeDirectory(Mailbox.directory.path)) {
+                    try Mailbox.ensureDirectory(using: .default)
+                }
+            }
+        },
+    ])
+}
+
 /// Choosing the language dictation listens in.
 ///
 /// Not a detail: the recogniser transcribes everything as the locale it was given,

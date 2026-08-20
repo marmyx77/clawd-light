@@ -93,6 +93,16 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
+                        // Said, rather than left to be inferred from a conversation
+                        // that begins mid-sentence: the window holds a bounded tail,
+                        // and a reader who cannot see the boundary cannot tell a
+                        // trimmed history from a short one.
+                        if session.conversation.omittedEntries > 0 {
+                            centred(
+                                "\(session.conversation.omittedEntries) earlier messages not shown",
+                                italic: true
+                            )
+                        }
                         ForEach(session.conversation.entries) { entry in
                             row(for: entry).id(entry.id)
                         }

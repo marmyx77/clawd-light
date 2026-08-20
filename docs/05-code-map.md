@@ -122,6 +122,11 @@ describes content, and the two never infer each other.
 activity, note — because a transcript record and a chat line are not the same
 thing: one assistant record holds an answer *and* six tool calls.
 
+> **`Conversation` counts what it dropped.** The window keeps a bounded tail, so
+> `trimmed(to:)` carries an accumulating `omittedEntries` and the view says
+> "N earlier messages not shown". A reader has to be able to tell a short
+> conversation from a truncated one.
+
 ### `TranscriptDecoder.swift` · 210
 Record → entries. The point where a second stream of external data enters the
 domain, and it fails **quietly**: an unrecognised record yields nothing rather
@@ -147,8 +152,9 @@ a candidate the caller has to find on disk.
 
 ### `Mailbox.swift` · 220
 Where a message waits between the composer and the session it is for, what may be
-sent, what may become a filename, and `MailboxReaper` — the rule for what survives
-a restart.
+sent, what may become a filename, `ensureDirectory` — which `lstat`s the path and
+refuses anything that is not a real directory of ours — and `MailboxReaper`, the
+rule for what survives a restart.
 
 > **`MailboxReaper` is in Core because it is a decision.** The first version of
 > that rule lived in the shell, where no test could see it, and it deleted
@@ -393,17 +399,19 @@ One suite per domain area. The most important ones:
 | `ColumnLayoutSuite` | grouping, filtering, pinning, summary |
 | `SlotAssignmentSuite` · `ColumnSlotSuite` | the arrangement, and that a slot survives an urgency reorder |
 | `MailboxSuite` · `MailboxPermissionSuite` | hostile session ids, message limits, owner-only permissions |
+| `MailboxDirectorySafetySuite` | a symlink where the mailbox should be is refused |
 | `RewakeScriptSuite` · `RewakeRegistrationSuite` | the script's promises, and the second `Stop` hook |
 | `MarkdownParserSuite` | the constructs, and one whole answer containing all of them |
 | `IDELockLivenessSuite` | a running editor is believed however old its lock is |
 | `LivePruningSuite` | a session you can see running is never pruned for being quiet |
+| `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |
 | `DeliveredMessageSuite` | recognising our own messages on the way back |
 | `TranscriptDecoderSuite` | who spoke — including the 579-against-209 case |
 | `TranscriptTailSuite` | the half-written line, split across up to three chunks |
 | `TranscriptLocatorSuite` | the naming rule, accents included |
-| `ConversationSuite` | unread counts answers, not your own messages |
+| `ConversationSuite` | unread counts answers, and trimming says how much it dropped |
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |

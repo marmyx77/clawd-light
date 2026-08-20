@@ -58,10 +58,25 @@ public struct Conversation: Sendable, Equatable {
 
     public let entries: [TranscriptEntry]
 
-    public init(sessionId: String, title: String? = nil, entries: [TranscriptEntry] = []) {
+    /// How many entries were dropped off the front to keep the window bounded.
+    ///
+    /// Kept so the window can say so. A conversation that silently begins in the
+    /// middle is a dropped message the reader has no way of seeing — and tmux, which
+    /// has to do the same thing to control clients that fall behind, never does it
+    /// quietly: it sends `%pause` on the wire, or disconnects the client with "too
+    /// far behind". The consumer always learns what it stopped getting.
+    public let omittedEntries: Int
+
+    public init(
+        sessionId: String,
+        title: String? = nil,
+        entries: [TranscriptEntry] = [],
+        omittedEntries: Int = 0
+    ) {
         self.sessionId = sessionId
         self.title = title
         self.entries = entries
+        self.omittedEntries = max(0, omittedEntries)
     }
 
     /// The last thing said, for the line under the name in the roster.
@@ -92,17 +107,24 @@ public struct Conversation: Sendable, Equatable {
         Conversation(
             sessionId: sessionId,
             title: newTitle ?? title,
-            entries: entries + more
+            entries: entries + more,
+            omittedEntries: omittedEntries
         )
     }
 
-    /// Copy holding at most the last `limit` entries.
+    /// Copy holding at most the last `limit` entries, remembering how many it let go.
+    ///
+    /// The count **accumulates**, because this runs on every poll over an already
+    /// trimmed conversation: a figure that started from zero each time would settle
+    /// on the size of one poll's overflow and stay there while the real number
+    /// climbed into the hundreds.
     public func trimmed(to limit: Int) -> Conversation {
         guard entries.count > limit else { return self }
         return Conversation(
             sessionId: sessionId,
             title: title,
-            entries: Array(entries.suffix(limit))
+            entries: Array(entries.suffix(limit)),
+            omittedEntries: omittedEntries + (entries.count - limit)
         )
     }
 }

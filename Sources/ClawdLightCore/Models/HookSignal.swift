@@ -40,12 +40,19 @@ public struct HookSignal: Sendable, Equatable {
     /// Cause of the interruption, only populated for `StopFailure`.
     public let failureReason: StopFailureReason?
 
-    /// How many background shells were still running when the turn ended.
+    /// How many pieces of background work were still in flight when the turn ended.
     ///
     /// Present on `Stop`. A turn can finish with work still going: the session
     /// writes its recap, hands control back, and a shell keeps running — later
     /// waking the session with a notification and another turn.
-    public let runningBackgroundTasks: Int
+    ///
+    /// Not only shells, despite what this used to be called. Claude Code registers
+    /// ten kinds of background work under this field — shells, subagents,
+    /// workflows, MCP tasks, monitors, teammates, cloud sessions — and its own
+    /// description of the field is the definition to use: it exists so a hook can
+    /// tell *"session is done"* from *"session is paused waiting for background
+    /// work to wake it"*. Anything in the list means the second.
+    public let inFlightBackgroundTasks: Int
 
     /// Absolute path of the session's JSONL transcript.
     ///
@@ -64,7 +71,7 @@ public struct HookSignal: Sendable, Equatable {
         lastAssistantMessage: String? = nil,
         sessionSource: String? = nil,
         failureReason: StopFailureReason? = nil,
-        runningBackgroundTasks: Int = 0,
+        inFlightBackgroundTasks: Int = 0,
         transcriptPath: String? = nil
     ) {
         self.sessionId = sessionId
@@ -76,7 +83,7 @@ public struct HookSignal: Sendable, Equatable {
         self.lastAssistantMessage = lastAssistantMessage
         self.sessionSource = sessionSource
         self.failureReason = failureReason
-        self.runningBackgroundTasks = runningBackgroundTasks
+        self.inFlightBackgroundTasks = inFlightBackgroundTasks
         self.transcriptPath = transcriptPath
     }
 

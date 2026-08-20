@@ -166,6 +166,86 @@ print(" ".join(spec["hookOptions"] + spec["deliverySignals"]))
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Background work (the reason a working session is not green)"
+
+# The traffic light trusts Claude Code to have already filtered this list down to
+# work the session is waiting on. That filter is the assumption, not the field, and
+# it lives in the binary where nobody owes us a deprecation.
+if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
+    bad "claude binary not found - cannot check the background-work contract"
+else
+    python3 - "$SPEC" "$CLAUDE_BIN" <<'BGPY' && ok "the in-flight list is still filtered the way the column assumes" || bad "the background-work contract moved - see above"
+import json, re, subprocess, sys
+
+spec = json.load(open(sys.argv[1]))["backgroundTasks"]
+blob = subprocess.run(
+    ["strings", "-n", "12", sys.argv[2]], capture_output=True, text=True
+).stdout
+problems, notes = [], []
+
+if spec["wireField"] not in blob:
+    problems.append(
+        f'the `{spec["wireField"]}` field is gone from the binary - every turn will '
+        "look clean and green-during-work comes back in silence"
+    )
+
+for marker in spec["filterMarkers"]:
+    if marker not in blob:
+        problems.append(
+            f"`{marker}` is gone: the filter that drops non-backgrounded work may "
+            "no longer run, and unrelated tasks would hold rows yellow"
+        )
+
+if not re.search(spec["filterPattern"], blob):
+    problems.append(
+        "the running/pending filter is no longer recognisable. If it loosened, "
+        "finished tasks now arrive and those rows stay yellow for ever; if it "
+        "tightened, pending work is dropped and the row goes green in front of it"
+    )
+
+# A status vocabulary that grew is safe by construction - the decoder counts
+# anything it does not recognise as work - but it is worth saying out loud.
+#
+# Anchored on `task_updated` rather than on the words themselves: the binary holds
+# half a dozen unrelated enums that also start with "pending" or "running", and one
+# of them is the SQL keyword list.
+# Every occurrence, not the first: the anchor appears in several places and only
+# one of them is followed by the enum.
+enum = None
+for anchor in re.finditer(re.escape(spec["statusEnumAnchor"]), blob):
+    window = blob[anchor.start():anchor.start() + 400]
+    enum = re.search(r'\[("[a-z_]+",?){3,}\]', window)
+    if enum:
+        break
+if enum:
+    found = set(re.findall(r'"([a-z_]+)"', enum.group(0)))
+    fresh = found - set(spec["knownStatuses"])
+    if fresh:
+        notes.append(
+            "new task statuses, counted as work until classified: "
+            + ", ".join(sorted(fresh))
+        )
+    for gone in set(spec["finishedStatuses"]) - found:
+        problems.append(
+            f"`{gone}` is no longer a task status; the decoder still denies it, "
+            "which is now dead code hiding whatever replaced it"
+        )
+else:
+    notes.append(
+        f'could not locate the status enum near `{spec["statusEnumAnchor"]}` '
+        "- the deny-list is unverified"
+    )
+
+for n in notes:
+    print(f"    {n}", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+BGPY
+    note "see Contracts/assumptions.md -> hook.background_tasks"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 head_ "Session transcripts"
 
 # This one costs nothing and proves a lot: the transcripts are already on disk,

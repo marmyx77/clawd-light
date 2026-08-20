@@ -339,15 +339,28 @@ enum BackgroundTaskSuite {
 
     private static let workspace = Workspace(path: "/dev/project")
 
-    private static func stop(runningTasks: Int) -> HookSignal {
+    private static func stop(inFlight: Int) -> HookSignal {
         HookSignal(
             sessionId: "s1",
             event: .stop,
             cwd: "/dev/project",
             entrypoint: "claude-vscode",
             lastAssistantMessage: "here is the recap",
-            runningBackgroundTasks: runningTasks
+            inFlightBackgroundTasks: inFlight
         )
+    }
+
+    /// Decodes a `Stop` carrying exactly these task statuses.
+    private static func inFlight(statuses: [String]) -> Int? {
+        let payload: [String: Any] = [
+            "session_id": "s1", "hook_event_name": "Stop", "cwd": "/dev/project",
+            "background_tasks": statuses.enumerated().map { index, status in
+                ["id": "t\(index)", "type": "shell", "status": status]
+            },
+        ]
+        let data = try! JSONSerialization.data(withJSONObject: payload)
+        return try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
+            .inFlightBackgroundTasks
     }
 
     private static func apply(_ signal: HookSignal) -> SessionStatus? {
@@ -359,16 +372,16 @@ enum BackgroundTaskSuite {
     static let suite = TestSuite("Background tasks", [
 
         TestCase("A turn with nothing running goes green") { t in
-            t.expectEqual(apply(stop(runningTasks: 0)), .ready, "status")
+            t.expectEqual(apply(stop(inFlight: 0)), .ready, "status")
         },
 
         // The case the user found by using it.
         TestCase("A turn with a shell still running stays yellow") { t in
-            t.expectEqual(apply(stop(runningTasks: 1)), .working, "green would be a lie")
+            t.expectEqual(apply(stop(inFlight: 1)), .working, "green would be a lie")
         },
 
         TestCase("Several running shells are still just working") { t in
-            t.expectEqual(apply(stop(runningTasks: 4)), .working, "status")
+            t.expectEqual(apply(stop(inFlight: 4)), .working, "status")
         },
 
         // Green comes back on its own: the task finishes, wakes the session, and
@@ -376,30 +389,49 @@ enum BackgroundTaskSuite {
         TestCase("Green returns when the next turn ends clean") { t in
             let now = Date()
             let busy = StateReducer.reduce(
-                .empty, action: .signal(stop(runningTasks: 1), workspace: workspace), now: now
+                .empty, action: .signal(stop(inFlight: 1), workspace: workspace), now: now
             )
             let after = StateReducer.reduce(
                 busy,
-                action: .signal(stop(runningTasks: 0), workspace: workspace),
+                action: .signal(stop(inFlight: 0), workspace: workspace),
                 now: now.addingTimeInterval(60)
             )
             t.expectEqual(after.sessions["s1"]?.status, .ready, "status")
         },
 
-        // Only `running` counts. A finished task left in the list would hold the
-        // row yellow for ever — the stuck-counter failure the subagent design
-        // needed a safety net for.
-        TestCase("Only the running ones count") { t in
+        TestCase("Terminal statuses are not work") { t in
+            t.expectEqual(inFlight(statuses: ["completed", "failed", "killed"]), 0, "count")
+        },
+
+        // The defect this suite used to assert into existence. Claude Code puts a
+        // task in the list the moment it is registered, before it starts running;
+        // counting only `running` dropped it, and the row went green while queued
+        // work was about to wake the session.
+        TestCase("A pending task is work in flight") { t in
+            t.expectEqual(inFlight(statuses: ["pending"]), 1, "queued work is still coming")
+        },
+
+        TestCase("Pending and running are counted together") { t in
+            t.expectEqual(inFlight(statuses: ["pending", "running"]), 2, "count")
+        },
+
+        // The vocabulary is `pending, running, completed, failed, killed, paused`
+        // today and is not ours to freeze. An unknown word is far more likely to be
+        // a new way of being busy than a new way of being finished, and the two
+        // mistakes do not cost the same: an extra yellow clears on the next clean
+        // turn, a missing one is a green that lies.
+        TestCase("An unrecognised status counts as work") { t in
+            t.expectEqual(inFlight(statuses: ["queued"]), 1, "unknown means busy")
+        },
+
+        TestCase("A task with no status at all counts") { t in
             let payload: [String: Any] = [
                 "session_id": "s1", "hook_event_name": "Stop", "cwd": "/dev/project",
-                "background_tasks": [
-                    ["id": "a", "type": "shell", "status": "completed"],
-                    ["id": "b", "type": "shell", "status": "failed"],
-                ],
+                "background_tasks": [["id": "a", "type": "shell"]],
             ]
             let data = try! JSONSerialization.data(withJSONObject: payload)
             let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
-            t.expectEqual(signal?.runningBackgroundTasks, 0, "finished tasks are not work")
+            t.expectEqual(signal?.inFlightBackgroundTasks, 1, "present in the list is the signal")
         },
 
         TestCase("A payload with no background tasks at all is fine") { t in
@@ -408,7 +440,7 @@ enum BackgroundTaskSuite {
             ]
             let data = try! JSONSerialization.data(withJSONObject: payload)
             let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
-            t.expectEqual(signal?.runningBackgroundTasks, 0, "absent means none")
+            t.expectEqual(signal?.inFlightBackgroundTasks, 0, "absent means none")
         },
     ])
 }

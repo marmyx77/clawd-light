@@ -86,7 +86,7 @@ public enum HookPayloadDecoder {
             lastAssistantMessage: optionalString(object, key: "last_assistant_message"),
             sessionSource: optionalString(object, key: "source"),
             failureReason: failureReason(in: object, event: event),
-            runningBackgroundTasks: runningBackgroundTasks(in: object),
+            inFlightBackgroundTasks: inFlightBackgroundTasks(in: object),
             transcriptPath: absolutePath(object, key: "transcript_path")
         )
     }
@@ -106,14 +106,40 @@ public enum HookPayloadDecoder {
         return StopFailureReason.from(rawValue: raw)
     }
 
-    /// Counts the background shells still running at the end of the turn.
+    /// Statuses that mean the work is over.
     ///
-    /// Only `running` counts. A finished task is in the list too, and treating it
-    /// as live would leave the row yellow for ever — the same stuck-counter failure
-    /// the subagent design has a safety net for.
-    private static func runningBackgroundTasks(in object: [String: Any]) -> Int {
+    /// A **deny**-list, and deliberately the opposite choice from `isValidSessionId`
+    /// two files away, because the two questions have opposite expensive answers.
+    /// There an unknown character had to be refused; here an unknown status has to
+    /// count. Guessing "busy" costs a yellow that clears on the next clean turn.
+    /// Guessing "finished" costs a green that says the work is done while it runs —
+    /// the lie this whole field exists to prevent.
+    ///
+    /// The vocabulary observed today is `pending, running, completed, failed,
+    /// killed, paused`.
+    private static let finishedTaskStatuses: Set<String> = ["completed", "failed", "killed"]
+
+    /// Counts the background work still in flight at the end of the turn.
+    ///
+    /// **Presence in the list is the signal**, not the status word. Claude Code
+    /// filters the array before sending it — only `running` or `pending`, and only
+    /// if backgrounded — and documents it as holding "in-flight background work…
+    /// empty array when nothing is in flight". So the previous reading here had it
+    /// backwards twice over: it defended against finished tasks, which never arrive,
+    /// and by doing so it dropped `pending` ones, which do. A task registered but
+    /// not yet started is work that is about to wake the session, and counting it as
+    /// nothing put the row green in front of it.
+    ///
+    /// The status is still read, for the one case that survives: if that upstream
+    /// filter ever loosened, a finished task must not hold the row yellow for ever.
+    private static func inFlightBackgroundTasks(in object: [String: Any]) -> Int {
         guard let tasks = object["background_tasks"] as? [[String: Any]] else { return 0 }
-        return tasks.filter { ($0["status"] as? String) == "running" }.count
+        return tasks.filter { task in
+            guard let status = (task["status"] as? String)?.trimmed.lowercased() else {
+                return true
+            }
+            return !finishedTaskStatuses.contains(status)
+        }.count
     }
 
     // MARK: - Helpers

@@ -94,7 +94,7 @@
       "recent ones and asserts the invariants below still hold.",
       "",
       "The load-bearing one is `humanOrigin`. A transcript record of type `user`",
-      "is USUALLY not a human message \u2014 it is a tool result. On this machine the",
+      "is USUALLY not a human message — it is a tool result. On this machine the",
       "ratio was 1683 tool results to 119 real prompts. Telling them apart by",
       "anything other than `origin.kind` means rendering tool output as if the",
       "user had typed it."
@@ -140,7 +140,7 @@
       "",
       "The extension currently refuses to apply a prompt to a session whose panel",
       "is already open, and says so to the user. That single refusal is what makes",
-      "the Codex-style 'act on the running agent' features unreachable \u2014 see",
+      "the Codex-style 'act on the running agent' features unreachable — see",
       "decision N7. If it ever goes away, the door opens.",
       "",
       "The checker reports these separately and never fails on them."
@@ -172,5 +172,57 @@
       "enqueuePendingNotification"
     ],
     "exitCodeThatSends": 2
+  },
+  "backgroundTasks": {
+    "_comment": [
+      "The list of in-flight background work carried by Stop, and the reason a",
+      "session that is still working does not go green.",
+      "",
+      "The load-bearing part is not the field's presence but its FILTERING:",
+      "Claude Code drops anything that is neither running nor pending, and",
+      "anything not backgrounded, before it builds the array. Because of that,",
+      "presence in the list is the signal and the status word is only a",
+      "backstop. If that filter loosened without us noticing, finished tasks",
+      "would start arriving and every affected row would stay yellow for ever.",
+      "",
+      "The opposite drift is worse and quieter: if the field vanished, or the",
+      "statuses were renamed wholesale, every turn would look clean and the",
+      "green-during-work lie returns with nothing to report it.",
+      "",
+      "This check exists because of tmux, which keeps the same kind of table of",
+      "what an undocumented dependency actually does — and has no test that any",
+      "of it is still true."
+    ],
+    "wireField": "background_tasks",
+    "filterMarkers": [
+      "isBackgrounded"
+    ],
+    "filterPattern": "\\.status!==\"running\"&&[A-Za-z_$][A-Za-z0-9_$]*\\.status!==\"pending\"",
+    "statusEnumAnchor": "task_updated",
+    "knownStatuses": [
+      "pending",
+      "running",
+      "completed",
+      "failed",
+      "killed",
+      "paused"
+    ],
+    "finishedStatuses": [
+      "completed",
+      "failed",
+      "killed"
+    ],
+    "knownTypes": [
+      "local_bash",
+      "local_agent",
+      "local_workflow",
+      "monitor_mcp",
+      "monitor_ws",
+      "mcp_task",
+      "in_process_teammate",
+      "remote_agent",
+      "dream",
+      "auto_mode_scan"
+    ]
   }
 }

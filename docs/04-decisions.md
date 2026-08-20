@@ -385,6 +385,24 @@ free.
   a sharper reason than the features it joins: those default off to avoid being a
   nuisance, this one defaults off because it is a capability.
 
+  **The precise shape of that limit**, which took reading tmux to state properly:
+  it is not that authentication was left out of the mailbox, it is that **a file
+  has no author and a socket does**. tmux carries the same threat model — a socket
+  in a directory anyone on the machine can try — and answers it with `getpeereid()`
+  on the connection, a uid and gid attested by the kernel rather than claimed by
+  the caller, with an ACL layer on top. A file dropped in a directory carries no
+  equivalent. So per-writer authorisation here is not a feature that is missing; it
+  is a consequence of choosing a drop directory as the channel, and it could only
+  ever be reopened by changing the channel — which the paragraph above explains we
+  cannot do, because the reader is not ours to design.
+
+  What *is* borrowed from tmux, and now implemented, is the smaller half: before
+  writing through that path, `lstat` it and refuse anything that is not a real
+  directory belonging to this user. Creating narrowly and being narrow are not the
+  same thing — `createDirectory` succeeds against a symlink already in place, and
+  the `chmod` that follows lands on the link's target. tmux refuses to start at all
+  in that situation.
+
 **What it looks like on the way back.** A delivered message returns wearing a
 `task-notification` origin, the same envelope a background agent gets. The window
 recognises its own by the preamble it puts on outbound messages and draws it as

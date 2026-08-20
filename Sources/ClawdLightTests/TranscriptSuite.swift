@@ -306,6 +306,43 @@ enum ConversationSuite {
             t.expectEqual(trimmed.entries.map(\.id), ["a8", "a9", "a10"], "tail")
             t.expectEqual(conversation.trimmed(to: 50).entries.count, 10, "shorter is untouched")
         },
+
+        // A window that silently starts in the middle of a conversation is a
+        // dropped message the reader cannot see. tmux never does this: a control
+        // client that falls behind is told `%pause`, in band, or killed with
+        // "too far behind" — the consumer always learns what it stopped getting.
+        TestCase("Trimming says how much it dropped") { t in
+            let conversation = Conversation(
+                sessionId: "s",
+                entries: (1...10).map { entry(.assistant, "a\($0)", $0) }
+            )
+            t.expectEqual(conversation.omittedEntries, 0, "nothing dropped yet")
+            t.expectEqual(conversation.trimmed(to: 3).omittedEntries, 7, "dropped")
+            t.expectEqual(conversation.trimmed(to: 50).omittedEntries, 0, "nothing to drop")
+        },
+
+        // Trimming happens on every poll, over an already trimmed conversation.
+        // A count that reset each time would say "7 omitted" for ever while the
+        // real number climbed into the hundreds.
+        TestCase("Successive trims accumulate what was dropped") { t in
+            let conversation = Conversation(
+                sessionId: "s",
+                entries: (1...10).map { entry(.assistant, "a\($0)", $0) }
+            )
+            let once = conversation.trimmed(to: 5)
+            let twice = once
+                .appending((11...14).map { entry(.assistant, "a\($0)", $0) })
+                .trimmed(to: 5)
+            t.expectEqual(once.omittedEntries, 5, "first pass")
+            t.expectEqual(twice.omittedEntries, 9, "first pass plus second")
+            t.expectEqual(twice.entries.map(\.id), ["a10", "a11", "a12", "a13", "a14"], "tail")
+        },
+
+        TestCase("Appending alone never invents an omission") { t in
+            let conversation = Conversation(sessionId: "s", entries: [entry(.human, "h1", 1)])
+                .appending([entry(.assistant, "a1", 2)])
+            t.expectEqual(conversation.omittedEntries, 0, "count")
+        },
     ])
 }
 

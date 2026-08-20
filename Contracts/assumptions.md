@@ -278,41 +278,73 @@ conversations, which is the same behaviour it has today.
 
 ---
 
-## hook.background_tasks · Stop reports shells still running
+## hook.background_tasks · Stop reports the work still in flight
 
-**We assume** `Stop` carries `background_tasks`, a list of the background shells
-alive at the end of the turn, each with a `status`.
+**We assume** `Stop` carries `background_tasks`, a list of the background work
+still in flight at the end of the turn, **already filtered** by Claude Code to the
+things the session is waiting on.
 
-**Depends at** [HookPayloadDecoder.swift:114](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L114)
-· [StateReducer.swift:214](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L214)
+**Depends at** [HookPayloadDecoder.swift:135](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L135)
+· [StateReducer.swift:239](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L239)
 
-**How verified** — `probe`. A session told to run `sleep 45` in the background
-produced, on `Stop`:
+**How verified** — `probe`, then `binary`. A session told to run `sleep 45` in the
+background produced, on `Stop`:
 
 ```json
 [{"id":"befqfrl0r","type":"shell","status":"running",
   "description":"Sleep for 45 seconds","command":"sleep 45"}]
 ```
 
-**This record used to say "deliberately unused", and that was wrong.** The
-reasoning was that the turn had genuinely ended and an answer genuinely existed,
-so green was correct. Use overruled it: green claims two things — there is
-something to read, **and nothing more is coming** — and with a shell still running
-the second half is false. The session writes its recap, the light goes green, and
-the work carries on for minutes. It is the same lie the subagent correction exists
-to prevent, arriving through a different door.
+The builder in the CLI binary settles the rest of the shape:
 
-A `Stop` reporting any task with `status == "running"` therefore leaves the row
-**working**. Green returns on its own when the task finishes, wakes the session
-with a notification, and that turn ends with nothing running — so there is no
-counter to get stuck, which the subagent design needed a safety net for.
+```js
+function <builder>(e){let t=[];for(let r of Object.values(e)){if(!<filter>(r))continue;
+  let n={id:r.id,type:<map>[r.type]??r.type,status:r.status,description:…};…}}
+function <filter>(e){if(e.status!=="running"&&e.status!=="pending")return!1;
+  if("isBackgrounded"in e&&e.isBackgrounded===!1)return!1;return!0}
+```
 
-Only `running` counts. Finished tasks stay in the list.
+Four facts follow, and three of them contradict what this record used to say.
 
-**Failure mode** — **silent, and the expensive direction**. If the field
-disappeared, or `status` changed vocabulary, every turn would look clean and the
+**`id` is unconditional.** Every entry has `id`, `type`, `status`, `description`;
+`command`, `agent_type`, `server`, `tool` and `name` are added per type.
+
+**The list is filtered before it is sent.** Only `running` or `pending`, and only
+if backgrounded. So "finished tasks stay in the list", asserted here and in a test,
+was **false** — and defending against them is what dropped the `pending` ones.
+
+**It is not a list of shells.** Ten types map into it: `local_bash`→`shell`,
+`local_agent`→`subagent`, `local_workflow`→`workflow`, `monitor_mcp`/`monitor_ws`
+→`monitor`, `mcp_task`→`MCP task`, `in_process_teammate`→`teammate`,
+`remote_agent`→`cloud session`, `dream`, `auto_mode_scan`.
+
+**The status vocabulary** is `pending, running, completed, failed, killed, paused`.
+
+Claude Code's own description of the field is the definition we use: it exists so a
+hook can tell *"session is done"* from *"session is paused waiting for background
+work to wake it"*, and is *"empty when nothing is in flight"*. **Presence in the
+list is therefore the signal**, not the status word. A `Stop` carrying any entry
+leaves the row **working**; the decoder still drops the three terminal statuses, as
+the one defence that stays useful if the upstream filter ever loosens.
+
+Green returns on its own: the work finishes, wakes the session, and that turn ends
+with an empty list — so there is no counter to get stuck, which the subagent design
+needed a safety net for.
+
+**No exemption is applied here** for work that never ends, of the kind tmux gives
+itself with `JOB_NOWAIT` for jobs the server must not wait for before exiting. The
+equivalent already exists upstream — `isBackgrounded === false` is dropped before
+we see it — and a second valve on this side would mean guessing which of the
+remaining entries really count.
+
+**Failure mode** — **silent, and it already happened once, in the expensive
+direction**. Counting only `running` put the light green in front of queued work.
+If the field disappeared entirely, every turn would look clean and the
 green-during-work lie comes straight back.
----
+
+**Not read** — `session_crons`, alongside it: the `CronCreate`, `ScheduleWakeup`
+and `/loop` tasks that will wake this session later. A session sleeping between
+loop iterations has an answer to read and is not working, so it stays green.
 
 ## hook.effort · Stop reports the reasoning level, and it cannot be set from outside
 

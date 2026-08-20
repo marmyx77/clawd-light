@@ -214,9 +214,9 @@ public enum StateReducer {
             return .working
 
         case .stop:
-            // A turn that ends with shells still running has **not** finished the
-            // work, and green means two things at once: there is something to read,
-            // and nothing more is coming. The second half is false here.
+            // A turn that ends with work still in flight has **not** finished it,
+            // and green means two things at once: there is something to read, and
+            // nothing more is coming. The second half is false here.
             //
             // This was examined on the first day and deliberately left alone, on
             // the reasoning that the turn had genuinely ended and an answer
@@ -225,9 +225,18 @@ public enum StateReducer {
             // exactly the lie the subagent correction exists to prevent, arriving
             // by a different door.
             //
-            // Green comes back on its own. The task finishes, wakes the session
-            // with a notification, and that turn ends with nothing running.
-            return signal.runningBackgroundTasks > 0 ? .working : .ready
+            // Green comes back on its own. The work finishes, wakes the session
+            // with a notification, and that turn ends with nothing in flight.
+            //
+            // There is deliberately **no** exemption for work that never ends, of
+            // the kind tmux gives itself with `JOB_NOWAIT` — a flag on the jobs the
+            // server must not wait for before exiting. The equivalent exists, but
+            // on the other side of the boundary: Claude Code drops anything not
+            // backgrounded before it builds this list, so a task that reaches us is
+            // by its own definition one the session is paused waiting for. Adding a
+            // second valve here would mean guessing which of *those* really count,
+            // and a guess is exactly what the column must not contain.
+            return signal.inFlightBackgroundTasks > 0 ? .working : .ready
 
         case .stopFailure:
             // A turn that was cut down produced nothing to read: showing it green

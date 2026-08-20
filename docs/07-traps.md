@@ -9,7 +9,7 @@ severity.
 
 ---
 
-## The five lessons, one line each
+## The lessons, one line each
 
 1. **Verifying with the wrong tool is not verifying.** Four defects survived a
    check made with a medium different from the one the app actually uses.
@@ -21,6 +21,11 @@ severity.
    one hour, all of them reading `mtime` where a pid was sitting right there.
 5. **Inferring a state is inventing one.** Two regressions in a single evening,
    both from deducing what a session was doing instead of measuring it.
+6. **A list you filter is a choice about which mistake you can afford.** An
+   allow-list and a deny-list fail in opposite directions; picking the wrong one is
+   silent in exactly the direction that costs.
+7. **A consumer must be able to tell "nothing" from "something you didn't get".**
+   Anything dropped on the way to a reader has to be visible *to the reader*.
 
 ---
 
@@ -404,9 +409,12 @@ project, probed, documented — and deliberately not used. The reasoning was
 written down: *"the turn genuinely ended and an answer genuinely exists, so green
 is correct."*
 
-**Correction.** A `Stop` reporting any task with `status == "running"` leaves the
-row working. Green returns on its own when the task finishes and the following
-turn ends clean, so there is no counter to get stuck.
+**Correction.** A `Stop` reporting any in-flight task leaves the row working. Green
+returns on its own when the work finishes and the following turn ends clean, so
+there is no counter to get stuck.
+
+The first version of that correction filtered on `status == "running"`, and carried
+the same defect one level down. See the next entry.
 
 **Lesson.** The reasoning was coherent and wrong, because it answered the wrong
 question. Green does not mean "a turn ended". It means "there is something to read
@@ -420,6 +428,67 @@ already decided it was fine. It surfaced from somebody using the thing for a wee
 and saying *"it goes green while it's working"* — and their first guess at the
 cause was subagents, which was wrong, and it did not matter. The observation was
 right; the diagnosis was mine to get right.
+
+---
+
+## The fix that kept a piece of the bug
+
+**Symptom.** None visible. The row went green while queued background work was
+about to wake the session — the same lie as the entry above, in the narrow window
+between a task being registered and starting to run.
+
+**Cause.** The fix for green-during-background-work counted tasks with
+`status == "running"`, and defended in a comment against finished ones: *"a finished
+task is in the list too, and treating it as live would leave the row yellow for
+ever."* Both halves were wrong, and they were wrong together. Reading Claude Code's
+own filter settles it:
+
+```js
+if(e.status!=="running"&&e.status!=="pending")return!1;
+if("isBackgrounded"in e&&e.isBackgrounded===!1)return!1;
+```
+
+A finished task **never** reaches the list. So the defence guarded a case that
+cannot happen, and the cost of that guard was dropping `pending` — the one state
+the defence was not thinking about at all.
+
+**Correction.** Presence in the list is the signal, because that is what the field
+is documented to mean: *"session is paused waiting for background work to wake
+it"*. The status is still read, but as a deny-list of the three terminal words, so
+an unfamiliar one counts as work.
+
+**Lesson.** *An allow-list and a deny-list are not stylistic variants; they encode
+which mistake you can afford.* Two files apart this project makes the opposite
+choice and is right both times: a session id is refused unless recognised, because
+an unknown character in a path is the dangerous one; a task status counts unless
+recognised as finished, because an unknown state of work is far more likely to be a
+new way of being busy. Picking the wrong one is silent in exactly one direction,
+and here that direction was the expensive one.
+
+**And the smaller lesson.** The comment defending the filter was confident,
+specific, and had never been checked against the producer. The evidence took four
+minutes with `strings`. A defence written from reasoning about a dependency, rather
+than from looking at it, is a guess wearing a comment's clothes.
+
+---
+
+## The conversation that began in the middle
+
+**Symptom.** None reported — found by comparison, not by use. The chat window keeps
+the last 300 entries and silently drops the rest, so a long conversation opens
+part-way through a sentence with nothing to say it had been cut.
+
+**Cause.** `trimmed(to:)` returned the tail and threw the count away.
+
+**Correction.** The count is kept, accumulated across polls, and the window says
+"N earlier messages not shown".
+
+**Lesson.** Borrowed whole from tmux, which has to solve the same problem when a
+control client falls behind and refuses to solve it quietly: it sends `%pause` on
+the wire, or disconnects the client with the message "too far behind". *A consumer
+must be able to tell "there was nothing" from "there was something and you did not
+get it."* Logging the drop is the weak version — it tells the author. Saying it in
+the output is the strong one: it tells the reader.
 
 ---
 
