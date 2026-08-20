@@ -166,6 +166,75 @@ print(" ".join(spec["hookOptions"] + spec["deliverySignals"]))
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Hook event inventory"
+
+# The contract used to say "the eight events", which reads as "these are the
+# events". There are thirty-one. Nothing would have reported a thirty-second
+# appearing, or one we register being renamed out from under us.
+if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
+    bad "claude binary not found - cannot check the hook event inventory"
+else
+    python3 - "$SPEC" "$CLAUDE_BIN" <<'INVPY' && ok "the event list is the one recorded, and every event we register exists" || bad "the hook event inventory moved - see above"
+import json, re, subprocess, sys
+
+spec = json.load(open(sys.argv[1]))["hookEventInventory"]
+blob = subprocess.run(
+    ["strings", "-n", "12", sys.argv[2]], capture_output=True, text=True
+).stdout
+problems, notes = [], []
+
+# The master list is the longest quoted run that starts where the enum starts.
+found = None
+for match in re.finditer(r'"PreToolUse","PostToolUse"(?:,"[A-Za-z]+")+', blob):
+    names = re.findall(r'"([A-Za-z]+)"', match.group(0))
+    if found is None or len(names) > len(found):
+        found = names
+
+if found is None:
+    problems.append(
+        "the hook event enum is no longer recognisable in the binary; every "
+        "classification in the spec is now unverified"
+    )
+else:
+    recorded = set(spec["all"])
+    actual = set(found)
+    for gone in sorted(recorded - actual):
+        if gone in spec["registered"]:
+            problems.append(
+                f"{gone} is registered by this app and no longer exists in Claude "
+                "Code - that traffic light transition is dead and silent"
+            )
+        else:
+            notes.append(f"{gone} is gone; the spec still classifies it")
+    fresh = sorted(actual - recorded)
+    if fresh:
+        notes.append(
+            "new hook events, unclassified: " + ", ".join(fresh)
+        )
+        notes.append(
+            "classify them in Contracts/required-fields.json -> hookEventInventory"
+        )
+
+# Every event in exactly one class, so the inventory cannot rot into a list
+# that merely looks complete.
+classified = set()
+for key in ("decodedButNotRegistered", "decisionHooks", "teammateBoard",
+            "notAboutTurnState"):
+    classified |= set(spec[key]["events"])
+classified |= set(spec["registered"])
+for orphan in sorted(set(spec["all"]) - classified):
+    problems.append(f"{orphan} is in the inventory but in no class")
+
+for n in notes:
+    print(f"    {n}", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+INVPY
+    note "see Contracts/assumptions.md -> hook.events"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 head_ "Background work (the reason a working session is not green)"
 
 # The traffic light trusts Claude Code to have already filtered this list down to

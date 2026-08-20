@@ -26,6 +26,9 @@ severity.
    silent in exactly the direction that costs.
 7. **A consumer must be able to tell "nothing" from "something you didn't get".**
    Anything dropped on the way to a reader has to be visible *to the reader*.
+8. **A name in an enum is not a measurement.** It is worse than no evidence,
+   because it feels like some — and being careful about a change's risk is not
+   the same as checking whether it does anything.
 
 ---
 
@@ -323,6 +326,68 @@ suite matched, and an empty run is a passing run.
 result from having run nothing is the worst kind of fake success**: a failure gets
 looked at, and zero passing tests get read as "all fine". Any runner that reports
 a count should be suspected the day that count is zero.
+
+---
+
+## The event I recommended from its name
+
+**Symptom.** A recommendation, made confidently, in writing, to a person who was
+about to act on it: *"`TaskCreated`/`TaskCompleted` are pure observation and I
+would take them now — they turn the return to green from «next turn» into
+«immediately»."*
+
+It was wrong in every part.
+
+**Cause.** Comparing this project against another one, the full hook event list
+turned up in the Claude Code binary: thirty-one names, of which this app uses
+eight. Two of them read like the answer to a limitation documented the day
+before — that green only returns when the *following* turn ends clean. The names
+were right there in the enum. The reasoning stopped there.
+
+**What the probe showed**, twenty minutes later, from one real session that ran a
+backgrounded `sleep 6`, polled it, and finished:
+
+```
+PreToolUse Bash | run_in_background = True | sleep 6
+eventi: SessionStart, UserPromptSubmit, PreToolUse ×2, PostToolUse ×2, Stop, SessionEnd
+```
+
+Neither event fired. The emission site says why:
+
+```js
+hook_event_name:"TaskCreated", task_id, task_subject, task_description,
+teammate_name, team_name
+```
+
+`teammate_name`, `team_name` — it is the **teammates task board**, a different
+feature entirely. The names describe something real; it just isn't background
+work.
+
+**Correction.** Neither is implemented. The whole inventory is recorded in
+`required-fields.json` with each event marked **measured** or **read**, and
+`check-contract.sh` verifies the list against the binary so a new event has to be
+classified rather than quietly ignored.
+
+**Lesson.** *A name in an enum is not a measurement, and it is worse than no
+evidence, because it feels like some.* This project already had the rule —
+"inferring a state is inventing one" — and applied it to timestamps, to session
+liveness, to task statuses. It did not apply it to a symbol read out of a binary,
+because reading a binary already feels like the rigorous option.
+
+**And the second lesson, about the shape of the mistake.** The recommendation was
+made in the same breath as a *correct* piece of caution: the sibling event,
+`PermissionRequest`, was flagged as risky and held back for a decision. So the
+care was present. It was spent entirely on the consequences of the change and
+none of it on whether the change did anything at all. **Diligence about risk is
+not diligence about truth**, and having exercised one is a good way to feel
+finished before exercising the other.
+
+**A third, smaller, from the probe itself.** The first attempt to force a
+permission prompt passed `--permission-mode default`. The accepted values are
+`acceptEdits, auto, bypassPermissions, manual, dontAsk, plan`. The flag was
+rejected, the harness sent stderr to `/dev/null`, and the run looked like a clean
+negative result. One more silent failure away from concluding the opposite of the
+truth — see "A red test, hidden by my own grep".
 
 ---
 

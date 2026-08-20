@@ -666,6 +666,59 @@ combination with verifiable delivery.
 
 ---
 
+## D20 · The traffic light does not answer questions
+
+**Decided.** clawd-light registers only hooks that **observe**. The four that
+**decide** — `PermissionRequest`, `PermissionDenied`, `Elicitation`,
+`ElicitationResult` — stay unregistered, and this is a standing rule rather than
+a to-do item.
+
+**What makes them different.** Every hook this app registers today is a spectator:
+Claude Code sends the event, the script forwards it, the turn continues whatever
+happens. The script cannot alter the session, because there is no channel through
+which it could. The decision hooks have one. Their output schema, read in the
+binary, carries a verdict:
+
+```
+hook_event_name: "PermissionRequest",
+decision: { behavior: "allow", … } | { behavior: "deny", message?, interrupt? }
+```
+
+Registering one puts the script between *"Claude wants to run `rm -rf build/`"*
+and *"the user decides"*. It would print nothing, as it does today, and the
+question would reach the user unchanged. But the **cost of a defect** changes
+class: today the worst a broken hook does is leave a light behind; there, stray
+output that parses as a verdict approves a tool call the user never saw.
+
+**What we would gain, stated fairly**, because the trade is real and not
+one-sided. `PermissionRequest` carries `tool_name` and `tool_input`, so the row
+could say *"waiting: Bash — rm -rf build/"* instead of an unexplained amber. And
+it would replace an inference: today `awaiting` is derived from `Notification`
+plus a `notification_type` subtype that nobody documents and that also carries
+`idle_prompt` — the field that once had this app inventing answers that never
+arrived. A dedicated event is strictly better evidence.
+
+**Why the answer is still no.** The gain is precision on a state that already
+works. The cost is that a monitor becomes a participant. This project keeps its
+capabilities off by default and its one writing feature behind an explicit switch
+([D15](#d15--writing-into-a-running-session-through-the-front-door-nobody-documented));
+sitting in the permission path by default would contradict that on the app's most
+sensitive surface.
+
+**And the evidence is not there anyway.** The schema is measured. The *firing* is
+not: a non-interactive `claude -p` never reaches an approval prompt — three probe
+sessions, including one forced with `--permission-mode manual`, ran the tool and
+produced no `PermissionRequest`. Which is exactly the standard of proof that had
+just collapsed under `TaskCreated`, one hour earlier, in
+[docs/07-traps.md](07-traps.md).
+
+**Signal to revisit:** a measured, interactive recording showing that a hook
+returning empty output leaves the approval flow untouched — **and** a decision
+that the amber row is worth naming the tool. The first is a fact; the second is a
+posture, and it is the user's to take, not the code's.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

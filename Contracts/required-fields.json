@@ -224,5 +224,107 @@
       "dream",
       "auto_mode_scan"
     ]
+  },
+  "hookEventInventory": {
+    "_comment": [
+      "Every hook event name Claude Code knows about, and why we do or do not",
+      "use it.",
+      "",
+      "This list exists because the contract used to say 'the eight events',",
+      "which reads as 'these are the events'. There are thirty-one. Nothing",
+      "would have told us if a thirty-second appeared, or if one we register",
+      "were renamed out from under us.",
+      "",
+      "The classification below distinguishes what was MEASURED from what was",
+      "only read in the binary — the distinction that matters, because reading",
+      "a name out of the enum and inferring its meaning is exactly how",
+      "TaskCreated got recommended for a job it does not do."
+    ],
+    "all": [
+      "PreToolUse",
+      "PostToolUse",
+      "PostToolUseFailure",
+      "PostToolBatch",
+      "Notification",
+      "UserPromptSubmit",
+      "UserPromptExpansion",
+      "SessionStart",
+      "SessionEnd",
+      "Stop",
+      "StopFailure",
+      "SubagentStart",
+      "SubagentStop",
+      "PreCompact",
+      "PostCompact",
+      "PermissionRequest",
+      "PermissionDenied",
+      "Setup",
+      "TeammateIdle",
+      "TaskCreated",
+      "TaskCompleted",
+      "Elicitation",
+      "ElicitationResult",
+      "ConfigChange",
+      "WorktreeCreate",
+      "WorktreeRemove",
+      "InstructionsLoaded",
+      "CwdChanged",
+      "FileChanged",
+      "DirectoryAdded",
+      "MessageDisplay"
+    ],
+    "registered": [
+      "SessionStart",
+      "SessionEnd",
+      "UserPromptSubmit",
+      "Stop",
+      "StopFailure",
+      "Notification",
+      "SubagentStart",
+      "SubagentStop"
+    ],
+    "decodedButNotRegistered": {
+      "_why": "Mapped to `working` if they ever arrive; registering them would fire the hook on every tool call for no extra information.",
+      "events": [
+        "PreToolUse",
+        "PostToolUse"
+      ]
+    },
+    "decisionHooks": {
+      "_why": "These do not observe, they answer. Their output schema carries a verdict — PermissionRequest returns decision.behavior allow|deny, Elicitation returns action accept|decline|cancel — so a hook registered here sits inside the approval path. Measured in the binary's output schema; NOT measured live, because a non-interactive `claude -p` never reaches an approval prompt. Registering one changes clawd-light from something that watches into something that can decide, and that is a posture change, not a fix.",
+      "events": [
+        "PermissionRequest",
+        "PermissionDenied",
+        "Elicitation",
+        "ElicitationResult"
+      ]
+    },
+    "teammateBoard": {
+      "_why": "MEASURED, and not what the names suggest. The payload is task_id, task_subject, task_description, teammate_name, team_name: the teammates/team task board, unrelated to background shells. A probe that ran a real backgrounded `sleep 6` produced neither of them.",
+      "events": [
+        "TeammateIdle",
+        "TaskCreated",
+        "TaskCompleted"
+      ]
+    },
+    "notAboutTurnState": {
+      "_why": "Workspace and editor facts, not what a session is doing. Read in the binary, never probed.",
+      "events": [
+        "PostToolUseFailure",
+        "PostToolBatch",
+        "UserPromptExpansion",
+        "PreCompact",
+        "PostCompact",
+        "Setup",
+        "ConfigChange",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "InstructionsLoaded",
+        "CwdChanged",
+        "FileChanged",
+        "DirectoryAdded",
+        "MessageDisplay"
+      ]
+    }
   }
 }

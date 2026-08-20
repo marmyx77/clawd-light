@@ -117,26 +117,51 @@ head_ "Links between documents"
 python3 - <<'PY' && ok "every relative link resolves" || bad "the documentation links somewhere that is not there"
 import glob, os, re, sys
 
+
+def anchors_of(path):
+    """GitHub's slug for every heading in a Markdown file."""
+    slugs = set()
+    for line in open(path):
+        if not line.startswith("#"):
+            continue
+        text = line.lstrip("#").strip()
+        slug = re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
+        slugs.add(slug)
+    return slugs
+
+
+FILES = glob.glob("docs/*.md") + ["Contracts/assumptions.md", "README.md"]
+cache = {}
 problems = []
 total = 0
-for f in glob.glob("docs/*.md") + ["Contracts/assumptions.md", "README.md"]:
+
+for f in FILES:
     if not os.path.exists(f):
         continue
     base = os.path.dirname(f)
     for match in re.finditer(r'\[[^\]]*\]\(([^)]+)\)', open(f).read()):
         target = match.group(1)
-        if target.startswith(("http", "#", "mailto")):
+        if target.startswith(("http", "mailto")):
             continue
         total += 1
-        path = target.split("#")[0]
-        if not path:
+        path, _, anchor = target.partition("#")
+        resolved = os.path.normpath(os.path.join(base, path)) if path else f
+        if not os.path.exists(resolved):
+            problems.append(f"{f} -> {target} (no such file)")
             continue
-        if not os.path.exists(os.path.normpath(os.path.join(base, path))):
-            problems.append(f"{f} -> {target}")
+        # A #Lnn line reference points into source, not a heading.
+        if not anchor or re.fullmatch(r"L\d+(-L\d+)?", anchor):
+            continue
+        if not resolved.endswith(".md"):
+            continue
+        if resolved not in cache:
+            cache[resolved] = anchors_of(resolved)
+        if anchor not in cache[resolved]:
+            problems.append(f"{f} -> {target} (no such heading)")
 
-print(f"    {total} relative links checked", file=sys.stderr)
-for p in problems:
-    print(f"    broken: {p}", file=sys.stderr)
+print(f"    {total} links checked, anchors included", file=sys.stderr)
+for problem in problems:
+    print(f"    broken: {problem}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 PY
 

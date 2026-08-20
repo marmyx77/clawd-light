@@ -22,7 +22,7 @@ How to read a record:
 
 ---
 
-## hook.events · the eight events fire
+## hook.events · eight of the thirty-one, and the reasons for the other twenty-three
 
 **We assume** `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`,
 `StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop` are delivered to a
@@ -34,6 +34,43 @@ registered command hook.
 **How verified** — `probe`. Six of the eight recorded live; `Notification` and
 `StopFailure` need conditions a probe can't force cheaply and stay on recorded
 shapes under unit test. The checker says so instead of passing silently.
+
+**This record used to be titled "the eight events fire"**, which reads as *these
+are the events*. **There are thirty-one.** The full list, and the class each one
+falls into, is in `required-fields.json` under `hookEventInventory`, and
+`check-contract.sh` now verifies it against the binary on every run: an event we
+register disappearing is a failure, a new event appearing is a note asking for it
+to be classified. Before that, neither would have been reported by anything.
+
+The twenty-three we do not use fall into three groups, and the difference between
+them is the difference between **measured** and **read**:
+
+- **Decision hooks** — `PermissionRequest`, `PermissionDenied`, `Elicitation`,
+  `ElicitationResult`. These do not observe, they answer: the output schema in
+  the binary carries a verdict (`decision.behavior` = `allow` | `deny`;
+  `action` = `accept` | `decline` | `cancel`). Registering one puts this app's
+  hook script inside the approval path, which changes what a bug in it can cost —
+  from *a light that lags* to *a tool call approved without the user seeing it*.
+  The schema is measured; **the firing is not**, because a non-interactive
+  `claude -p` never reaches an approval prompt. See
+  [D20](../docs/04-decisions.md#d20--the-traffic-light-does-not-answer-questions).
+
+- **The teammate board** — `TeammateIdle`, `TaskCreated`, `TaskCompleted`.
+  **Measured, and not what the names suggest.** The payload is `task_id`,
+  `task_subject`, `task_description`, `teammate_name`, `team_name`: the
+  teammates/team task board, with nothing to do with background shells. A probe
+  running a real backgrounded `sleep 6` produced neither of them.
+
+- **Not about turn state** — `PostToolUseFailure`, `PostToolBatch`,
+  `UserPromptExpansion`, `PreCompact`, `PostCompact`, `Setup`, `ConfigChange`,
+  `WorktreeCreate`, `WorktreeRemove`, `InstructionsLoaded`, `CwdChanged`,
+  `FileChanged`, `DirectoryAdded`, `MessageDisplay`. Workspace and editor facts.
+  Read in the binary, never probed — so this group is a hypothesis, and it is
+  labelled as one.
+
+`PreToolUse` and `PostToolUse` sit apart: decoded, so they map to `working` if
+they ever arrive, but not registered — they would fire on every tool call and add
+nothing `UserPromptSubmit` and `Stop` do not already bracket.
 
 **Failure mode** — **silent**. An event that stops firing doesn't error; the row
 just stops moving. This is the assumption the live probe exists for.
