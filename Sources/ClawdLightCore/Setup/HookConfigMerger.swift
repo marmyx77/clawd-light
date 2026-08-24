@@ -27,11 +27,24 @@ public enum HookConfigMerger {
         "SessionEnd",
         "SubagentStart",
         "SubagentStop",
+        // The only in-turn heartbeat, and it is here for one specific reason: it
+        // is the sole registered event that can prove a permission prompt was
+        // answered. Without it an amber row keeps flashing at somebody who has
+        // already replied, until the turn ends — measured at thirty-three minutes.
+        //
+        // It does cost one spawn per tool call. Measured on the heaviest real
+        // session available: 578 tool calls over thirteen hours, about 44 an hour,
+        // each a `curl --max-time 2` that always exits 0.
+        //
+        // `PreToolUse` stays out. It would double that cost and cannot do the same
+        // job: it carries `permissionDecision` in its own output, so it runs
+        // *before* the prompt, and one arriving after proves nothing.
+        "PostToolUse",
     ]
 
-    /// Extra events for anyone who wants yellow mid-turn as well.
-    /// They cost one process spawn for every single tool call.
-    public static let toolEvents = ["PreToolUse", "PostToolUse"]
+    /// Extra event for anyone who wants yellow to move on every tool call too.
+    /// It costs one process spawn per call and cannot release a pending question.
+    public static let toolEvents = ["PreToolUse"]
 
     /// Hook timeout, in seconds. Twice curl's `--max-time`.
     static let hookTimeout = 3

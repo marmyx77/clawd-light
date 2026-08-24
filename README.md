@@ -628,7 +628,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 386 domain tests, instantaneous
+swift run ClawdLightTests              # 395 domain tests, instantaneous
 swift run ClawdLightE2E                # 75 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

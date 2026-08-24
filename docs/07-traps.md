@@ -329,6 +329,73 @@ a count should be suspected the day that count is zero.
 
 ---
 
+## Thirty-three minutes of asking a question that had been answered
+
+**Symptom.** Reported by use: *"when Claude asks something the light flashes,
+rightly — but once I've answered it keeps flashing even though Claude has gone
+back to work."*
+
+**Measure.** The per-signal log, which existed for exactly this:
+
+```
+08:48:27  Notification/permission_prompt   working -> awaiting
+08:52:08  SubagentStop                     awaiting -> awaiting  [subagent]
+08:52:08  SubagentStart                    awaiting -> awaiting  [subagent]
+   …      fifteen subagent events over thirty-three minutes, all awaiting -> awaiting
+09:21:48  UserPromptSubmit                 awaiting -> working    ← only here
+```
+
+Subagents were **being spawned**, so the prompt had plainly been answered and the
+turn had resumed. The row stayed amber until the user's next prompt, half an hour
+later.
+
+**Cause — two of them, independent, and both had to go.**
+
+*First:* no in-turn heartbeat. Of the eight registered events, the only ones that
+can fire between a mid-turn `Notification` and the closing `Stop` are the subagent
+pair. `PreToolUse` and `PostToolUse` were decoded but **not registered**, on the
+documented reasoning that they "add nothing `UserPromptSubmit` and `Stop` already
+bracket". This bug is what they add.
+
+*Second:* even the subagent events could not help, because `awaiting` overrides
+them by design — *"waiting for a permission always wins: it blocks everything,
+subagents included, and it needs you now."* True while the prompt is open. False
+the moment it is answered, and nothing said it had been.
+
+**Correction, in two parts.**
+
+- A subagent **starting** releases the amber. A main loop blocked on a prompt
+  cannot spawn a child; a birth is proof the prompt was answered. A subagent
+  *finishing* releases nothing — one already running when the prompt opened can
+  finish while the turn is still blocked.
+- `PostToolUse` joins the default event list and releases the amber.
+
+**And the part that was nearly wrong.** The first version of the fix let *any*
+tool event release the amber, which broke an existing test — `A late PreToolUse
+does not clear the amber`. That test was right, and the binary says why:
+
+```
+"PreToolUse"),permissionDecision:…,permissionDecisionReason:…
+```
+
+`PreToolUse` carries the permission decision in its **own output schema**: it runs
+*inside* the decision, therefore **before** the prompt. One arriving afterwards is
+out of order, and releasing on it would clear a question still open. `PostToolUse`
+cannot fire unless the tool actually ran — which requires the permission to have
+been granted. Only that one is proof.
+
+**Lesson.** *A rule that is right while a condition holds needs something that
+says when the condition stops holding.* `awaiting` overriding everything was
+correct and had no exit. And the exit had to be chosen by asking which event
+**cannot** happen unless the thing you care about already happened — not by
+symmetry with the green case, which is what the first attempt did.
+
+**And a note on the instrument.** This was diagnosed in one log read. The
+per-signal colour-transition log was added three weeks earlier, after a defect
+that took three evenings to find without it. It has now paid for itself.
+
+---
+
 ## The event I recommended from its name
 
 **Symptom.** A recommendation, made confidently, in writing, to a person who was

@@ -194,8 +194,20 @@ public enum StateReducer {
             )
         }
 
+        // A subagent **starting** releases a pending question, and this is the one
+        // place that can tell. A main loop blocked on a permission prompt cannot
+        // spawn anything: if a child is being born, the prompt was answered.
+        //
+        // A subagent *finishing* proves nothing — one that was already running
+        // when the prompt opened can finish while the turn is still blocked — so
+        // only a positive delta releases.
+        let released = delta > 0 && existing.baseStatus == .awaiting
+        let base = released
+            ? existing.with(status: .working, at: now)
+            : existing
+
         return state.upserting(
-            existing
+            base
                 .with(workspace: workspace)
                 .withSubagents(delta: delta, at: now)
         )
@@ -314,7 +326,8 @@ public enum StateReducer {
         event: HookEventKind
     ) -> Bool {
         // `failed` needs the same protection as `ready` and `awaiting`, but for a
-        // different reason, and that is why it isn't in `blocksDowngrade`.
+        // different
+        // reason, and that is why it isn't in `blocksDowngrade`.
         //
         // That flag answers the question "does this state survive a restart?", and
         // for `failed` the answer is no: if the turn really does resume, yellow is
@@ -325,6 +338,23 @@ public enum StateReducer {
         // painted a session yellow when it wasn't working at all.
         let resists = current.blocksDowngrade || current == .failed
         guard resists, incoming == .working else { return false }
+
+        // A pending question yields to the **one** event that proves it was
+        // answered, and only that one.
+        //
+        // `PostToolUse` cannot fire unless the tool actually ran, which means the
+        // permission was granted. `PreToolUse` cannot say the same: it carries
+        // `permissionDecision` in its own output schema, so it runs *inside* the
+        // permission decision and therefore **before** the prompt. One arriving
+        // afterwards is out of order and proves nothing — which is why the amber
+        // still resists it.
+        //
+        // Measured, and this is why the exception exists: a permission prompt put
+        // a row amber at 08:48 and it stayed amber for thirty-three minutes while
+        // subagents came and went, because nothing but the user's next prompt
+        // could release it. The prompt is what blocks the turn; once a tool has
+        // completed, the turn is not blocked any more.
+        if current == .awaiting, event == .postToolUse { return false }
 
         // A new user prompt, on the other hand, is a legitimate transition:
         // it means they read it and started again.

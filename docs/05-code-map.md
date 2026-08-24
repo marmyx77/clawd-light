@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,238 lines · 36 files   pure logic, zero AppKit
+  ClawdLightCore/   4,281 lines · 36 files   pure logic, zero AppKit
   ClawdLightApp/    6,776 lines · 37 files   shell: AppKit, network, windows
-  ClawdLightTests/  4,666 lines · 26 files   386 cases, instantaneous
+  ClawdLightTests/  4,807 lines · 27 files   395 cases, instantaneous
   ClawdLightE2E/    1,680 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -388,7 +388,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 386 cases
+## `ClawdLightTests/` — 395 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -406,6 +406,7 @@ script, before it was split. The most important ones:
 | `MarkdownParserSuite` | the constructs, and one whole answer containing all of them |
 | `IDELockLivenessSuite` | a running editor is believed however old its lock is |
 | `LivePruningSuite` | a session you can see running is never pruned for being quiet |
+| `AwaitingReleaseSuite` | a question you have answered stops flashing |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |
