@@ -26,11 +26,18 @@ public struct LiveSession: Sendable, Equatable {
     /// session is discovered without ever having received a hook.
     public let modifiedAt: Date
 
+    /// The machine it runs on, as it answers over ssh. `nil` means this one.
+    ///
+    /// Carried from here into the session's `Workspace`, because a row has to be
+    /// able to say where it is — and because a remote row must not try to bring a
+    /// local window to the front.
+    public let host: String?
+
     /// Copy with a different activity timestamp.
     public func with(modifiedAt newValue: Date) -> LiveSession {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
-            name: name, kind: kind, modifiedAt: newValue
+            name: name, kind: kind, modifiedAt: newValue, host: host
         )
     }
 
@@ -41,8 +48,10 @@ public struct LiveSession: Sendable, Equatable {
         entrypoint: String?,
         name: String?,
         kind: String? = nil,
-        modifiedAt: Date
+        modifiedAt: Date,
+        host: String? = nil
     ) {
+        self.host = host?.trimmed.nilIfEmpty
         self.pid = pid
         self.sessionId = sessionId
         self.cwd = PathNormalizer.normalize(cwd)
@@ -63,8 +72,17 @@ public struct LiveSession: Sendable, Equatable {
     /// is kept: the risk of one row too many is smaller than the risk of a session
     /// you can't see.
     public var deservesTrafficLight: Bool {
-        if let kind, !kind.isEmpty {
-            return kind == AppConfig.interactiveSessionKind
+        // **Both**, and this used to be an `if` that returned on the first one.
+        // A session can declare `kind: interactive` and still have been started by
+        // the SDK — claude-mem's observer does exactly that, hundreds of times a
+        // day — and the early return meant the entrypoint was never looked at.
+        //
+        // It stayed invisible locally for an unrelated reason: no editor window
+        // claims `~/.claude-mem/observer-sessions`, so the workspace resolver
+        // dropped it. Reading another machine removed that accidental filter and
+        // the observer turned up in the column, which is how this was found.
+        if let kind, !kind.isEmpty, kind != AppConfig.interactiveSessionKind {
+            return false
         }
         guard let entrypoint, !entrypoint.isEmpty else { return true }
         return !AppConfig.nonInteractiveEntrypoints.contains(entrypoint)

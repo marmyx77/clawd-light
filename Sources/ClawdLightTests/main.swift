@@ -31,6 +31,7 @@ let suites: [TestSuite] = [
     AppleScriptEscapeSuite.suite,
     SubagentSuite.suite,
     AwaitingReleaseSuite.suite,
+    RemoteSessionsSuite.suite,
     AccessTokenSuite.suite,
     SessionsPayloadSuite.suite,
     HTTPRequestParserSuite.suite,

@@ -719,6 +719,65 @@ posture, and it is the user's to take, not the code's.
 
 ---
 
+## D21 · Other machines are read, not heard
+
+**Decided.** Sessions on another machine appear in the column because clawd-light
+**asks that machine over ssh**, on a slow timer. The alternative — installing the
+hook there and letting it post here — stays closed.
+
+**What made the choice.** `POST /signal` carries no token. `GET /sessions` does,
+`/signal` never did, and on loopback that was a defensible asymmetry: anything
+already running as the user can move the column, and a token would not change
+that. It stops being defensible the moment the endpoint is on a network. Opening
+it on the tailnet would put **unauthenticated state injection** on every device
+that can reach the Mac, to save twenty seconds of latency on a machine nobody is
+looking at.
+
+Reading needs nothing open, no token to distribute, and no new listening surface.
+It also matches what the distributed-brain plan already says out loud —
+local-first with aggregation, no single point of failure — and it fails in the
+right direction: a node that is asleep costs one poll that returns nothing.
+
+**What the node does, and why there.** Two of the three facts a row needs are only
+true where the processes are: whether the pid is alive, and when the transcript
+last changed. So the probe runs *there* — piped to `python3` over the connection,
+nothing installed, nothing left behind — and returns one JSON array. Deciding
+here from shipped files would answer both questions about the wrong machine.
+
+**Three things this makes different, on purpose:**
+
+- **A remote workspace is the session's own folder.** Locally a row exists only if
+  an editor window claims the `cwd`, because the panel is about windows you can
+  click. That criterion is meaningless for a tmux pane on a headless node, and
+  applying it there is exactly what kept those rows invisible: no lock on this
+  machine claims `/home/…`, so every one was dropped.
+- **`nil` and `[]` are different answers.** The reader returns an optional: `[]`
+  means *asked, nothing running*, `nil` means *no answer*. Collapsing them would
+  let a dropped VPN erase live rows — the same mistake as reading a timestamp and
+  calling it a heartbeat. A host that does not answer keeps its previous rows.
+- **A click on a remote row raises nothing.** There is no window here. It says
+  where the session is instead of opening a modal that says "cannot open".
+
+**What it does not do.** The chat window cannot open a remote conversation: the
+transcript is on the other machine. Reading it over ssh on every poll is a
+different feature with a different cost, and it is not in this one.
+
+**Cost.** One ssh handshake per host every twenty seconds, against five seconds
+for the local pass. `BatchMode=yes` so a host wanting a password fails in a second
+instead of waiting for a prompt nobody will see, and a hard kill at twice the
+timeout so a half-open connection to a sleeping node cannot hold the poll.
+
+**Off unless asked.** Hosts come from `~/.clawd-light/remotes`, one per line.
+Absent or empty means off, which is the default: reading another machine is an
+outbound connection this app would otherwise never make. Names are checked against
+an allow-list before reaching ssh — a name starting with a dash would be read as
+*options*.
+
+**Signal to revisit:** a token on `/signal`. With one, the push route becomes
+defensible and the latency goes away; without one, this decision stands.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

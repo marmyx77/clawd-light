@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,281 lines · 36 files   pure logic, zero AppKit
-  ClawdLightApp/    6,776 lines · 37 files   shell: AppKit, network, windows
-  ClawdLightTests/  4,807 lines · 27 files   395 cases, instantaneous
+  ClawdLightCore/   4,536 lines · 39 files   pure logic, zero AppKit
+  ClawdLightApp/    7,017 lines · 38 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,062 lines · 28 files   416 cases, instantaneous
   ClawdLightE2E/    1,680 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 583 lines. The limit the project sets itself is 800.
+No file exceeds 612 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 210
+### `AppConfig.swift` · 233
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -148,6 +148,28 @@ hook to tell us — after a restart, that is all of them. The rule matched 7065 
 7066 real transcripts; the exception is a git worktree, which is why the result is
 a candidate the caller has to find on disk.
 
+### `RemoteHostList.swift` · 47
+Which machines to read, from `~/.clawd-light/remotes`. Absent or empty means the
+feature is off, which is the default. `isUsable` is an allow-list because the name
+becomes an argument to `ssh`: one starting with a dash would be read as *options*.
+
+### `RemoteProbeScript.swift` · 84
+The script that runs **on** the other machine, in one piece and under test. It is a
+promise made to a machine we do not control, and the shape it prints is what
+`RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
+the session file, which is the frozen one.
+
+> **Why the work happens there.** Two of the three facts a row needs are only true
+> where the processes are: whether the pid is alive, and when the transcript last
+> changed. Deciding here from shipped files would answer both about the wrong
+> machine.
+
+### `RemoteSessionsDecoder.swift` · 71
+The other machine's answer, entering the domain. Validates like
+`HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
+thrown**. The output comes from a Claude Code version we do not control, and one
+unparsable entry is not a reason to blank a whole host.
+
 ## `Chat/`
 
 ### `Mailbox.swift` · 264
@@ -203,7 +225,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 344
+### `StateReducer.swift` · 374
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -233,7 +255,7 @@ token protects and what it doesn't: read it before quoting it elsewhere.
 
 ## `Setup/`
 
-### `HookConfigMerger.swift` · 180
+### `HookConfigMerger.swift` · 193
 Adds and removes the hooks in `settings.json` **working on dictionaries**, not on
 files: the I/O lives in the shell, so this logic — which modifies an important
 user file — stays verifiable.
@@ -292,7 +314,7 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 583
+### `CommandLineInterface.swift` · 612
 Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -301,7 +323,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 227 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 320 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -311,6 +333,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
+| `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
@@ -363,7 +386,7 @@ installations in the same second used to fail.
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 557 | holds everything together; row and panel actions |
+| `PanelController.swift` | 568 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 266 | one row: dot, name, badge, timestamp, menu |
 | `TrafficLightColumn.swift` | 187 | the column, the hidden summary, the filter note |
 | `PanelRootView.swift` | 175 | the general menu |
@@ -388,7 +411,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 395 cases
+## `ClawdLightTests/` — 416 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -407,6 +430,7 @@ script, before it was split. The most important ones:
 | `IDELockLivenessSuite` | a running editor is believed however old its lock is |
 | `LivePruningSuite` | a session you can see running is never pruned for being quiet |
 | `AwaitingReleaseSuite` | a question you have answered stops flashing |
+| `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |

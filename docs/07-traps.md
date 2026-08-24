@@ -329,6 +329,53 @@ a count should be suspected the day that count is zero.
 
 ---
 
+## The filter that stopped at the first field
+
+**Symptom.** Reading another machine's sessions worked, and the column filled with
+`observer-sessions` — claude-mem's own machinery, which opens **thousands of
+sessions a day**.
+
+**Cause.** Not the remote path. A latent defect in `deservesTrafficLight`:
+
+```swift
+if let kind, !kind.isEmpty {
+    return kind == AppConfig.interactiveSessionKind   // returns here
+}
+guard let entrypoint, !entrypoint.isEmpty else { return true }
+return !AppConfig.nonInteractiveEntrypoints.contains(entrypoint)   // never reached
+```
+
+The observer writes `kind: interactive` **and** `entrypoint: sdk-cli`. Because
+`kind` is present the function returns `true` immediately and the entrypoint —
+which is in the exclusion list — is never looked at.
+
+**Why it had never shown.** Locally those sessions were dropped for an unrelated
+reason: no editor window claims `~/.claude-mem/observer-sessions`, so the workspace
+resolver refused them. A correct rule was masking a broken one. Remote sessions do
+not go through that resolver, and the moment that accidental filter was gone the
+defect surfaced.
+
+**Correction.** Both fields have to agree. `kind` says whether the loop is
+interactive; `entrypoint` says whether a person started it. They are different
+questions and both are written by Claude Code.
+
+**And an assumption retracted.** A test asserted the opposite — *"the kind field
+takes precedence over the entrypoint"* — reasoning that Claude Code writes `kind`
+itself and that beats deducing from a command name. Both halves were true and the
+conclusion was still wrong. Its neighbour justified the bias: *"one row too many
+can be seen and fixed; a missing row stays silent."* That holds for one row. It
+does not hold for two thousand a day. The test now asserts the measured case.
+
+**Lesson.** *A filter that returns on its first field is a filter with one
+criterion, however many it appears to have.* And more usefully: **two correct-looking
+rules can hide each other.** The workspace resolver was right, the interactive
+filter was wrong, and because the right one ran first the wrong one was free for
+months. Removing a filter is a way of testing the ones behind it — which means a
+feature that widens what gets in is also an audit of everything downstream, and
+should be read that way rather than as a feature.
+
+---
+
 ## Thirty-three minutes of asking a question that had been answered
 
 **Symptom.** Reported by use: *"when Claude asks something the light flashes,

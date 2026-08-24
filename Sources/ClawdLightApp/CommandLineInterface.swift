@@ -191,6 +191,7 @@ enum CommandLineInterface {
             print("  The others have a cwd that no lock in ~/.claude/ide/ contains.")
         }
 
+        reportRemoteHosts()
         print("Accessibility permission: \(VSCodeFocuser.hasAccessibilityPermission ? "granted" : "MISSING")")
 
         let automation = VSCodeFocuser.checkAutomationPermission()
@@ -580,4 +581,32 @@ enum CommandLineInterface {
         }
         return value
     }
+
+    /// What the other machines are saying, if any were configured.
+    ///
+    /// Printed because there is otherwise no way to tell "no remote sessions" from
+    /// "the node never answered" — and those need opposite reactions.
+    private static func reportRemoteHosts() {
+        let hosts = RemoteHostList.parse(
+            (try? String(contentsOf: AppConfig.remoteHostsFile, encoding: .utf8)) ?? ""
+        )
+        guard !hosts.isEmpty else {
+            print("\nRemote hosts: none configured (\(AppConfig.remoteHostsFile.path))")
+            return
+        }
+        print("\nRemote hosts (read over ssh, never written to):")
+        for host in hosts {
+            guard let sessions = RemoteSessionReader(host: host).readLiveSessions() else {
+                print("  · \(host): NO ANSWER — asleep, or ssh cannot reach it")
+                continue
+            }
+            let shown = sessions.filter(\.deservesTrafficLight)
+            print("  · \(host): \(shown.count) sessions in the column"
+                  + (sessions.count == shown.count ? "" : " (\(sessions.count - shown.count) not interactive)"))
+            for session in shown {
+                print("      \(session.cwd)")
+            }
+        }
+    }
+
 }

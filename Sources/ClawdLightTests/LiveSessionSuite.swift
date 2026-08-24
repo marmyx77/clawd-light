@@ -51,13 +51,34 @@ enum LiveSessionSuite {
             t.expectEqual(live?.deservesTrafficLight, false)
         },
 
-        TestCase("The kind field takes precedence over the entrypoint") { t in
+        // This used to assert the opposite — that `kind` alone decided, because
+        // Claude Code writes it itself and that beats deducing from a command
+        // name. Both halves of that were true and the conclusion was still wrong,
+        // because **both fields** are written by Claude Code and they answer
+        // different questions: `kind` says whether the loop is interactive,
+        // `entrypoint` says whether a person started it.
+        //
+        // The case that settled it is real, not synthetic: claude-mem's observer
+        // writes `kind: interactive` with `entrypoint: sdk-cli`, thousands of
+        // times a day. The old rule let every one of them through. Locally that
+        // stayed invisible because no editor window claims its folder; reading
+        // another machine removed that accidental filter and the column filled up.
+        //
+        // "One row too many can be seen and fixed" holds for one row. It does not
+        // hold for two thousand a day.
+        TestCase("An SDK session is excluded even when it calls itself interactive") { t in
             let data = Data("""
             {"pid":1,"sessionId":"x","cwd":"/tmp","entrypoint":"sdk","kind":"interactive"}
             """.utf8)
             let live = try? LiveSessionParser.parse(data: data, modifiedAt: modifiedAt)
-            // Claude Code writes it itself: more reliable than a deduction made
-            // from the name of the command.
+            t.expectEqual(live?.deservesTrafficLight, false)
+        },
+
+        TestCase("An interactive session with an interactive entrypoint is kept") { t in
+            let data = Data("""
+            {"pid":1,"sessionId":"x","cwd":"/tmp","entrypoint":"cli","kind":"interactive"}
+            """.utf8)
+            let live = try? LiveSessionParser.parse(data: data, modifiedAt: modifiedAt)
             t.expectEqual(live?.deservesTrafficLight, true)
         },
 

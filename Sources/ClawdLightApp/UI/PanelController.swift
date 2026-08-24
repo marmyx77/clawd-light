@@ -272,6 +272,17 @@ final class PanelController {
         }
 
         let session = row.primary
+
+        // There is no window here to raise. Hunting for one would end in a modal
+        // saying "cannot open", which is true and useless: the session is on
+        // another machine on purpose.
+        if let host = session.workspace.host {
+            store.reportError(
+                "«\(session.workspace.name)» runs on \(host) — nothing to raise here."
+            )
+            return
+        }
+
         switch VSCodeFocuser.focus(
             workspace: session.workspace, sessionId: opensTab ? session.id : nil
         ) {

@@ -60,7 +60,7 @@ struct TrafficLightRow: View {
                         .frame(width: 7)
                 }
 
-                Text(row.workspace.name)
+                Text(row.workspace.label)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
@@ -227,7 +227,7 @@ struct TrafficLightRow: View {
 
     private var tooltip: String {
         var lines = [
-            "\(row.workspace.name) — \(StatusPalette.label(for: row.status))",
+            "\(row.workspace.label) — \(StatusPalette.label(for: row.status))",
             RelativeTime.detailedLabel(for: row.updatedAt, now: now),
         ]
 

@@ -570,6 +570,47 @@ too many but a notification **lost**, and lost notifications go unnoticed.
 A legitimate Claude Code change will show up as a failure until somebody blesses
 it. That is not a defect of the method — it is the method.
 
+## remote.sessions · another machine reports its own live sessions
+
+**We assume** a machine reachable over `ssh` has `python3`, keeps session files at
+`~/.claude/sessions/<pid>.json` with the same fields this one uses, and stores
+transcripts under `~/.claude/projects/<encoded-cwd>/*.jsonl` by the same encoding
+rule.
+
+**Depends at** [RemoteProbeScript.swift](../Sources/ClawdLightCore/Workspace/RemoteProbeScript.swift)
+· [RemoteSessionsDecoder.swift](../Sources/ClawdLightCore/Workspace/RemoteSessionsDecoder.swift)
+
+**How verified** — `probe`, against a real always-on node on 24 Aug 2026. Three
+live sessions came back with exactly the fields the decoder reads:
+
+```json
+{"pid":1838232,"sessionId":"…","cwd":"/home/dev/.notes",
+ "entrypoint":"cli","name":"notes-32","kind":"interactive","activityEpoch":1787223193}
+```
+
+The node's own files carry the same keys as this machine's — `cwd`, `entrypoint`,
+`kind`, `name`, `sessionId`, `pid`, plus a `tmux` flag this app ignores.
+
+**The encoding rule is stated twice**, once in Swift (`TranscriptLocator`) and once
+in Python (`RemoteProbeScript`), because it has to run on the other machine. If the
+two ever disagree the probe finds no transcript and falls back to the session
+file's timestamp — which is written once at startup and reports how long a session
+has been *open*, not when it last did anything. A test asserts the Python side
+still contains the rule; nothing can assert the two produce the same string
+without running both.
+
+**Failure mode** — **loud in one direction, silent in the other.** A host that
+cannot be reached is logged by name and keeps its previous rows: `nil` and `[]` are
+different answers on purpose. But a host whose *file shape* changed would return
+well-formed JSON with missing fields, every record would be skipped, and the log
+would say "0 sessions" — indistinguishable from a quiet machine. `clawd-light
+status` prints each host and its count for exactly this reason.
+
+**Not assumed** — that the remote transcript can be read from here. It cannot, and
+the chat window says so rather than opening empty.
+
+---
+
 ## What this cannot do
 
 It cannot catch what nobody thought to write down here. The list grows the way it

@@ -21,6 +21,7 @@ final class StateStore: ObservableObject {
     private let snapshots: SnapshotBox?
     private let preferences: Preferences
     private var pollTimer: Timer?
+    private var remoteTimer: Timer?
 
     init(
         windowReader: IDEWindowReader = IDEWindowReader(),
@@ -34,6 +35,53 @@ final class StateStore: ObservableObject {
         self.clock = clock
         self.snapshots = snapshots
         self.preferences = preferences
+    }
+
+    // MARK: - Other machines
+
+    /// The last answer each remote host gave, kept between polls.
+    ///
+    /// Kept, and not re-read on every local pass, for two reasons. The local poll
+    /// runs every few seconds and an ssh handshake does not belong on that
+    /// cadence; and `reconcile` filters the column down to the sessions it is
+    /// handed, so a remote row must be in that set on **every** pass or it would
+    /// be erased four times a minute between remote reads.
+    ///
+    /// A host that fails to answer keeps its previous entry. Silence is not death
+    /// — the same rule that stopped this app pruning live local sessions.
+    private var remoteSessions: [String: [LiveSession]] = [:]
+
+    /// Every remote session currently believed to exist.
+    private var knownRemote: [LiveSession] {
+        remoteSessions.values.flatMap { $0 }
+    }
+
+    /// Asks each configured host, on its own slow timer.
+    func pollRemoteHosts() {
+        let hosts = RemoteHostList.parse(
+            (try? String(contentsOf: AppConfig.remoteHostsFile, encoding: .utf8)) ?? ""
+        )
+        guard !hosts.isEmpty else {
+            guard !remoteSessions.isEmpty else { return }
+            // The file was emptied: let the rows go rather than stranding them.
+            remoteSessions = [:]
+            poll()
+            return
+        }
+
+        for host in hosts {
+            guard let answer = RemoteSessionReader(host: host).readLiveSessions() else {
+                // No answer. Keep what we had and say so once.
+                Diagnostics.log("remote \(host): no answer, keeping \(remoteSessions[host]?.count ?? 0) known rows")
+                continue
+            }
+            let usable = answer.filter(\.deservesTrafficLight)
+            if usable.count != (remoteSessions[host]?.count ?? -1) {
+                Diagnostics.log("remote \(host): \(usable.count) sessions")
+            }
+            remoteSessions[host] = usable
+        }
+        poll()
     }
 
     var sessions: [SessionState] { state.ordered }
@@ -137,11 +185,35 @@ final class StateStore: ObservableObject {
         }
         RunLoop.main.add(timer, forMode: .common)
         pollTimer = timer
+        startRemotePolling()
     }
 
     func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+        remoteTimer?.invalidate()
+        remoteTimer = nil
+    }
+
+    /// Asks the other machines on their own, much slower timer.
+    ///
+    /// Separate from the local one because each host costs a process spawn and an
+    /// ssh handshake: putting that on the local cadence would mean an ssh every
+    /// five seconds for a column that changes far less often than that.
+    private func startRemotePolling(
+        every interval: TimeInterval = AppConfig.remotePollInterval
+    ) {
+        remoteTimer?.invalidate()
+        // Off the first pass: the app has to show the local column immediately,
+        // and an unreachable host must never be what delays it.
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task.detached { [weak self] in
+                guard let self else { return }
+                await self.pollRemoteHosts()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        remoteTimer = timer
     }
 
     /// One realignment pass.
@@ -149,13 +221,15 @@ final class StateStore: ObservableObject {
         let now = clock()
         let live = liveSessionReader.readLiveSessions().filter(\.deservesTrafficLight)
         let windows = windowReader.readWindows()
+        let remote = knownRemote
 
-        apply(.reconcile(alive: Set(live.map(\.sessionId))), now: now)
+        // Both sets, always. `reconcile` keeps only what it is handed, so leaving
+        // the remote ids out would erase those rows on the very next pass.
+        let alive = Set(live.map(\.sessionId)).union(remote.map(\.sessionId))
+        apply(.reconcile(alive: alive), now: now)
 
-        for session in live {
-            guard let workspace = WorkspaceResolver.resolve(
-                cwd: session.cwd, in: windows, at: now
-            ) else {
+        for session in live + remote {
+            guard let workspace = workspace(for: session, in: windows, at: now) else {
                 continue
             }
             // State `idle`: the app does not know what a session it has never seen
@@ -193,7 +267,26 @@ final class StateStore: ObservableObject {
 
         // The same set `reconcile` used. Without it, pruning removes sessions we
         // have just proved are running.
-        apply(.prune(alive: Set(live.map(\.sessionId))), now: now)
+        apply(.prune(alive: alive), now: now)
+    }
+
+    /// Where a session is running, for the column's purposes.
+    ///
+    /// Locally the answer has to come from an editor window: a `cwd` nobody has
+    /// open is a session in a terminal somewhere, and the panel is about windows
+    /// you can click. Remotely there is no window to ask about — the session lives
+    /// in a tmux pane on a headless machine — so **the folder is the workspace**.
+    ///
+    /// Applying the local rule to a remote session is exactly what kept those rows
+    /// invisible: no lock on this machine claims `/home/…`, so every one of them
+    /// was dropped with "no editor window claims that folder".
+    private func workspace(
+        for session: LiveSession, in windows: [IDEWindow], at now: Date
+    ) -> Workspace? {
+        guard let host = session.host else {
+            return WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
+        }
+        return Workspace(path: session.cwd, host: host)
     }
 
     // MARK: - Internal

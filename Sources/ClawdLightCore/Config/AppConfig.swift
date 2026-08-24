@@ -176,6 +176,29 @@ public enum AppConfig {
         "sdk", "sdk-cli", "sdk-ts", "sdk-py", "print",
     ]
 
+    // MARK: - Remote hosts
+
+    /// Hosts to read sessions from, one name per line, `#` for comments.
+    ///
+    /// A file and not a compiled list: the machines a person works across are
+    /// theirs, not ours. Absent or empty means the feature is off, which is the
+    /// default — reading another machine is an outbound connection, and this
+    /// project does not start those unless asked.
+    public static var remoteHostsFile: URL {
+        homeDirectory.appendingPathComponent(".clawd-light/remotes")
+    }
+
+    /// How long to give ssh before giving up on a host.
+    ///
+    /// Short on purpose. A node that is asleep must cost one poll, not a stall:
+    /// the column has to keep telling the truth about this machine even when the
+    /// other one is unreachable.
+    public static let remoteProbeTimeout: TimeInterval = 5
+
+    /// How often the remote hosts are asked. Far slower than the local poll,
+    /// because each one is a process spawn and an ssh handshake.
+    public static let remotePollInterval: TimeInterval = 20
+
     /// Value of the `kind` field marking a session with a user in front of it.
     /// Present in the files under `~/.claude/sessions/`.
     public static let interactiveSessionKind = "interactive"
