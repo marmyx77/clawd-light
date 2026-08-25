@@ -22,16 +22,16 @@ How to read a record:
 
 ---
 
-## hook.events · eight of the thirty-one, and the reasons for the other twenty-three
+## hook.events · nine of the thirty-one, and the reasons for the other twenty-two
 
 **We assume** `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`,
-`StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop` are delivered to a
-registered command hook.
+`StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop`, `PostToolUse` are
+delivered to a registered command hook.
 
 **Depends at** [HookConfigMerger.swift:21](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L21) ·
 [StateReducer.swift](../Sources/ClawdLightCore/Reducer/StateReducer.swift)
 
-**How verified** — `probe`. Six of the eight recorded live; `Notification` and
+**How verified** — `probe`. Seven of the nine recorded live; `Notification` and
 `StopFailure` need conditions a probe can't force cheaply and stay on recorded
 shapes under unit test. The checker says so instead of passing silently.
 
@@ -68,9 +68,18 @@ them is the difference between **measured** and **read**:
   Read in the binary, never probed — so this group is a hypothesis, and it is
   labelled as one.
 
-`PreToolUse` and `PostToolUse` sit apart: decoded, so they map to `working` if
-they ever arrive, but not registered — they would fire on every tool call and add
-nothing `UserPromptSubmit` and `Stop` do not already bracket.
+`PostToolUse` **is** registered, and it was not always. It costs a spawn per tool
+call, which is why it was left out on the reasoning that it "adds nothing
+`UserPromptSubmit` and `Stop` do not already bracket". That reasoning was wrong in
+one specific way: it is the only registered event that can fire between a mid-turn
+`Notification` and the closing `Stop`, and therefore the only one that can prove a
+permission prompt was answered. Without it an amber row kept flashing for
+thirty-three measured minutes at somebody who had already replied.
+
+`PreToolUse` stays apart: decoded, so it maps to `working` if it ever arrives, but
+not registered. It cannot do that job — it carries `permissionDecision` in its own
+output schema, so it runs *inside* the permission decision and therefore **before**
+the prompt.
 
 **Failure mode** — **silent**. An event that stops firing doesn't error; the row
 just stops moving. This is the assumption the live probe exists for.

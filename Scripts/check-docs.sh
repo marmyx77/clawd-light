@@ -166,6 +166,64 @@ sys.exit(1 if problems else 0)
 PY
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "The contract knows which events we register"
+
+# The one that got away. Everything was committed, 416 tests and 11 checks were
+# green, and two documents still said eight registered events after PostToolUse
+# made nine. Nothing looked, because the contract check verifies the inventory
+# against Claude Code's binary — whether an event EXISTS — and never against what
+# this app actually asks for.
+python3 - <<'EVPY' && ok "the spec's registered list matches HookConfigMerger" || bad "the contract and the code disagree about what is registered"
+import json, re, sys
+
+spec = json.load(open("Contracts/required-fields.json"))["hookEventInventory"]
+source = open("Sources/ClawdLightCore/Setup/HookConfigMerger.swift").read()
+match = re.search(r"defaultEvents = \[(.*?)\n    \]", source, re.S)
+if match is None:
+    print("    could not find defaultEvents in HookConfigMerger.swift", file=sys.stderr)
+    sys.exit(1)
+
+code = set(re.findall(r'"([A-Za-z]+)"', match.group(1)))
+declared = set(spec["registered"])
+problems = []
+for missing in sorted(code - declared):
+    problems.append(f"{missing} is registered by the code and absent from the spec")
+for extra in sorted(declared - code):
+    problems.append(f"{extra} is in the spec's registered list and not in the code")
+
+# And it must not be in two classes at once: the moment an event is registered it
+# stops being "decoded but not registered", and that sentence is somewhere in prose.
+for both in sorted(code & set(spec["decodedButNotRegistered"]["events"])):
+    problems.append(f"{both} is both registered and listed as not registered")
+
+print(f"    {len(code)} events registered by the code", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+EVPY
+
+# Prose is not machine-checkable, but a stale COUNT in a heading is.
+COUNT=$(python3 -c "
+import json;print(len(json.load(open('Contracts/required-fields.json'))['hookEventInventory']['registered']))")
+WORDS="zero one two three four five six seven eight nine ten eleven twelve"
+NAME=$(echo "$WORDS" | cut -d' ' -f$((COUNT+1)))
+# Scoped to the documents that describe the CURRENT state. `docs/07-traps.md` is
+# deliberately excluded: it is a record of what was true when each defect was
+# found, and "the eight events registered at the time" is correct prose there.
+# Rewriting history to satisfy a checker would be a worse failure than the drift
+# this catches.
+STALE=$(grep -lEi "the (two|three|four|five|six|seven|eight|nine|ten) events (clawd-light )?registers?" \
+        docs/02-claude-code.md docs/05-code-map.md README.md \
+        Contracts/assumptions.md 2>/dev/null | while read -r f; do
+    grep -qiE "the $NAME events" "$f" || echo "$f"
+done)
+if [ -z "$STALE" ]; then
+    ok "no document announces a different number of registered events"
+else
+    bad "a document still announces the old count (should be «the $NAME events»):"
+    for f in $STALE; do note "$f"; done
+fi
+
 head_ "Test suites are registered"
 
 # A suite that exists but was never added to the runner is a file nobody executes,

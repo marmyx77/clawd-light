@@ -398,7 +398,7 @@ later.
 
 **Cause — two of them, independent, and both had to go.**
 
-*First:* no in-turn heartbeat. Of the eight registered events, the only ones that
+*First:* no in-turn heartbeat. Of the eight events registered **at the time**, the only ones that
 can fire between a mid-turn `Notification` and the closing `Stop` are the subagent
 pair. `PreToolUse` and `PostToolUse` were decoded but **not registered**, on the
 documented reasoning that they "add nothing `UserPromptSubmit` and `Stop` already

@@ -86,7 +86,8 @@ The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
 ### `HookEventKind.swift`
-The eight events and the five `Notification` subtypes. An unknown event is not an
+The nine registered events, plus two decoded but not registered, and the five
+`Notification` subtypes. An unknown event is not an
 error: it is ignored, so the app doesn't break when Anthropic adds more.
 
 ### `StopFailureReason.swift`

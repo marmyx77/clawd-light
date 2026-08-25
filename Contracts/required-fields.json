@@ -281,13 +281,13 @@
       "StopFailure",
       "Notification",
       "SubagentStart",
-      "SubagentStop"
+      "SubagentStop",
+      "PostToolUse"
     ],
     "decodedButNotRegistered": {
-      "_why": "Mapped to `working` if they ever arrive; registering them would fire the hook on every tool call for no extra information.",
+      "_why": "Mapped to `working` if it ever arrives. Not registered: it would fire on every tool call and cannot release a pending question, because it carries permissionDecision in its own output and therefore runs before the prompt, not after the answer.",
       "events": [
-        "PreToolUse",
-        "PostToolUse"
+        "PreToolUse"
       ]
     },
     "decisionHooks": {

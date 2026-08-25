@@ -54,7 +54,7 @@ re-read `settings.json`: they pick up the new configuration only the next time
 they start. After an `install-hooks`, the sessions in progress carry on with the
 old one — and if you have just added two events, those will never arrive for them.
 
-### The eight events clawd-light registers
+### The nine events clawd-light registers
 
 Claude Code exposes around thirty. These are the ones that move a traffic light:
 
@@ -68,8 +68,16 @@ Claude Code exposes around thirty. These are the ones that move a traffic light:
 | `SessionEnd` | the session terminates | removes the row |
 | `SubagentStart` | a subagent starts | counter +1 |
 | `SubagentStop` | a subagent finishes | counter −1 |
+| `PostToolUse` | a tool call completes | `working`, and it **releases a pending question** |
 
-Two optional ones, behind `--with-tool-events`:
+`PostToolUse` is the only one that costs a spawn per tool call, and it is here for
+one reason: it is the sole registered event that can prove a permission prompt was
+answered. Without it an amber row keeps flashing at somebody who has already
+replied, until the turn ends — measured at thirty-three minutes. `PreToolUse`
+cannot do the same job: it carries `permissionDecision` in its own output, so it
+runs *before* the prompt.
+
+One optional one, behind `--with-tool-events`:
 
 | Event | Cost |
 |---|---|
