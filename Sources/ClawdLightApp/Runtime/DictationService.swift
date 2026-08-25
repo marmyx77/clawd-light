@@ -38,7 +38,7 @@ final class DictationService: ObservableObject {
     private var converter: AVAudioConverter?
 
     /// Text finalised so far. Volatile results are appended to this for display
-    /// but replaced as the recogniser changes its mind, which it does constantly
+    /// but replaced as the recognizer changes its mind, which it does constantly
     /// mid-sentence.
     private var settled = ""
 
@@ -119,7 +119,7 @@ final class DictationService: ObservableObject {
 
             try startCapture(feeding: continuation, format: target)
 
-            // The state goes up BEFORE the analyser is started, and the analyser is
+            // The state goes up BEFORE the analyzer is started, and the analyzer is
             // started in a task rather than awaited.
             //
             // `SpeechAnalyzer.start(inputSequence:)` does not return until the
@@ -163,7 +163,7 @@ final class DictationService: ObservableObject {
         inputBuilder?.finish()
 
         // Finalising is what turns the last volatile guess into a real word. Cutting
-        // the analyser off instead loses the end of the sentence, which is the part
+        // the analyzer off instead loses the end of the sentence, which is the part
         // people notice.
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
         resultsTask?.cancel()
@@ -250,7 +250,7 @@ final class DictationService: ObservableObject {
                     let text = String(result.text.characters)
                     await MainActor.run {
                         guard let self else { return }
-                        // A result is either final — keep it — or the recogniser's
+                        // A result is either final — keep it — or the recognizer's
                         // current guess, which it will replace. Appending both
                         // would repeat every word as it firms up.
                         if result.isFinal {
@@ -269,11 +269,11 @@ final class DictationService: ObservableObject {
         }
     }
 
-    /// Opens the microphone and pushes buffers at the analyser.
+    /// Opens the microphone and pushes buffers at the analyzer.
     ///
     /// The input device's format is whatever the hardware feels like — 48 kHz
-    /// stereo, usually — and the recogniser wants its own. An `AVAudioConverter`
-    /// sits between them, because handing the analyser the wrong format does not
+    /// stereo, usually — and the recognizer wants its own. An `AVAudioConverter`
+    /// sits between them, because handing the analyzer the wrong format does not
     /// error: it transcribes noise.
     private func startCapture(
         feeding continuation: AsyncStream<AnalyzerInput>.Continuation,

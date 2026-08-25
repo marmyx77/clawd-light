@@ -269,7 +269,7 @@ final class SignalServer {
         guard let slot = Int(raw), (1...AppConfig.maxSlots).contains(slot) else {
             return HTTPRequestParser.response(
                 status: 400, reason: "Bad Request",
-                body: "slot must be a number from 1 to \(AppConfig.maxSlots), received: «\(raw)»"
+                body: "slot must be a number from 1 to \(AppConfig.maxSlots), received: “\(raw)”"
             )
         }
 

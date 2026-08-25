@@ -278,7 +278,7 @@ final class PanelController {
         // another machine on purpose.
         if let host = session.workspace.host {
             store.reportError(
-                "«\(session.workspace.name)» runs on \(host) — nothing to raise here."
+                "“\(session.workspace.name)” runs on \(host) — nothing to raise here."
             )
             return
         }
@@ -300,7 +300,7 @@ final class PanelController {
         case .failed(let error):
             store.reportError(error.shortDescription)
             Alerts.warn(
-                title: "Cannot open «\(session.workspace.name)»",
+                title: "Cannot open “\(session.workspace.name)”",
                 message: error.localizedDescription
             )
         }
@@ -340,8 +340,8 @@ final class PanelController {
     /// - Returns: a description of what was raised, or `nil` when the slot holds
     ///   nothing. Empty is an ordinary answer, not a failure: a project can be
     ///   pinned and have no live session at this moment. What must never happen
-    ///   is opening the neighbouring row instead — for a key pressed without
-    ///   looking, that is the worst possible behaviour.
+    ///   is opening the neighboring row instead — for a key pressed without
+    ///   looking, that is the worst possible behavior.
     @discardableResult
     func activateSlot(_ slot: Int) -> String? {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)

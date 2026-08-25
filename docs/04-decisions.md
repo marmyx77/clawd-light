@@ -273,7 +273,7 @@ That is the price of the address being stable, and it is pinned down by a test s
 nobody removes it as a bug.
 
 **Discarded:** a second concept, "slots", separate from pinning. It would have
-avoided touching existing behaviour at the cost of two near-identical lists in the
+avoided touching existing behavior at the cost of two near-identical lists in the
 menu, and this project's rule is that a feature which doesn't answer the question
 doesn't get in.
 
@@ -391,7 +391,7 @@ free.
   in a directory anyone on the machine can try — and answers it with `getpeereid()`
   on the connection, a uid and gid attested by the kernel rather than claimed by
   the caller, with an ACL layer on top. A file dropped in a directory carries no
-  equivalent. So per-writer authorisation here is not a feature that is missing; it
+  equivalent. So per-writer authorization here is not a feature that is missing; it
   is a consequence of choosing a drop directory as the channel, and it could only
   ever be reopened by changing the channel — which the paragraph above explains we
   cannot do, because the reader is not ours to design.
@@ -405,7 +405,7 @@ free.
 
 **What it looks like on the way back.** A delivered message returns wearing a
 `task-notification` origin, the same envelope a background agent gets. The window
-recognises its own by the preamble it puts on outbound messages and draws it as
+recognizes its own by the preamble it puts on outbound messages and draws it as
 the user's own bubble; the VS Code panel cannot, and will show it as a system
 turn. That difference is not fixable and is not worth hiding.
 
@@ -440,7 +440,7 @@ every construct at once and asserts the order.
   turning their asterisks into emphasis would put stress in their mouth they did
   not write, and would eat the characters.
 
-**Anything unrecognised becomes a paragraph** — its own source text, readable —
+**Anything unrecognized becomes a paragraph** — its own source text, readable —
 rather than disappearing. That is the safe direction to be wrong in.
 
 ---
@@ -463,8 +463,6 @@ the list costs one `stat` per row when nothing has moved.
 
 ---
 
----
-
 ## D18 · Dictation is ours, on the device, and it does not press send
 
 **Decided.** A microphone button in the composer, using `SpeechTranscriber` — the
@@ -483,7 +481,7 @@ and have the words be there.
 is a different object from one already delivered, and delivery here starts a turn
 that spends tokens and runs tools.
 
-**Why the language is chosen strictly.** The recogniser transcribes everything as
+**Why the language is chosen strictly.** The recognizer transcribes everything as
 the locale it is given, so handing it English for an Italian speaker does not
 degrade politely — it produces fluent nonsense that nothing downstream can detect.
 The rule is exact language and region, then the same language elsewhere, then
@@ -525,7 +523,7 @@ one is when somebody is looking.
 
 The corollary is what to do with the proxy. The transcript's timestamp is real
 evidence of *when*, and it is used for the clock on the row. It is not evidence of
-*what*, and it is kept away from the colour. Same measurement, two questions, one
+*what*, and it is kept away from the color. Same measurement, two questions, one
 answer each.
 
 **Signal to revisit:** a source that says what a session is doing rather than when
@@ -533,136 +531,6 @@ it last did something. The last record of a transcript is a candidate — a
 `tool_use` means a turn is in flight, an `end_turn` means it is not — and that
 would be measurement rather than inference. It is not built, and it is worth an
 hour with tests rather than ten minutes without.
-
----
-
-# Negative decisions
-
-What was decided **against**. If somebody picks these up again, they have to
-answer first the reason they were excluded.
-
-## N1 · Allowing or denying a permission from the row
-
-The `PermissionRequest` hook exists in binary 2.1.220 and can decide the outcome.
-
-**Why not.** The hook **blocks the turn** until it answers. If clawd-light isn't
-running or has crashed, **every permission request hangs** — a decorative widget
-would become a breaking point for the real work.
-
-And a widget that grants permissions to Claude Code is an attack surface on a
-local endpoint.
-
-**What it would take:** authentication on every route, and a safe default
-behavior if the panel doesn't answer within a short time.
-
-## N2 · A summary when you come back
-
-A single notification on your return, instead of one per event.
-
-**Why not.** When you come back you look at the panel anyway, and the column
-already says everything. To be done **only if** the per-event notifications prove
-noisy — and today they are off, so that evidence doesn't exist yet.
-
-## N3 · JetBrains and the other IDEs
-
-**Why not.** `WindowTitleMatcher` is tuned to VS Code's format
-(`file — folder — profile`); JetBrains uses `project – file`, which is a
-different grammar. Adding an editor that can't be tested doesn't widen coverage:
-it creates a row you can see and a click that doesn't work, which is **worse than
-no row** because it teaches you not to trust it.
-
-Cursor is included because it is a VS Code fork — same lock format, same title
-format — and only three names differ, read from the `Info.plist` rather than
-guessed.
-
-## N4 · The extension's MCP server
-
-The extension exposes an MCP server over WebSocket with twelve tools for
-manipulating the editor.
-
-**Why not.** It would give far more control than a traffic light needs, and it
-would tie the project to an internal interface much wider than a URI handler.
-
-## N5 · `windowId` in the deep links
-
-**Why not.** Routing between windows turned out to be non-deterministic: the link
-lands where the focus is, not where the parameter says.
-
-## N7 · Acting on a running session — the Codex Micro command keys
-
-OpenAI's Codex Micro (July 2026) puts *command keys* on a macropad: accept, reject,
-push-to-talk, branch, new chat — all acting on the agent thread that is currently
-running. The question was whether clawd-light could do the software equivalent.
-
-**Why not.** Every one of those reduces to the same primitive: *send text to that
-specific session*. The channel looked available — the extension's `/open` URI
-handler reads a `prompt` parameter next to `session`. It isn't. The extension
-applies the prompt **only when it creates a new panel**, and refuses otherwise
-with a message written for the user:
-
-> `"Session is already open. Your prompt was not applied — enter it manually."`
-
-The one case where sending text would be useful — a session that is open and
-waiting for you — is exactly the case it refuses. What remains reachable is
-"open a **new** conversation, pre-loaded with a prompt", which starts work rather
-than steering work in flight. That is not the feature.
-
-**What was worth taking anyway.** Two things, both of which needed an address
-rather than a channel — see [D13](#d13--a-keyboard-slot-is-a-pin-not-a-row-number):
-
-- **Agent Keys** → `clawd-light open <n>`, raise the project in slot n.
-- **"Start new chat"**, which is one of their command keys and the only one that
-  survives, because it creates a **new** panel instead of touching a running one
-  → `clawd-light new <n>`.
-
-**And the half-measure that was left out.** The `prompt` parameter does work on a
-new conversation — but following it into the webview shows it ends at
-`setInputText`, which **prefills the composer and does not submit**. A key that
-opens a tab with text you still have to confirm is not a command key, so
-`clawd-light new` sends no prompt. It is recorded in
-`Contracts/assumptions.md` under `extension.newconversation`, because "we already
-checked, and here is how far it goes" is the part that stops the question being
-reopened from scratch.
-
-**The rotary dial, for completeness.** `effort.level` arrives on every `Stop`, and
-`--effort` / `/effort` can set it — but only when a session starts, or by typing
-into it. The dial's whole value is changing it mid-flight, which is the same wall.
-
-**Cost avoided.** The refusal was found by reading the shipped extension, not by
-testing against a live session. Two minutes instead of an intrusion into a working
-desktop — and a firmer answer, because a user-facing string in the code is a rule,
-not an observation that might have been a fluke.
-
-**Signal to revisit.** The refusal disappearing. It is tracked in
-`Contracts/required-fields.json` under `extensionOpportunities`, and
-`check-contract.sh` reports it as an **opening** rather than a breakage — the one
-place where the contract checker watches for good news.
-
-## N6 · A global shortcut inside the app
-
-**Implemented, tested, and removed.**
-
-`RegisterEventHotKey` is the only route without extra permissions for an
-*accessory* app. On macOS 26 it **registers and never delivers**: verified with
-two independent binaries, same recipe, live panel, zero events.
-
-The alternative that does work requires **Input Monitoring** — permission to read
-every key pressed. For a traffic light that is out of proportion.
-
-**But the reason it was removed rather than left switched off is a different
-one:** `register()` returns success, the switch stays on, and nothing happens.
-The app **cannot notice** that it doesn't work, so it cannot say so. It is the
-"fake success" category — the same as `activate()` returning `true` without
-activating, and the script that said "✓ created" after a failed import. A switch
-that can lie is worse than a switch that isn't there.
-
-**In its place**: `clawd-light next` exists and works, and binding a combination
-to that command is what the macOS Shortcuts app is for. It isn't a fallback — it
-is better on three counts: the user picks the combination, the interface says
-whether it is already taken, and when it doesn't work you can see it.
-
-**Signal to revisit:** a system API letting an accessory app register *one*
-combination with verifiable delivery.
 
 ---
 
@@ -777,6 +645,136 @@ an allow-list before reaching ssh — a name starting with a dash would be read 
 defensible and the latency goes away; without one, this decision stands.
 
 ---
+
+# Negative decisions
+
+What was decided **against**. If somebody picks these up again, they have to
+answer first the reason they were excluded.
+
+## N1 · Allowing or denying a permission from the row
+
+The `PermissionRequest` hook exists in binary 2.1.220 and can decide the outcome.
+
+**Why not.** The hook **blocks the turn** until it answers. If clawd-light isn't
+running or has crashed, **every permission request hangs** — a decorative widget
+would become a breaking point for the real work.
+
+And a widget that grants permissions to Claude Code is an attack surface on a
+local endpoint.
+
+**What it would take:** authentication on every route, and a safe default
+behavior if the panel doesn't answer within a short time.
+
+## N2 · A summary when you come back
+
+A single notification on your return, instead of one per event.
+
+**Why not.** When you come back you look at the panel anyway, and the column
+already says everything. To be done **only if** the per-event notifications prove
+noisy — and today they are off, so that evidence doesn't exist yet.
+
+## N3 · JetBrains and the other IDEs
+
+**Why not.** `WindowTitleMatcher` is tuned to VS Code's format
+(`file — folder — profile`); JetBrains uses `project – file`, which is a
+different grammar. Adding an editor that can't be tested doesn't widen coverage:
+it creates a row you can see and a click that doesn't work, which is **worse than
+no row** because it teaches you not to trust it.
+
+Cursor is included because it is a VS Code fork — same lock format, same title
+format — and only three names differ, read from the `Info.plist` rather than
+guessed.
+
+## N4 · The extension's MCP server
+
+The extension exposes an MCP server over WebSocket with twelve tools for
+manipulating the editor.
+
+**Why not.** It would give far more control than a traffic light needs, and it
+would tie the project to an internal interface much wider than a URI handler.
+
+## N5 · `windowId` in the deep links
+
+**Why not.** Routing between windows turned out to be non-deterministic: the link
+lands where the focus is, not where the parameter says.
+
+## N6 · A global shortcut inside the app
+
+**Implemented, tested, and removed.**
+
+`RegisterEventHotKey` is the only route without extra permissions for an
+*accessory* app. On macOS 26 it **registers and never delivers**: verified with
+two independent binaries, same recipe, live panel, zero events.
+
+The alternative that does work requires **Input Monitoring** — permission to read
+every key pressed. For a traffic light that is out of proportion.
+
+**But the reason it was removed rather than left switched off is a different
+one:** `register()` returns success, the switch stays on, and nothing happens.
+The app **cannot notice** that it doesn't work, so it cannot say so. It is the
+"fake success" category — the same as `activate()` returning `true` without
+activating, and the script that said "✓ created" after a failed import. A switch
+that can lie is worse than a switch that isn't there.
+
+**In its place**: `clawd-light next` exists and works, and binding a combination
+to that command is what the macOS Shortcuts app is for. It isn't a fallback — it
+is better on three counts: the user picks the combination, the interface says
+whether it is already taken, and when it doesn't work you can see it.
+
+**Signal to revisit:** a system API letting an accessory app register *one*
+combination with verifiable delivery.
+
+---
+
+## N7 · Acting on a running session — the Codex Micro command keys
+
+OpenAI's Codex Micro (July 2026) puts *command keys* on a macropad: accept, reject,
+push-to-talk, branch, new chat — all acting on the agent thread that is currently
+running. The question was whether clawd-light could do the software equivalent.
+
+**Why not.** Every one of those reduces to the same primitive: *send text to that
+specific session*. The channel looked available — the extension's `/open` URI
+handler reads a `prompt` parameter next to `session`. It isn't. The extension
+applies the prompt **only when it creates a new panel**, and refuses otherwise
+with a message written for the user:
+
+> `"Session is already open. Your prompt was not applied — enter it manually."`
+
+The one case where sending text would be useful — a session that is open and
+waiting for you — is exactly the case it refuses. What remains reachable is
+"open a **new** conversation, pre-loaded with a prompt", which starts work rather
+than steering work in flight. That is not the feature.
+
+**What was worth taking anyway.** Two things, both of which needed an address
+rather than a channel — see [D13](#d13--a-keyboard-slot-is-a-pin-not-a-row-number):
+
+- **Agent Keys** → `clawd-light open <n>`, raise the project in slot n.
+- **"Start new chat"**, which is one of their command keys and the only one that
+  survives, because it creates a **new** panel instead of touching a running one
+  → `clawd-light new <n>`.
+
+**And the half-measure that was left out.** The `prompt` parameter does work on a
+new conversation — but following it into the webview shows it ends at
+`setInputText`, which **prefills the composer and does not submit**. A key that
+opens a tab with text you still have to confirm is not a command key, so
+`clawd-light new` sends no prompt. It is recorded in
+`Contracts/assumptions.md` under `extension.newconversation`, because "we already
+checked, and here is how far it goes" is the part that stops the question being
+reopened from scratch.
+
+**The rotary dial, for completeness.** `effort.level` arrives on every `Stop`, and
+`--effort` / `/effort` can set it — but only when a session starts, or by typing
+into it. The dial's whole value is changing it mid-flight, which is the same wall.
+
+**Cost avoided.** The refusal was found by reading the shipped extension, not by
+testing against a live session. Two minutes instead of an intrusion into a working
+desktop — and a firmer answer, because a user-facing string in the code is a rule,
+not an observation that might have been a fluke.
+
+**Signal to revisit.** The refusal disappearing. It is tracked in
+`Contracts/required-fields.json` under `extensionOpportunities`, and
+`check-contract.sh` reports it as an **opening** rather than a breakage — the one
+place where the contract checker watches for good news.
 
 ## How to add a decision here
 

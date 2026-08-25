@@ -36,7 +36,7 @@
 > conversation" opened two tabs; the server's queue was serial; an expired
 > continuation ran anyway; two installations in the same second failed; the columns
 > of `sessions` didn't line up; and in the signing script: PKCS#12 incompatible
-> with macOS, `«$VAR»` breaking bash, and a `grep -q` under `pipefail` failing
+> with macOS, `“$VAR”` breaking bash, and a `grep -q` under `pipefail` failing
 > intermittently through SIGPIPE.
 
 Eighteen proposals that came out of two multi-agent audits, ordered into six

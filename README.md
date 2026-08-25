@@ -144,7 +144,7 @@ To bind one to a key, using the macOS **Shortcuts** app:
 
 1. Shortcuts → **new shortcut** → the "Run Shell Script" action
 2. paste the full path:
-   `~/Development/clawd-light/dist/ClawdLight.app/Contents/MacOS/clawd-light open 1`
+   `<your-checkout>/dist/ClawdLight.app/Contents/MacOS/clawd-light open 1`
 3. **Details** panel on the right → "Add Keyboard Shortcut"
 
 It is better than having it inside the app on three counts: you pick the
@@ -154,7 +154,7 @@ Karabiner, if you already use them.
 
 #### Slots — one key, always the same project
 
-Right-click a row → **«Pin to top, and bind a slot»**. The project takes the next
+Right-click a row → **“Pin to top, and bind a slot”**. The project takes the next
 free slot, 1 to 9, the number appears next to its name, and `clawd-light open 3`
 raises it from then on.
 
@@ -166,7 +166,7 @@ stay there.
 
 The price, stated plainly: a pinned project that starts waiting for you does not
 jump above the other pinned ones. It lights up, and it is still above everything
-unpinned, but its position is yours to decide — «Move to slot 2» in the same menu.
+unpinned, but its position is yours to decide — “Move to slot 2” in the same menu.
 
 `clawd-light open <n>` answers in three distinct ways, because a key pressed
 blind has to tell them apart:
@@ -177,7 +177,7 @@ blind has to tell them apart:
 | exit 1 | that slot is empty — nothing is bound, or the project has no live session |
 | exit 2 | that isn't a slot number |
 
-It never opens the neighbouring row when a slot is empty. For a key you press
+It never opens the neighboring row when a slot is empty. For a key you press
 without looking, opening the wrong project is the worst thing it could do.
 
 ## The extended view
@@ -252,7 +252,7 @@ the Mac. The first press asks for the microphone and downloads the language mode
 and the button says which of the two it is doing.
 
 If the language you speak has no model, it says so rather than falling back to
-English: the recogniser transcribes everything as the locale it is given, and the
+English: the recognizer transcribes everything as the locale it is given, and the
 wrong one produces fluent nonsense nothing downstream can detect.
 
 macOS also has its own dictation, which works in this box like it does in any text
@@ -262,7 +262,7 @@ in System Settings › Keyboard › Dictation.
 See [D14](docs/04-decisions.md), [D15](docs/04-decisions.md),
 [D18](docs/04-decisions.md) and [Contracts/assumptions.md](Contracts/assumptions.md).
 
-**Suppress phone push notifications while you're at the Mac.****Suppress phone push notifications while you're at the Mac.** Claude Code skips
+**Suppress phone push notifications while you're at the Mac.** Claude Code skips
 the push notifications if the file named by `CLAUDE_CLIENT_PRESENCE_FILE` exists;
 the panel creates it while you're there and deletes it when you lock the screen.
 This one inverts a built-in behavior, and if the detection gets it wrong the
@@ -273,9 +273,38 @@ work:
 export CLAUDE_CLIENT_PRESENCE_FILE="$HOME/.clawd-light/presence"
 ```
 
+## Sessions on other machines
+
+A session running over ssh on an always-on box never showed up: no hook is
+registered there, the hook posts to `127.0.0.1`, the server listens on
+`127.0.0.1`, and a row needs a local editor window to claim its folder — four
+barriers, all by design. The panel is a single-machine tool.
+
+It can now **read** another machine. List hosts in `~/.clawd-light/remotes`, one
+per line, using whatever `ssh` already understands:
+
+```
+# the always-on box
+node          # via the VPN
+```
+
+Every twenty seconds the panel runs a short probe **on** each host over ssh —
+nothing is installed there, nothing is left behind — and the host's live sessions
+join the column, labeled `folder @host`. A host that does not answer keeps the
+rows it had: silence is not death. Clicking a remote row says where the session is
+instead of hunting for a window that is not here; the chat window cannot open a
+remote transcript.
+
+**Off unless asked**: an absent or empty file means the panel makes no outbound
+connections. The port is deliberately *not* opened instead — `POST /signal`
+carries no token, and putting it on a network would be unauthenticated state
+injection. See [D21](docs/04-decisions.md).
+
 ## Installation
 
-You need Xcode's Command Line Tools (`xcode-select --install`). Full Xcode is not
+You need macOS 14 or later — **macOS 26 for dictation**, which uses the on-device
+Speech framework that arrived there — and Xcode's Command Line Tools
+(`xcode-select --install`), which ship the Swift 6.2 toolchain. Full Xcode is not
 required.
 
 ```bash
@@ -353,10 +382,12 @@ POST 127.0.0.1:9877/signal ──────┐   ┌───────┘
                         column of traffic lights
 ```
 
-**The signal.** Claude Code exposes around thirty lifecycle events. Eight are
+**The signal.** Claude Code exposes thirty-one lifecycle events. Nine are
 needed: six at the edges of the turn — `SessionStart`, `UserPromptSubmit`,
-`Notification`, `Stop`, `StopFailure`, `SessionEnd` — plus `SubagentStart` and
-`SubagentStop`. A fifteen-line shell script forwards them to the local server and
+`Notification`, `Stop`, `StopFailure`, `SessionEnd` — plus `SubagentStart`,
+`SubagentStop`, and `PostToolUse`, the one in-turn heartbeat, which is there for
+a single reason: it is the only event that can prove a permission prompt was
+answered. A fifteen-line shell script forwards them to the local server and
 **always exits 0**: a failing hook can interrupt a Claude Code turn, and nobody
 wants their work to stop because a widget wasn't running.
 
@@ -364,9 +395,10 @@ The two subagent events cost in proportion to the **number of agents**, not to
 tool calls: a thirty-three agent workflow is sixty-six requests over three
 quarters of an hour, against the thousands `PreToolUse` would produce.
 
-With `--with-tool-events` you also register `PreToolUse` and `PostToolUse`. They
-make the yellow more responsive mid-turn, at the cost of one process per **single
-tool call** — across several intense sessions you feel it.
+With `--with-tool-events` you also register `PreToolUse`. It makes the yellow
+move on every tool call rather than every completed one, at the cost of one more
+process per **single tool call** — and it cannot release a pending question, since
+it runs *before* the prompt, not after the answer.
 
 **The workspace.** The hook only reports the `cwd`. To work out which window hosts
 it, the app reads the lock files the extension drops in `~/.claude/ide/`, one per
@@ -480,7 +512,7 @@ information and red would be a leftover.
 
 | Event | Before | Now |
 |---|---|---|
-| `StopFailure` | `ready` (green) | `failed`. A turn cut down by a rate limit produced nothing to read: showing it green like a completed turn was the most expensive lie in the column. The only exception is `max_output_tokens`, where the text exists and is merely incomplete |
+| `StopFailure` | `ready` (green) | `failed`. A turn cut short by a rate limit produced nothing to read: showing it green like a completed turn was the most expensive lie in the column. The only exception is `max_output_tokens`, where the text exists and is merely incomplete |
 | `Notification(idle_prompt)` | `ready` (green) | nothing. It is an inactivity timer, not an answer: it invented answers that never arrived. If it does reveal a session the app didn't know about, it creates it as `idle` |
 | `SessionStart(source: compact)` | `idle` (red) | nothing. Auto-compact fires **mid-turn**: treating it as the start of a session cleared the yellow of a working session and sank it to the bottom of the column |
 | `Notification(elicitation_dialog)` | ignored | `awaiting`. An MCP dialog blocks the session as much as a permission request |
@@ -560,9 +592,9 @@ It returns state, project, path, timestamps, subagent counter and **keyboard
 slot** for every session, with the dates in ISO 8601. The slot is in the contract
 because no outside reader could work it out: the column's order is urgency, and
 the slot deliberately isn't. The token lives in `~/.clawd-light/token`
-with mode `0600`, and if it finds them wider the app **regenerates** it instead of
-repairing them: a secret that has been readable by others must be considered
-burned.
+with mode `0600`; if the app finds the permissions any wider it **regenerates** the
+token instead of narrowing them: a secret that has been readable by others must be
+considered burned.
 
 ## When something's wrong
 

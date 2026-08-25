@@ -49,7 +49,7 @@ enum ReducerFixesSuite {
 
         // MARK: StopFailure — a dead turn is not an answer
 
-        TestCase("A turn that was cut down does not go green") { t in
+        TestCase("A turn that was cut short does not go green") { t in
             let state = apply([
                 signal(.userPromptSubmit),
                 signal(.stopFailure, failure: "rate_limit", message: "API Error: Rate limit reached"),
@@ -420,7 +420,7 @@ enum BackgroundTaskSuite {
         // a new way of being busy than a new way of being finished, and the two
         // mistakes do not cost the same: an extra yellow clears on the next clean
         // turn, a missing one is a green that lies.
-        TestCase("An unrecognised status counts as work") { t in
+        TestCase("An unrecognized status counts as work") { t in
             t.expectEqual(inFlight(statuses: ["queued"]), 1, "unknown means busy")
         },
 

@@ -146,8 +146,8 @@ public struct ColumnRendering: Sendable, Equatable {
     ///
     /// Empty is a normal outcome, not an error: a project can be pinned and have
     /// no live session right now. The caller has to say "slot 3 is empty" rather
-    /// than open something else — opening the neighbour would be the worst
-    /// possible behaviour for a key you press without looking.
+    /// than open something else — opening the neighbor would be the worst
+    /// possible behavior for a key you press without looking.
     ///
     /// With grouping off several rows share a slot; the most urgent wins, which
     /// is what `sorted` already put first and what a click on the group does.

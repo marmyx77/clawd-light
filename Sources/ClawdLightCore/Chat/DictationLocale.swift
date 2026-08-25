@@ -2,7 +2,7 @@ import Foundation
 
 /// Which language dictation should listen in.
 ///
-/// Not a detail. The recogniser is handed one locale and transcribes everything as
+/// Not a detail. The recognizer is handed one locale and transcribes everything as
 /// that language, so choosing `en-US` for somebody speaking Italian does not
 /// degrade politely — it produces confident nonsense.
 ///
@@ -17,7 +17,7 @@ public enum DictationLocale {
     /// - Parameters:
     ///   - preferred: the user's languages, most wanted first, as identifiers
     ///     (`Locale.preferredLanguages` gives exactly this).
-    ///   - supported: what the recogniser can do.
+    ///   - supported: what the recognizer can do.
     /// - Returns: the locale to use, or `nil` when none of the user's languages
     ///   is available.
     public static func choose(preferred: [String], supported: [Locale]) -> Locale? {

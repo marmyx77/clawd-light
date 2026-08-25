@@ -105,7 +105,7 @@ struct TrafficLightColumn: View {
         .frame(height: Layout.rowHeight * 0.7)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 6)
-        .help("The «only what's waiting» filter is hiding \(count) sessions that are idle or working.")
+        .help("The “only what's waiting” filter is hiding \(count) sessions that are idle or working.")
     }
 
     /// No sessions seen yet: almost always means the hooks aren't installed.
@@ -127,7 +127,7 @@ struct TrafficLightColumn: View {
         .padding(.horizontal, 6)
         .help(
             filteredOut > 0
-                ? "The «only what's waiting» filter is on and \(filteredOut) sessions are asking for nothing."
+                ? "The “only what's waiting” filter is on and \(filteredOut) sessions are asking for nothing."
                 : "No sessions detected.\nIf Claude Code is running, check that the hooks are installed (right-click menu)."
         )
     }

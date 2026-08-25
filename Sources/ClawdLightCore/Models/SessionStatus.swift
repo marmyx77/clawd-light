@@ -21,7 +21,7 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     /// authentication error. Solid red.
     ///
     /// Kept distinct from `ready` because there something is waiting to be read
-    /// and here nothing is: showing them in the same colour makes "it finished"
+    /// and here nothing is: showing them in the same color makes "it finished"
     /// indistinguishable from "it died halfway".
     case failed
 

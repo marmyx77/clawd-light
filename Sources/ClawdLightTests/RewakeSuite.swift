@@ -34,7 +34,7 @@ enum RewakeScriptSuite {
             t.expect(script.contains(".open"), "the arming marker is not checked")
         },
 
-        // Three defences against a process that outlives everything: it only arms
+        // Three defenses against a process that outlives everything: it only arms
         // for an open window, it gives up, and it stands down for a peer.
         TestCase("It cannot wait for ever, and not in company") { t in
             t.expect(script.contains("MAX_WAIT"), "no upper bound on the wait")
@@ -109,7 +109,7 @@ enum RewakeRegistrationSuite {
 
             t.expect(light?["timeout"] != nil, "the traffic light hook lost its timeout")
             // A timeout here would be a statement about a mechanism we do not
-            // control: harmless until a release starts honouring it and kills
+            // control: harmless until a release starts honoring it and kills
             // every listener three seconds in.
             t.expectNil(listener?["timeout"], "the listener must carry no timeout")
             t.expectEqual(listener?["asyncRewake"] as? Bool, true, "asyncRewake")

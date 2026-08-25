@@ -166,6 +166,51 @@ sys.exit(1 if problems else 0)
 PY
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Figures stated outside the code map"
+
+# The code map was checked; README, 01-architecture and 06-working-here were not,
+# and all three announced 242 domain tests when there were 416. A checker that
+# looks in one place is a checker with one blind spot per other place.
+python3 - <<'FIGPY' && ok "test counts and the longest-file figure agree everywhere they are stated" || bad "a document outside the code map states a stale figure"
+import glob, re, sys
+def lines_of(p):
+    with open(p) as h: return sum(1 for _ in h)
+def cases(target):
+    return sum(open(p).read().count("TestCase(") for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True))
+domain, e2e = cases("ClawdLightTests"), cases("ClawdLightE2E")
+longest = max(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
+total = sum(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
+problems = []
+for f in ["README.md", "docs/01-architecture.md", "docs/06-working-here.md", "docs/05-code-map.md"]:
+    text = open(f).read()
+    for n in set(re.findall(r"(\d+) (?:cases|domain tests)", text)):
+        if int(n) not in (domain, e2e):
+            problems.append(f"{f} says {n} cases; the suites have {domain} and {e2e}")
+    for n in set(re.findall(r"(\d+) end-to-end tests", text)):
+        if int(n) != e2e: problems.append(f"{f} says {n} end-to-end tests, there are {e2e}")
+    for n in re.findall(r"longest today is (\d+)", text):
+        if int(n) != longest: problems.append(f"{f} says the longest file is {n} lines, it is {longest}")
+    for n in re.findall(r"~([\d,]+) lines of Swift", text):
+        n = int(n.replace(",", ""))
+        if abs(n - total) > 300: problems.append(f"{f} says ~{n:,} lines of Swift, the total is {total:,}")
+for p in problems: print(f"    {p}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+FIGPY
+
+head_ "No personal paths or private addresses in tracked files"
+
+# Generic on purpose: the guard must not contain the very strings it guards
+# against. Fixture homes are /Users/dev, /Users/you, /Users/sam, /Users/me and
+# /home/dev; anything else under /Users or /home is somebody's real machine.
+# 100.64.0.0/10 is the range VPN meshes hand out — a real box, not an example.
+LEAKS=$(git ls-files -z | xargs -0 grep -nIE '(/Users/(?!dev|you|sam|me)[a-z]+|/home/(?!dev)[a-z]+|\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|[a-z]+@[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)' 2>/dev/null | grep -v "^Scripts/check-docs.sh" || true)
+if [ -z "$LEAKS" ]; then
+    ok "no real home directory or private VPN address in the tree"
+else
+    bad "a tracked file carries what looks like a real path or address:"
+    echo "$LEAKS" | head -8 | sed 's/^/    /'
+fi
+
 head_ "The contract knows which events we register"
 
 # The one that got away. Everything was committed, 416 tests and 11 checks were
@@ -220,7 +265,7 @@ done)
 if [ -z "$STALE" ]; then
     ok "no document announces a different number of registered events"
 else
-    bad "a document still announces the old count (should be «the $NAME events»):"
+    bad "a document still announces the old count (should be “the $NAME events”):"
     for f in $STALE; do note "$f"; done
 fi
 

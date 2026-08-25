@@ -6,7 +6,7 @@ enum HookConfigMergerSuite {
 
     private static let scriptPath = "/Users/dev/.clawd-light/hook.sh"
 
-    /// A realistic settings.json: it already holds user configuration that the
+    /// A realiztic settings.json: it already holds user configuration that the
     /// installation must not touch.
     private static var existingSettings: [String: Any] {
         [

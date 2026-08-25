@@ -95,7 +95,7 @@ because there is no row to put it on — and it was discarded **in silence**. Af
 restarting the Mac, a VS Code window writes no lock until its Claude panel
 reconnects, so every hook from that window fell into a hole for as long as it took.
 
-**Correction.** The behaviour is unchanged. The log now names the folder nobody
+**Correction.** The behavior is unchanged. The log now names the folder nobody
 claimed. Diagnosing this cost an evening; the next one costs reading a line.
 
 **Lesson.** Discarding is a decision, and a decision that leaves no trace is
@@ -124,7 +124,7 @@ files move at once, and the whole column turns yellow.
 **Correction.** The inference was removed. `idle` is not a guess dressed as a fact;
 it is the absence of information, and the first hook replaces it. The transcript's
 timestamp is kept for the **clock**, where it is evidence, and kept away from the
-**colour**, where it was a guess.
+**color**, where it was a guess.
 
 **Lesson.** A column that is uniformly wrong is worse than one that is uniformly
 cautious: the panel exists to make one session stand out, and if everything is
@@ -362,7 +362,7 @@ questions and both are written by Claude Code.
 **And an assumption retracted.** A test asserted the opposite — *"the kind field
 takes precedence over the entrypoint"* — reasoning that Claude Code writes `kind`
 itself and that beats deducing from a command name. Both halves were true and the
-conclusion was still wrong. Its neighbour justified the bias: *"one row too many
+conclusion was still wrong. Its neighbor justified the bias: *"one row too many
 can be seen and fixed; a missing row stays silent."* That holds for one row. It
 does not hold for two thousand a day. The test now asserts the measured case.
 
@@ -438,7 +438,7 @@ correct and had no exit. And the exit had to be chosen by asking which event
 symmetry with the green case, which is what the first attempt did.
 
 **And a note on the instrument.** This was diagnosed in one log read. The
-per-signal colour-transition log was added three weeks earlier, after a defect
+per-signal color-transition log was added three weeks earlier, after a defect
 that took three evenings to find without it. It has now paid for itself.
 
 ---
@@ -447,14 +447,14 @@ that took three evenings to find without it. It has now paid for itself.
 
 **Symptom.** A recommendation, made confidently, in writing, to a person who was
 about to act on it: *"`TaskCreated`/`TaskCompleted` are pure observation and I
-would take them now — they turn the return to green from «next turn» into
-«immediately»."*
+would take them now — they turn the return to green from “next turn” into
+“immediately”."*
 
 It was wrong in every part.
 
 **Cause.** Comparing this project against another one, the full hook event list
-turned up in the Claude Code binary: thirty-one names, of which this app uses
-eight. Two of them read like the answer to a limitation documented the day
+turned up in the Claude Code binary: thirty-one names, of which this app used
+eight at the time. Two of them read like the answer to a limitation documented the day
 before — that green only returns when the *following* turn ends clean. The names
 were right there in the enum. The reasoning stopped there.
 
@@ -463,7 +463,7 @@ backgrounded `sleep 6`, polled it, and finished:
 
 ```
 PreToolUse Bash | run_in_background = True | sleep 6
-eventi: SessionStart, UserPromptSubmit, PreToolUse ×2, PostToolUse ×2, Stop, SessionEnd
+events: SessionStart, UserPromptSubmit, PreToolUse ×2, PostToolUse ×2, Stop, SessionEnd
 ```
 
 Neither event fired. The emission site says why:
@@ -496,7 +496,7 @@ none of it on whether the change did anything at all. **Diligence about risk is
 not diligence about truth**, and having exercised one is a good way to feel
 finished before exercising the other.
 
-**A third, smaller, from the probe itself.** The first attempt to force a
+**A third lesson, smaller, from the probe itself.** The first attempt to force a
 permission prompt passed `--permission-mode default`. The accepted values are
 `acceptEdits, auto, bypassPermissions, manual, dontAsk, plan`. The flag was
 rejected, the harness sent stderr to `/dev/null`, and the run looked like a clean
@@ -553,7 +553,7 @@ declaring success.
 
 | Event | Before | Now |
 |---|---|---|
-| `StopFailure` | `ready` (green) | `failed`. A turn cut down by a rate limit produced nothing to read. Exception: `max_output_tokens`, where the text exists and is merely incomplete |
+| `StopFailure` | `ready` (green) | `failed`. A turn cut short by a rate limit produced nothing to read. Exception: `max_output_tokens`, where the text exists and is merely incomplete |
 | `Notification(idle_prompt)` | `ready` (green) | nothing. It is an inactivity timer, not an answer: it invented answers that never arrived |
 | `SessionStart(source: compact)` | `idle` (red) | nothing. Compaction fires **mid-turn**: it cleared the yellow of a working session |
 | `Notification(elicitation_dialog)` | ignored | `awaiting`. An MCP dialog blocks as much as a permission request |
@@ -654,9 +654,9 @@ if(e.status!=="running"&&e.status!=="pending")return!1;
 if("isBackgrounded"in e&&e.isBackgrounded===!1)return!1;
 ```
 
-A finished task **never** reaches the list. So the defence guarded a case that
+A finished task **never** reaches the list. So the defense guarded a case that
 cannot happen, and the cost of that guard was dropping `pending` — the one state
-the defence was not thinking about at all.
+the defense was not thinking about at all.
 
 **Correction.** Presence in the list is the signal, because that is what the field
 is documented to mean: *"session is paused waiting for background work to wake
@@ -665,15 +665,15 @@ an unfamiliar one counts as work.
 
 **Lesson.** *An allow-list and a deny-list are not stylistic variants; they encode
 which mistake you can afford.* Two files apart this project makes the opposite
-choice and is right both times: a session id is refused unless recognised, because
+choice and is right both times: a session id is refused unless recognized, because
 an unknown character in a path is the dangerous one; a task status counts unless
-recognised as finished, because an unknown state of work is far more likely to be a
+recognized as finished, because an unknown state of work is far more likely to be a
 new way of being busy. Picking the wrong one is silent in exactly one direction,
 and here that direction was the expensive one.
 
 **And the smaller lesson.** The comment defending the filter was confident,
 specific, and had never been checked against the producer. The evidence took four
-minutes with `strings`. A defence written from reasoning about a dependency, rather
+minutes with `strings`. A defense written from reasoning about a dependency, rather
 than from looking at it, is a guess wearing a comment's clothes.
 
 ---
@@ -705,7 +705,7 @@ error vanished.
 
 **Cause.** The protection from late signals was hooked to `blocksDowngrade`,
 false for `failed`. A late `PostToolUse` — the tail of the turn that had just
-been cut down — downgraded it.
+been cut short — downgraded it.
 
 The reason `failed` wasn't in `blocksDowngrade` was a good one: if the turn
 **resumes**, yellow is the correct information. But a trailing signal is not a
@@ -779,7 +779,7 @@ spot.
 
 ---
 
-## `«$VAR»` breaking bash
+## `“$VAR”` breaking bash
 
 **Symptom.**
 
@@ -787,11 +787,11 @@ spot.
 line 141: NAME�: unbound variable
 ```
 
-**Cause.** In UTF-8 `»` is `0xC2 0xBB`, and bash 5.3 under `C.UTF-8` **swallows
+**Cause.** In UTF-8 `”` is `0xC2 0xBB`, and bash 5.3 under `C.UTF-8` **swallows
 the `0xC2` byte into the variable name**, looking for one that doesn't exist.
 With `set -u` the script dies.
 
-**Correction.** Braces: `«${NAME}»`. All occurrences fixed with
+**Correction.** Braces: `“${NAME}”`. All occurrences fixed with
 `\$[A-Za-z_]\w*(?=[^\x00-\x7F])`.
 
 **The detail that teaches the most.** In `build-app.sh` the faulty line was in the

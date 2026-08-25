@@ -281,12 +281,12 @@ enum CommandLineInterface {
             $0.name.caseInsensitiveCompare(workspaceName) == .orderedSame
         }) else {
             FileHandle.standardError.write(
-                Data("No open workspace named «\(workspaceName)».\n".utf8)
+                Data("No open workspace named “\(workspaceName)”.\n".utf8)
             )
             return 1
         }
 
-        print("Trying to activate «\(workspace.name)» (\(workspace.path))\n")
+        print("Trying to activate “\(workspace.name)” (\(workspace.path))\n")
 
         // The titles are the only handle on the window: printing them makes
         // visible the case where the read returns nothing, which otherwise shows
@@ -456,7 +456,7 @@ enum CommandLineInterface {
             guard !pinned.isEmpty else {
                 print("No slots assigned.")
                 print()
-                print("Right-click a row in the panel → «Pin to top, and bind a slot».")
+                print("Right-click a row in the panel → “Pin to top, and bind a slot”.")
                 print("Pinned projects take slots 1, 2, 3… in the order you pin them,")
                 print("and they keep them: that is what makes a bound key reliable.")
                 return 0
@@ -536,7 +536,7 @@ enum CommandLineInterface {
 
         OPTIONS
           --port N              port of the local server (default \(AppConfig.listenPort))
-          --with-tool-events    also register PreToolUse and PostToolUse. Makes yellow
+          --with-tool-events    also register PreToolUse (PostToolUse is on by default). Makes yellow
                                 more responsive mid-turn, at the cost of one process per
                                 single tool call.
           --skip-setup-prompt   don't offer to install the hooks at startup.

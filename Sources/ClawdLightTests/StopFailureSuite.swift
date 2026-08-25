@@ -18,7 +18,7 @@ enum StopFailureReasonSuite {
             for reason in StopFailureReason.allCases {
                 let label = reason.shortLabel
                 t.expect(!label.isEmpty, "\(reason.rawValue) has no label")
-                t.expect(label.count <= 12, "«\(label)» too long for the row (\(label.count))")
+                t.expect(label.count <= 12, "“\(label)” too long for the row (\(label.count))")
             }
         },
 
@@ -69,7 +69,7 @@ enum CompactDurationSuite {
         TestCase("The label stays short at any duration") { t in
             for seconds in [0, 59, 60, 3599, 3600, 86_400, 999_999] {
                 let label = CompactDuration.label(seconds: TimeInterval(seconds))
-                t.expect(label.count <= 6, "«\(label)» too long for \(seconds)s")
+                t.expect(label.count <= 6, "“\(label)” too long for \(seconds)s")
             }
         },
     ])

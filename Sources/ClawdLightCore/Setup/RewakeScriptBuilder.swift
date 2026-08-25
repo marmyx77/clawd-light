@@ -12,7 +12,7 @@ import Foundation
 /// So the two halves of "send a message" are one act: **stdout is the message,
 /// exit 2 is the send.**
 ///
-/// # What it costs, and the three defences
+/// # What it costs, and the three defenses
 ///
 /// This is a blocking process that survives the CLI, one per session being
 /// chatted with. Left alone that is a leak, so:

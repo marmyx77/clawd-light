@@ -33,7 +33,7 @@ enum AppleScriptEscapeSuite {
         },
 
         TestCase("A title with typographic characters only is left alone") { t in
-            let title = "«quotes» and… ellipses — dashes"
+            let title = "“quotes” and… ellipses — dashes"
             t.expectEqual(AppleScriptString.escaped(title), title)
         },
 

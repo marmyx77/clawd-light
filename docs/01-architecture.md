@@ -117,11 +117,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-242 cases, instantaneous. They verify Core.
+416 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
-66 cases. They launch **the production binary** against a fake home and talk to
+75 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -138,7 +138,7 @@ Five states, ordered by urgency — the order in which they appear in the column
 |---|---|---|---|
 | 0 | `awaiting` | blocks the work: a permission or an MCP dialog | blinking amber |
 | 1 | `ready` | there is an answer to read | green |
-| 2 | `failed` | turn cut down, nothing to read | solid red |
+| 2 | `failed` | turn cut short, nothing to read | solid red |
 | 3 | `working` | processing | yellow |
 | 4 | `idle` | at rest | dim red |
 

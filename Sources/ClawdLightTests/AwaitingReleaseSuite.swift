@@ -106,7 +106,7 @@ enum AwaitingReleaseSuite {
             )
         },
 
-        TestCase("A cut-down turn still resists one too") { t in
+        TestCase("A cut-short turn still resists one too") { t in
             let state = [
                 signal(.userPromptSubmit),
                 HookSignal(

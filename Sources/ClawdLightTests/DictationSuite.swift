@@ -4,7 +4,7 @@ import TestKit
 
 /// Choosing the language dictation listens in.
 ///
-/// Not a detail: the recogniser transcribes everything as the locale it was given,
+/// Not a detail: the recognizer transcribes everything as the locale it was given,
 /// so the wrong choice does not degrade politely — it produces confident nonsense.
 enum DictationLocaleSuite {
 

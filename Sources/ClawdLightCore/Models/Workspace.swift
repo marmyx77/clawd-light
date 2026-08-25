@@ -25,7 +25,7 @@ public struct Workspace: Sendable, Equatable, Hashable {
 
     /// `true` when the folder is on another machine.
     ///
-    /// What it gates is behaviour, not just looks: there is no local window to
+    /// What it gates is behavior, not just looks: there is no local window to
     /// bring to the front, and no local transcript to open.
     public var isRemote: Bool { host != nil }
 

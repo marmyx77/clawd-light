@@ -122,7 +122,7 @@ public enum AppConfig {
     }
 
     /// File holding the token for the read endpoint.
-    /// Mode `0600`: its contents authorise reading workspace names.
+    /// Mode `0600`: its contents authorize reading workspace names.
     public static var tokenURL: URL {
         supportDirectory.appendingPathComponent("token")
     }

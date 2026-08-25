@@ -79,7 +79,7 @@ SIGNING_IDENTITY="clawd-light Local Signing"
 SIGNED_STABLY=0
 
 if security find-certificate -c "$SIGNING_IDENTITY" >/dev/null 2>&1; then
-    echo "▸ Signing with the stable identity «${SIGNING_IDENTITY}»…"
+    echo "▸ Signing with the stable identity “${SIGNING_IDENTITY}”…"
 
     # The signing has to be attempted with a deadline. If the private key isn't
     # authorized for codesign, the command doesn't fail: it hangs waiting for a
@@ -98,7 +98,7 @@ if security find-certificate -c "$SIGNING_IDENTITY" >/dev/null 2>&1; then
         kill "$SIGN_PID" 2>/dev/null || true
         echo "  ⏳ codesign was left waiting on a dialog: falling back to ad-hoc."
         echo "     Look for the macOS window asking for access to the key and"
-        echo "     press «Always Allow», then rebuild."
+        echo "     press “Always Allow”, then rebuild."
     elif wait "$SIGN_PID"; then
         SIGNED_STABLY=1
     else

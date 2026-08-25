@@ -107,7 +107,7 @@ final class StateStore: ObservableObject {
         // goes green — with nothing anywhere saying why. From the outside it looks
         // exactly like the traffic light being broken.
         //
-        // Nothing changes about the behaviour. What changes is that the log now
+        // Nothing changes about the behavior. What changes is that the log now
         // names the workspace nobody claimed, so the next hour of this goes into
         // reading one line instead of bisecting the app.
         if workspace == nil {
@@ -122,7 +122,7 @@ final class StateStore: ObservableObject {
         apply(.signal(signal, workspace: workspace), now: now)
         let after = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
 
-        // Every signal, and what it did to the colour.
+        // Every signal, and what it did to the color.
         //
         // This is the instrument the project spent three separate evenings without.
         // "The light is wrong" could only be answered by reasoning about which of
@@ -131,7 +131,7 @@ final class StateStore: ObservableObject {
         // reading.
         //
         // It names the **transition**, not the payload: the question is always
-        // "what turned it that colour", never "what were the bytes".
+        // "what turned it that color", never "what were the bytes".
         let subagent = signal.isFromSubagent ? " [subagent]" : ""
         let source = signal.sessionSource.map { " source=\($0)" } ?? ""
         let kind = signal.notificationKind.map { "/\($0.rawValue)" } ?? ""

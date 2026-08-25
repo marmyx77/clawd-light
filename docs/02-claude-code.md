@@ -81,8 +81,7 @@ One optional one, behind `--with-tool-events`:
 
 | Event | Cost |
 |---|---|
-| `PreToolUse` | **one process per tool call** |
-| `PostToolUse` | same |
+| `PreToolUse` | **one more process per tool call**, and it cannot release a pending question |
 
 They make the yellow more responsive mid-turn. Across several intense sessions
 you feel it. By contrast, `SubagentStart`/`Stop` cost in proportion to the

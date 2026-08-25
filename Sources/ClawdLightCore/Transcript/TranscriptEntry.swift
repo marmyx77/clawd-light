@@ -6,7 +6,7 @@ import Foundation
 /// assistant record can hold an answer *and* six tool calls, which read as two
 /// different things on screen; and the overwhelming majority of `user` records
 /// are tool results that no human ever typed. This type is what survives that
-/// translation — the part a person would recognise as conversation.
+/// translation — the part a person would recognize as conversation.
 public struct TranscriptEntry: Sendable, Equatable, Identifiable {
 
     /// What the entry is, which is also how it is drawn.
@@ -19,7 +19,7 @@ public struct TranscriptEntry: Sendable, Equatable, Identifiable {
         /// them out makes a long working turn look like silence.
         case activity
         /// A boundary or a system fact: context compacted, a background task
-        /// reporting in. Drawn small and centred, never as a bubble.
+        /// reporting in. Drawn small and centered, never as a bubble.
         case note
     }
 

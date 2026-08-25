@@ -66,7 +66,7 @@ enum SelfTest {
         print("\nVS Code windows with Claude Code active: \(fresh.count)")
 
         if let workspace = WorkspaceResolver.resolve(cwd: cwd, in: windows, at: Date()) {
-            print("✓ \(cwd)\n  → workspace «\(workspace.name)»")
+            print("✓ \(cwd)\n  → workspace “\(workspace.name)”")
         } else {
             print("✗ no VS Code window contains \(cwd)")
             print("  (normal if you are running the command from an external terminal)")

@@ -40,7 +40,7 @@ enum FocusError: LocalizedError, Equatable {
             System Settings › Privacy & Security › Accessibility → \
             add clawd-light and turn the switch on.
 
-            If the app is already listed, remove it with «−» and add it back: after \
+            If the app is already listed, remove it with “−” and add it back: after \
             every rebuild the signature changes and macOS treats it as a different app.
             """
         case .automationDenied:
@@ -48,18 +48,18 @@ enum FocusError: LocalizedError, Equatable {
             The Automation permission is missing.
 
             System Settings › Privacy & Security › Automation → \
-            clawd-light → enable «System Events».
+            clawd-light → enable “System Events”.
 
             This is a different permission from Accessibility: both are required.
             """
         case .vsCodeNotRunning:
             return "Visual Studio Code is not running."
         case .windowNotFound(let name):
-            return "No editor window for «\(name)»."
+            return "No editor window for “\(name)”."
         case .noWindowsVisible(let name):
             return """
             The editor is running but accessibility can't see any of its windows, \
-            so the one for «\(name)» cannot be raised.
+            so the one for “\(name)” cannot be raised.
 
             This happens with a locked screen: macOS restricts access to other \
             applications' windows. If the screen is unlocked, remove and re-add \
@@ -78,7 +78,7 @@ enum FocusError: LocalizedError, Equatable {
         case .accessibilityDenied: return "Accessibility permission missing"
         case .automationDenied: return "Automation permission missing"
         case .vsCodeNotRunning: return "VS Code not running"
-        case .windowNotFound(let name): return "no window for «\(name)»"
+        case .windowNotFound(let name): return "no window for “\(name)”"
         case .noWindowsVisible: return "accessibility sees no windows"
         case .scriptFailed(let reason): return "AppleScript failed: \(reason)"
         case .activationFailed(let reason): return "activation failed: \(reason)"
@@ -228,7 +228,7 @@ enum VSCodeFocuser {
         // Swift — verifiable without opening anything — and all AppleScript
         // receives is the name to look for.
         let chosen = titles[index]
-        Diagnostics.log("window chosen out of \(titles.count): «\(chosen)»")
+        Diagnostics.log("window chosen out of \(titles.count): “\(chosen)”")
 
         let script = """
         tell application "System Events"

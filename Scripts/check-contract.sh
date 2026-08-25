@@ -58,7 +58,10 @@ head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "Claude Code"
 
-INSTALLED="$(claude --version 2>/dev/null | awk '{print $1}')"
+# `command -v` first: under `set -euo pipefail` a missing binary would kill the
+# script with exit 127 right here, before the "claude not found" branch below
+# ever ran. Found by a reviewer reading the script as a stranger would.
+INSTALLED="$( (command -v claude >/dev/null 2>&1 && claude --version 2>/dev/null | awk '{print $1}') || true )"
 EXPECTED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["verifiedAgainst"])' "$SPEC")"
 
 if [ -z "$INSTALLED" ]; then
@@ -400,9 +403,11 @@ PY
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "VS Code extension"
 
-EXT="$(ls -d "$HOME"/.vscode/extensions/anthropic.claude-code-* 2>/dev/null | tail -1 || true)"
+# VS Code and Cursor keep their extensions in different folders; a machine with
+# neither is not a broken contract, it is one this check cannot see. Say so.
+EXT="$(ls -d "$HOME"/.vscode/extensions/anthropic.claude-code-* "$HOME"/.cursor/extensions/anthropic.claude-code-* 2>/dev/null | tail -1 || true)"
 if [ -z "$EXT" ] || [ ! -f "$EXT/extension.js" ]; then
-    bad "extension bundle not found under ~/.vscode/extensions/"
+    note "skipped — no Claude Code extension bundle under ~/.vscode or ~/.cursor; the deep-link contract is unverified here"
 else
     python3 - "$SPEC" "$EXT/extension.js" <<'PY' && ok "the /open URI handler still reads session and prompt" || bad "the deep link contract moved"
 import json, sys

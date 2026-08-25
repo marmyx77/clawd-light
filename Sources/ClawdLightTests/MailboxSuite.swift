@@ -8,7 +8,7 @@ enum MailboxSuite {
     static let suite = TestSuite("Mailbox", [
 
         // A session id arrives from Claude Code and from HTTP requests, and it is
-        // about to be concatenated into a filename. This is the whole defence.
+        // about to be concatenated into a filename. This is the whole defense.
         TestCase("A session id that is not one is refused") { t in
             let hostile = [
                 "../../../etc/passwd",

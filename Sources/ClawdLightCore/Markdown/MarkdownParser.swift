@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Deliberately **not** a general markdown implementation. It handles what Claude
 /// actually writes — headings, paragraphs, lists, fenced code, quotes, rules and
-/// pipe tables — and treats anything it does not recognise as a paragraph. That is
+/// pipe tables — and treats anything it does not recognize as a paragraph. That is
 /// the safe direction to be wrong in: an unhandled construct comes out as its own
 /// source text, which is readable, rather than disappearing.
 ///
@@ -59,7 +59,7 @@ public enum MarkdownParser {
                 continue
             }
 
-            // A table is recognised by its **second** line: a row of dashes between
+            // A table is recognized by its **second** line: a row of dashes between
             // pipes. Without that check every line containing a pipe — a shell
             // pipeline in prose, most often — would start a table.
             if trimmed.contains("|"), index + 1 < lines.count,

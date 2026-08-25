@@ -451,7 +451,7 @@ fix. A regression test that doesn't fail on the bug is worth nothing.
 
 `shouldKeep` protects green from trailing signals that arrived out of order, but
 the protection was hooked to `blocksDowngrade`, which is false for `failed`. A
-late `PostToolUse` — the tail of the turn that had just been cut down — downgraded
+late `PostToolUse` — the tail of the turn that had just been cut short — downgraded
 a failed session to "working" **and erased the cause of the error**.
 
 The reason `failed` wasn't in `blocksDowngrade` was a good one: if the turn really
@@ -630,8 +630,8 @@ success. If it didn't work, it says so and exits 1.
 
 ### Then three more came out of the same script
 
-**A typographic character that breaks bash.** `«$NAME»` — the guillemet
-immediately after the variable name. In UTF-8 `»` is `0xC2 0xBB`, and bash 5.3
+**A typographic character that breaks bash.** `“$NAME”` — the guillemet
+immediately after the variable name. In UTF-8 `”` is `0xC2 0xBB`, and bash 5.3
 under `C.UTF-8` swallows the `0xC2` byte into the name, looking for a variable
 `NAME\xC2` that doesn't exist. With `set -u` the script dies:
 
@@ -639,7 +639,7 @@ under `C.UTF-8` swallows the `0xC2` byte into the name, looking for a variable
 line 141: NAME�: unbound variable
 ```
 
-Reproduced in isolation to be sure, and fixed with braces: `«${NAME}»`. All six
+Reproduced in isolation to be sure, and fixed with braces: `“${NAME}”`. All six
 occurrences across the two scripts were fixed, not just the two that had exploded
 — the search is `\$[A-Za-z_]\w*(?=[^\x00-\x7F])`, that is, "a variable followed by
 a non-ASCII byte".

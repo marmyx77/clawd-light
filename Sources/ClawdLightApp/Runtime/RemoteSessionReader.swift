@@ -7,7 +7,7 @@ import Foundation
 /// node and let it post here — needs `POST /signal` open on the network, and that
 /// endpoint carries no token: it would put unauthenticated state injection on the
 /// tailnet. Reading needs nothing open, no token to distribute, and no new
-/// surface. The cost is that colour changes arrive on the next poll instead of
+/// surface. The cost is that color changes arrive on the next poll instead of
 /// instantly, which for a machine you are not looking at is the right trade.
 ///
 /// It also matches what the distributed-brain plan already says out loud:

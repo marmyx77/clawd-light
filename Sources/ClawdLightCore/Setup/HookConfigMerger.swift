@@ -57,7 +57,7 @@ public enum HookConfigMerger {
     /// - Parameter rewakeScriptPath: when given, a **second** `Stop` hook is
     ///   registered for the chat window's message delivery. It is separate from
     ///   the traffic light hook on purpose: that one must return in milliseconds,
-    ///   this one waits for minutes, and putting both behaviours in one script
+    ///   this one waits for minutes, and putting both behaviors in one script
     ///   would mean the traffic light inherits the waiting.
     /// - Parameter registerMessageDelivery: whether the listener should end up
     ///   registered. It is **always** removed first regardless, which is what makes
@@ -175,7 +175,7 @@ public enum HookConfigMerger {
     /// Deliberately carries **no `timeout`**. `asyncRewake` puts the hook on a
     /// detached path that never registers one, and adding the key would be a
     /// statement about a mechanism we do not control — the sort of thing that
-    /// looks harmless until a release starts honouring it and every listener is
+    /// looks harmless until a release starts honoring it and every listener is
     /// killed three seconds in.
     private static func rewakeGroup(scriptPath: String) -> [String: Any] {
         [

@@ -251,7 +251,7 @@ public enum StateReducer {
             return signal.inFlightBackgroundTasks > 0 ? .working : .ready
 
         case .stopFailure:
-            // A turn that was cut down produced nothing to read: showing it green
+            // A turn that was cut short produced nothing to read: showing it green
             // like a completed turn is the most expensive lie in the column. The
             // one exception is truncation at maximum length, where the text exists
             // and is merely incomplete.
@@ -332,7 +332,7 @@ public enum StateReducer {
         // That flag answers the question "does this state survive a restart?", and
         // for `failed` the answer is no: if the turn really does resume, yellow is
         // the correct information and red is a leftover. But a late `PostToolUse`
-        // **is not a restart** — it is the tail of the turn that just got cut down,
+        // **is not a restart** — it is the tail of the turn that just got cut short,
         // the same phenomenon this rule exists to neutralize on `ready`. Without
         // this addition, a trailing signal erased the cause of the error and
         // painted a session yellow when it wasn't working at all.

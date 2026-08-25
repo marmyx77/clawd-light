@@ -36,13 +36,13 @@ enum RelativeTimeSuite {
             t.expectEqual(label(date(29, 16, 10), now: date(29, 16, 10)), "16:10")
         },
 
-        TestCase("The previous day is «yesterday»") { t in
+        TestCase("The previous day is “yesterday”") { t in
             t.expectEqual(label(date(28, 22, 30), now: date(29, 10, 0)), "yesterday")
         },
 
         // The case an hours-based difference would get wrong: forty minutes pass
         // between the two moments, but the day has changed.
-        TestCase("«Yesterday» follows the calendar, not the elapsed hours") { t in
+        TestCase("“Yesterday” follows the calendar, not the elapsed hours") { t in
             t.expectEqual(label(date(28, 23, 50), now: date(29, 0, 30)), "yesterday")
         },
 

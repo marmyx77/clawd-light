@@ -66,7 +66,7 @@ public enum Mailbox {
     /// it speaks in the user's voice, with their tools and their permissions.
     /// That is a sharper capability than anything else this app exposes, and the
     /// HTTP server already demands a token for the far milder act of raising a
-    /// window, on the reasoning that it "raises windows, it doesn't just colour
+    /// window, on the reasoning that it "raises windows, it doesn't just color
     /// dots".
     ///
     /// Filesystem permissions are the whole guard here, so they had better be the

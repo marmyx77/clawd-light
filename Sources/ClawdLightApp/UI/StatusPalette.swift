@@ -90,7 +90,7 @@ enum Layout {
 
     static let compactWidth: CGFloat = 35
     /// Wide enough for a readable workspace name plus the timestamp.
-    /// Long but common names ("docs-site") fit almost entirely:
+    /// Long but common names ("internal-admin-console") fit almost entirely:
     /// below this threshold, middle truncation makes them indistinguishable.
     static let expandedWidth: CGFloat = 240
 

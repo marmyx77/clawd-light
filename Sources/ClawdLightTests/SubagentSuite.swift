@@ -161,7 +161,7 @@ enum SubagentSuite {
                 ),
                 signal(.postToolUse),
             ])
-            // The `PostToolUse` is the tail of the turn that was just cut down,
+            // The `PostToolUse` is the tail of the turn that was just cut short,
             // not a restart: taking it at face value painted a session yellow
             // when it wasn't working at all, and erased the reason it stopped.
             t.expectEqual(state.sessions["s1"]?.status, .failed, "status")

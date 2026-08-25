@@ -1,6 +1,6 @@
 # Code map
 
-~17,500 lines of Swift across five targets. For each file: what it contains, why
+~18,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
@@ -86,7 +86,7 @@ The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
 ### `HookEventKind.swift`
-The nine registered events, plus two decoded but not registered, and the five
+The nine registered events, plus one decoded but not registered (`PreToolUse`), and the five
 `Notification` subtypes. An unknown event is not an
 error: it is ignored, so the app doesn't break when Anthropic adds more.
 
@@ -130,7 +130,7 @@ thing: one assistant record holds an answer *and* six tool calls.
 
 ### `TranscriptDecoder.swift` · 257
 Record → entries. The point where a second stream of external data enters the
-domain, and it fails **quietly**: an unrecognised record yields nothing rather
+domain, and it fails **quietly**: an unrecognized record yields nothing rather
 than an error, because Claude Code adds record types between releases.
 
 > **Read the comment on `isHuman` before touching it.** A record of type `user` is
@@ -179,6 +179,14 @@ sent, what may become a filename, `ensureDirectory` — which `lstat`s the path 
 refuses anything that is not a real directory of ours — and `MailboxReaper`, the
 rule for what survives a restart.
 
+> **The permissions are not decoration.** Dropping a file in the mailbox starts a
+> turn that speaks in the user's voice with their tools. `0700`/`0600`, like the
+> access token. They stop another account on the machine and stop nothing running
+> as the user — which is stated in the doc comment rather than glossed.
+
+> **`isValidSessionId` is an allow-list**, because the value is about to be
+> concatenated into a path. A deny-list here is how you get a traversal.
+
 > **`MailboxReaper` is in Core because it is a decision.** The first version of
 > that rule lived in the shell, where no test could see it, and it deleted
 > undelivered messages on every launch: something the user dictated, that the
@@ -188,24 +196,16 @@ rule for what survives a restart.
 ### `DictationLocale.swift`
 Which language to listen in, and what the microphone button is able to do.
 
-> **`choose` returns `nil` rather than falling back to English.** The recogniser
+> **`choose` returns `nil` rather than falling back to English.** The recognizer
 > transcribes everything as the locale it is given, so the wrong one produces
 > fluent nonsense that nothing downstream can detect. Silence is the honest
 > failure; there is a test named for it.
-
-> **The permissions are not decoration.** Dropping a file in the mailbox starts a
-> turn that speaks in the user's voice with their tools. `0700`/`0600`, like the
-> access token. They stop another account on the machine and stop nothing running
-> as the user — which is stated in the doc comment rather than glossed.
-
-> **`isValidSessionId` is an allow-list**, because the value is about to be
-> concatenated into a path. A deny-list here is how you get a traversal.
 
 ## `Markdown/`
 
 ### `MarkdownBlock.swift` · `MarkdownParser.swift` · 240
 Splitting an answer into blocks. Deliberately not a general markdown
-implementation: what Claude writes, and anything unrecognised becomes a paragraph
+implementation: what Claude writes, and anything unrecognized becomes a paragraph
 — its own source text, readable — rather than disappearing.
 
 > **Fences are parsed first and greedily.** A `# comment` inside a shell snippet
@@ -272,7 +272,7 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 > opposite obligations: the traffic light hook must return in milliseconds or it
 > delays every turn, and this one waits for minutes.
 
-> **Three defences against a process that outlives everything**: it arms only when
+> **Three defenses against a process that outlives everything**: it arms only when
 > a conversation is selected, it gives up after thirty minutes, and a pid file
 > stands a second listener down. Every path out is `exit 0` except the deliberate
 > `exit 2` — a failing hook can interrupt a Claude Code turn.
@@ -341,6 +341,14 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 | `LiveSessionReader.swift` | 90 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `Diagnostics.swift` | | file log, active only with `CLAWD_LIGHT_DEBUG` |
 
+> **`DictationService`** — the ordering in `start()` is load-bearing and
+> commented at length. `SpeechAnalyzer.start(inputSequence:)` is the pump, not the
+> ignition: it does not return until the audio ends. Awaiting it left the state
+> down, the button idle, `stop()` refusing to act and the **microphone open with
+> no way back short of quitting**. Every exit path releases the input device
+> first and unconditionally, for that reason.
+
+
 > **`SessionNotifier`**: the `announced` memory has to be updated **even with the
 > feature off**, or flipping the switch with ten blocked sessions fires ten
 > alerts at once.
@@ -352,7 +360,7 @@ Seven routes. A **concurrent** queue: with a serial one, a `/next` waiting on th
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
-method, authentication, validation and the three answers are written once. Both
+method, authentication, validation and the three answers are written once. All three
 carry the slot in the **body**, not the path — a router that has to interpret path
 segments is a router with a parsing bug waiting in it, and this parser is
 deliberately not a general-purpose one.
@@ -369,13 +377,6 @@ The most delicate file. Two strategies, three explicit outcomes.
 > corresponds to a defect that cost hours: null `stringValue` on lists,
 > `activate()` lying, `open` with a path that creates new windows, the index that
 > expires.
-
-> **`DictationService`** — the ordering in `start()` is load-bearing and
-> commented at length. `SpeechAnalyzer.start(inputSequence:)` is the pump, not the
-> ignition: it does not return until the audio ends. Awaiting it left the state
-> down, the button idle, `stop()` refusing to act and the **microphone open with
-> no way back short of quitting**. Every exit path releases the input device
-> first and unconditionally, for that reason.
 
 ## `Setup/`
 
@@ -435,7 +436,7 @@ script, before it was split. The most important ones:
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |
-| `DeliveredMessageSuite` | recognising our own messages on the way back |
+| `DeliveredMessageSuite` | recognizing our own messages on the way back |
 | `TranscriptDecoderSuite` | who spoke — including the 579-against-209 case |
 | `TranscriptTailSuite` | the half-written line, split across up to three chunks |
 | `TranscriptLocatorSuite` | the naming rule, accents included |

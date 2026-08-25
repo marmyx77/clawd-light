@@ -143,7 +143,7 @@ final class ChatSession: ObservableObject {
             .trimmed(to: AppConfig.chatHistoryLimit)
 
         // An empty window has two very different causes — the file wasn't there,
-        // or it was there and nothing in it was recognised — and they look
+        // or it was there and nothing in it was recognized — and they look
         // identical on screen. This is the line that tells them apart.
         Diagnostics.log("""
         chat \(sessionId): \(entries.count) entries from \(reader.path) \

@@ -4,7 +4,7 @@ clawd-light depends on things nobody promised. This file names every one of them
 says **where the code leans on it** and **what breaks when it goes away**.
 
 It exists so that "Claude Code updated and something is off" becomes a ten-minute
-repair instead of a rediscovery. `Scripts/check-contract.sh` mechanises the part
+repair instead of a rediscovery. `Scripts/check-contract.sh` mechanizes the part
 that can be mechanised; this file carries the part that can't — the *why*, and the
 arrow back into the code.
 
@@ -42,7 +42,7 @@ falls into, is in `required-fields.json` under `hookEventInventory`, and
 register disappearing is a failure, a new event appearing is a note asking for it
 to be classified. Before that, neither would have been reported by anything.
 
-The twenty-three we do not use fall into three groups, and the difference between
+The twenty-two we do not use fall into three groups, and the difference between
 them is the difference between **measured** and **read**:
 
 - **Decision hooks** — `PermissionRequest`, `PermissionDenied`, `Elicitation`,
@@ -66,7 +66,7 @@ them is the difference between **measured** and **read**:
   `WorktreeCreate`, `WorktreeRemove`, `InstructionsLoaded`, `CwdChanged`,
   `FileChanged`, `DirectoryAdded`, `MessageDisplay`. Workspace and editor facts.
   Read in the binary, never probed — so this group is a hypothesis, and it is
-  labelled as one.
+  labeled as one.
 
 `PostToolUse` **is** registered, and it was not always. It costs a spawn per tool
 call, which is why it was left out on the reasoning that it "adds nothing
@@ -320,7 +320,7 @@ not a command key, which is why `clawd-light new` sends no prompt at all.
 
 **Failure mode** — none in the direction that matters. If a future version started
 *submitting* the prompt, an unchanged clawd-light would keep opening empty
-conversations, which is the same behaviour it has today.
+conversations, which is the same behavior it has today.
 
 ---
 
@@ -371,7 +371,7 @@ hook can tell *"session is done"* from *"session is paused waiting for backgroun
 work to wake it"*, and is *"empty when nothing is in flight"*. **Presence in the
 list is therefore the signal**, not the status word. A `Stop` carrying any entry
 leaves the row **working**; the decoder still drops the three terminal statuses, as
-the one defence that stays useful if the upstream filter ever loosens.
+the one defense that stays useful if the upstream filter ever loosens.
 
 Green returns on its own: the work finishes, wakes the session, and that turn ends
 with an empty list — so there is no counter to get stuck, which the subagent design
@@ -569,16 +569,6 @@ too many but a notification **lost**, and lost notifications go unnoticed.
 
 ---
 
-# When one of these breaks
-
-1. Run `./Scripts/check-contract.sh --live`. It names the record.
-2. Read the record here: it says where the code leans and what the symptom is.
-3. Fix the code, then **re-record**: `./Scripts/check-contract.sh --record`.
-4. Update the record: `verifiedAgainst`, and what you learned.
-
-A legitimate Claude Code change will show up as a failure until somebody blesses
-it. That is not a defect of the method — it is the method.
-
 ## remote.sessions · another machine reports its own live sessions
 
 **We assume** a machine reachable over `ssh` has `python3`, keeps session files at
@@ -593,7 +583,7 @@ rule.
 live sessions came back with exactly the fields the decoder reads:
 
 ```json
-{"pid":1838232,"sessionId":"…","cwd":"/home/dev/.notes",
+{"pid":24601,"sessionId":"…","cwd":"/home/dev/.notes",
  "entrypoint":"cli","name":"notes-32","kind":"interactive","activityEpoch":1787223193}
 ```
 
@@ -619,6 +609,16 @@ status` prints each host and its count for exactly this reason.
 the chat window says so rather than opening empty.
 
 ---
+
+# When one of these breaks
+
+1. Run `./Scripts/check-contract.sh --live`. It names the record.
+2. Read the record here: it says where the code leans and what the symptom is.
+3. Fix the code, then **re-record**: `./Scripts/check-contract.sh --record`.
+4. Update the record: `verifiedAgainst`, and what you learned.
+
+A legitimate Claude Code change will show up as a failure until somebody blesses
+it. That is not a defect of the method — it is the method.
 
 ## What this cannot do
 

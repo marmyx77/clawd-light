@@ -45,7 +45,7 @@ enum SlotAssignmentSuite {
             t.expectNil(SlotAssignment.slot(of: "/dev/extra", in: after), "no slot given")
         },
 
-        TestCase("Moving swaps with the neighbour") { t in
+        TestCase("Moving swaps with the neighbor") { t in
             let after = SlotAssignment.moving("/dev/c", by: -1, in: ["/dev/a", "/dev/b", "/dev/c"])
             t.expectEqual(after, ["/dev/a", "/dev/c", "/dev/b"], "order")
         },
@@ -163,7 +163,7 @@ enum ColumnSlotSuite {
             t.expect(result.rows.allSatisfy(\.isPinned), "premise")
         },
 
-        TestCase("An empty slot returns nothing rather than the neighbour") { t in
+        TestCase("An empty slot returns nothing rather than the neighbor") { t in
             let result = ColumnLayout.render(
                 state([session("a", .idle, path: "/dev/one")]),
                 options: ColumnOptions(grouped: true, pinned: ["/dev/one", "/dev/absent"])

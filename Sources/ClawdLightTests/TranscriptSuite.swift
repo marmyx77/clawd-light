@@ -470,7 +470,7 @@ enum TranscriptTailSuite {
     ])
 }
 
-/// Recognising our own messages on the way back.
+/// Recognizing our own messages on the way back.
 ///
 /// A message sent from the chat window returns wearing a `task-notification`
 /// origin — the same envelope a background agent gets. Without this, the user

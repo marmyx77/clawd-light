@@ -107,7 +107,7 @@ enum LifecycleSuite {
                 )
             },
 
-            TestCase("turn cut down by an API error → failed, not green") { a in
+            TestCase("turn cut short by an API error → failed, not green") { a in
                 let id = "e2e-failure"
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: workspace))
                 app.sendHook(HookPayloads.stopFailure(

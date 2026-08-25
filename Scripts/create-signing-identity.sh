@@ -40,7 +40,7 @@ trap 'rm -rf "$WORKDIR"' EXIT
 CREATE=1
 echo "▸ Checking whether the identity already exists…"
 if security find-certificate -c "$NAME" >/dev/null 2>&1; then
-    echo "  «${NAME}» is already in the keychain: going straight to the checks."
+    echo "  “${NAME}” is already in the keychain: going straight to the checks."
     CREATE=0
 fi
 
@@ -136,7 +136,7 @@ security set-key-partition-list \
     -S apple-tool:,apple:,codesign: \
     -s "$KEYCHAIN" >/dev/null 2>&1 || {
         echo "  That didn't work. It isn't blocking: on the first signing macOS"
-        echo "  will ask for permission with a dialog, and «Always Allow» settles"
+        echo "  will ask for permission with a dialog, and “Always Allow” settles"
         echo "  it once and for all."
     }
 
@@ -174,7 +174,7 @@ if kill -0 "$SIGN_PID" 2>/dev/null; then
     echo "⏳ codesign was left waiting: there is a macOS dialog on screen."
     echo
     echo "  It's asking whether to allow access to the key just created."
-    echo "  Press «Always Allow» — not «Allow», which asks again every time."
+    echo "  Press “Always Allow” — not “Allow”, which asks again every time."
     echo
     echo "  Then run it again:  ./Scripts/create-signing-identity.sh"
     echo "  (the identity is already there: it will recognize the situation"
@@ -188,8 +188,8 @@ if ! wait "$SIGN_PID"; then
     echo
     sed 's/^/  /' "$WORKDIR/error"
     echo
-    echo "  Open Keychain Access, look for «${NAME}», double-click →"
-    echo "  Access Control → Code Signing: «Always Trust»."
+    echo "  Open Keychain Access, look for “${NAME}”, double-click →"
+    echo "  Access Control → Code Signing: “Always Trust”."
     echo
     echo "  Or remove it and stay with the ad-hoc signature: see REMOVAL below."
     exit 1
@@ -206,7 +206,7 @@ codesign --display --verbose=2 "$WORKDIR/probe" >"$WORKDIR/details" 2>&1 || true
 
 if ! grep -q "Authority=$NAME" "$WORKDIR/details"; then
     echo
-    echo "✗ The signing succeeded but doesn't appear to be issued by «${NAME}»."
+    echo "✗ The signing succeeded but doesn't appear to be issued by “${NAME}”."
     echo
     sed 's/^/  /' "$WORKDIR/details"
     echo
@@ -215,7 +215,7 @@ if ! grep -q "Authority=$NAME" "$WORKDIR/details"; then
 fi
 
 echo
-echo "✓ Identity «${NAME}» created and verified: codesign uses it."
+echo "✓ Identity “${NAME}” created and verified: codesign uses it."
 echo
 echo "  Now rebuild:  ./Scripts/build-app.sh"
 echo
@@ -223,5 +223,5 @@ echo "  The Accessibility and Automation authorizations will have to be granted"
 echo "  ONE LAST time after the first build signed this way. From then on they"
 echo "  survive rebuilds."
 echo
-echo "  REMOVAL: Keychain Access → look for «${NAME}» → delete the certificate"
+echo "  REMOVAL: Keychain Access → look for “${NAME}” → delete the certificate"
 echo "  and the key. The build script will automatically go back to ad-hoc signing."

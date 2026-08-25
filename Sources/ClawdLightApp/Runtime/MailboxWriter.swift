@@ -79,7 +79,7 @@ struct MailboxWriter {
     ///
     /// Delivery is **not** immediate and the caller must not pretend otherwise.
     /// If the session is working, the message waits on disk until the turn ends —
-    /// which is the behaviour a chat wants, and the reason this is a file and not
+    /// which is the behavior a chat wants, and the reason this is a file and not
     /// a socket.
     func send(_ text: String, to sessionId: String) -> Result<Void, MailboxError> {
         guard isEnabled() else { return .failure(.disabled) }
