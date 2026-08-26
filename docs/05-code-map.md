@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,536 lines · 39 files   pure logic, zero AppKit
-  ClawdLightApp/    7,017 lines · 38 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,062 lines · 28 files   416 cases, instantaneous
+  ClawdLightCore/   4,578 lines · 39 files   pure logic, zero AppKit
+  ClawdLightApp/    7,022 lines · 38 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,125 lines · 28 files   420 cases, instantaneous
   ClawdLightE2E/    1,680 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 233
+### `AppConfig.swift` · 249
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -81,7 +81,7 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 137
+### `HookSignal.swift` · 158
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -149,12 +149,12 @@ hook to tell us — after a restart, that is all of them. The rule matched 7065 
 7066 real transcripts; the exception is a git worktree, which is why the result is
 a candidate the caller has to find on disk.
 
-### `RemoteHostList.swift` · 47
+### `RemoteHostList.swift` · 45
 Which machines to read, from `~/.clawd-light/remotes`. Absent or empty means the
 feature is off, which is the default. `isUsable` is an allow-list because the name
 becomes an argument to `ssh`: one starting with a dash would be read as *options*.
 
-### `RemoteProbeScript.swift` · 84
+### `RemoteProbeScript.swift` · 76
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
@@ -165,7 +165,7 @@ the session file, which is the frozen one.
 > changed. Deciding here from shipped files would answer both about the wrong
 > machine.
 
-### `RemoteSessionsDecoder.swift` · 71
+### `RemoteSessionsDecoder.swift` · 64
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -226,7 +226,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 374
+### `StateReducer.swift` · 379
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -324,7 +324,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 320 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 325 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -413,7 +413,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 416 cases
+## `ClawdLightTests/` — 420 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

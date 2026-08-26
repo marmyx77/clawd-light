@@ -135,10 +135,15 @@ final class StateStore: ObservableObject {
         let subagent = signal.isFromSubagent ? " [subagent]" : ""
         let source = signal.sessionSource.map { " source=\($0)" } ?? ""
         let kind = signal.notificationKind.map { "/\($0.rawValue)" } ?? ""
+        // A `Stop` that leaves a row yellow is only readable if the line says what
+        // held it. The count was not enough: one session sat yellow for a day with
+        // no background shell ever launched, and the log could only say "something".
+        let types = signal.inFlightBackgroundTaskTypes
+        let inFlight = types.isEmpty ? "" : " inFlight=\(types.count)[\(types.joined(separator: ","))]"
         Diagnostics.log(
             "signal \(signal.event.rawValue)\(kind) "
                 + "session=\(signal.sessionId.prefix(8)) "
-                + "\(before) -> \(after)\(subagent)\(source)"
+                + "\(before) -> \(after)\(subagent)\(source)\(inFlight)"
         )
     }
 

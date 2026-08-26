@@ -275,6 +275,15 @@ if not re.search(spec["filterPattern"], blob):
         "tightened, pending work is dropped and the row goes green in front of it"
     )
 
+# Our two excluded types are Claude Code's own exclusion, read in its active-tasks
+# view. If that view changes, the exclusion has to be re-examined either way.
+if not re.search(spec["activeViewFilterPattern"], blob):
+    problems.append(
+        "Claude Code's active-tasks view no longer excludes remote_agent and dream "
+        "the way it did; our notWorkTypes exclusion is unanchored and must be "
+        "re-derived from the binary"
+    )
+
 # A status vocabulary that grew is safe by construction - the decoder counts
 # anything it does not recognise as work - but it is worth saying out loud.
 #

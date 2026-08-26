@@ -52,7 +52,28 @@ public struct HookSignal: Sendable, Equatable {
     /// description of the field is the definition to use: it exists so a hook can
     /// tell *"session is done"* from *"session is paused waiting for background
     /// work to wake it"*. Anything in the list means the second.
-    public let inFlightBackgroundTasks: Int
+    public var inFlightBackgroundTasks: Int { inFlightBackgroundTaskTypes.count }
+
+    /// The `type` of each piece of work still in flight, in the order Claude Code
+    /// listed them: `shell`, `subagent`, `workflow`, `monitor`, `dream`, …
+    ///
+    /// Kept, and not just counted, because a row held yellow by this field has to
+    /// be explainable. A `Stop` that leaves a row working with nothing visibly
+    /// running is unreadable from the count alone — and it happened: thirteen of
+    /// sixteen turns in one session, with no background shell ever launched.
+    public let inFlightBackgroundTaskTypes: [String]
+
+    /// `true` when something in flight is work the user is waiting on.
+    ///
+    /// Not every entry is. Claude Code lists its own housekeeping — `dream`,
+    /// memory consolidation on an idle session — alongside shells and subagents,
+    /// and its own task view removes it again before showing anything. A row held
+    /// yellow by housekeeping is a row lying about an answer that is already there.
+    public var hasWorkInFlight: Bool {
+        inFlightBackgroundTaskTypes.contains {
+            !AppConfig.backgroundTaskTypesThatAreNotWork.contains($0.lowercased())
+        }
+    }
 
     /// Absolute path of the session's JSONL transcript.
     ///
@@ -71,7 +92,7 @@ public struct HookSignal: Sendable, Equatable {
         lastAssistantMessage: String? = nil,
         sessionSource: String? = nil,
         failureReason: StopFailureReason? = nil,
-        inFlightBackgroundTasks: Int = 0,
+        inFlightBackgroundTaskTypes: [String] = [],
         transcriptPath: String? = nil
     ) {
         self.sessionId = sessionId
@@ -83,7 +104,7 @@ public struct HookSignal: Sendable, Equatable {
         self.lastAssistantMessage = lastAssistantMessage
         self.sessionSource = sessionSource
         self.failureReason = failureReason
-        self.inFlightBackgroundTasks = inFlightBackgroundTasks
+        self.inFlightBackgroundTaskTypes = inFlightBackgroundTaskTypes
         self.transcriptPath = transcriptPath
     }
 

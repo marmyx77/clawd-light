@@ -376,6 +376,59 @@ should be read that way rather than as a feature.
 
 ---
 
+## The yellow that outlived its answer by a day
+
+**Symptom.** Reported by use: *"too many yellows stay yellow — look at that
+session."* The row had been `working` since 11:55 the previous day.
+
+**Measure.** The per-signal log, again:
+
+```
+12:49:18  UserPromptSubmit   working -> working
+12:55:01  Stop               working -> working     ← held by "work in flight"
+```
+
+Then nothing, for eighteen hours. The transcript's last record is at **12:55:02**,
+one second after the `Stop`. The answer had been sitting there the whole time.
+
+**What was not in flight.** No `run_in_background` in the entire session — zero.
+The one workflow of that turn had finished and notified at 12:20, thirty-five
+minutes *before* the `Stop` (four of its agents had died on a spend limit, but the
+workflow itself closed). Nothing the user had asked for was running.
+
+**What was.** Not recoverable for that `Stop` — the log recorded the count, not
+the types — but the binary says what could have been. Claude Code's own "active
+tasks" view is:
+
+```js
+Object.values(e).filter(bL).filter((t)=>t.type!=="remote_agent"&&t.type!=="dream")
+```
+
+It starts from `bL`, the very predicate that builds our payload, and then removes
+`dream`: background memory consolidation that starts on an idle session, writes
+nothing to the transcript, and does not wake the session when it ends. Claude Code
+lists it in the hook payload and hides it from every view of its own. We took the
+payload at its word.
+
+**Correction, in two parts.** The log now names the *types* in flight on every
+`Stop`, so the next one of these is read rather than reconstructed. And the rule
+narrows by exactly Claude Code's own two exclusions — `dream` and `cloud session`
+— anchored to the binary by a contract check, so the day Claude Code changes its
+mind the check says so. Anything else, including a type never seen, still counts.
+
+**Lesson.** *"Presence in the list is the signal"* was right about the filter and
+wrong about the list. The producer's payload and the producer's **own view of the
+same data** disagreed, and the honest definition of "work" was the one it shows
+its users, not the one it hands its hooks. When a dependency exposes the same fact
+through two doors, read both before choosing.
+
+**And once more on instruments.** The count was logged; the types were not. The
+fix took an hour because the one line that would have settled it in a second had
+been written to save a few characters. Log the thing that explains the state, not
+the thing that summarizes it.
+
+---
+
 ## Thirty-three minutes of asking a question that had been answered
 
 **Symptom.** Reported by use: *"when Claude asks something the light flashes,

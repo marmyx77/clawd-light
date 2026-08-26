@@ -368,10 +368,29 @@ was **false** — and defending against them is what dropped the `pending` ones.
 
 Claude Code's own description of the field is the definition we use: it exists so a
 hook can tell *"session is done"* from *"session is paused waiting for background
-work to wake it"*, and is *"empty when nothing is in flight"*. **Presence in the
-list is therefore the signal**, not the status word. A `Stop` carrying any entry
-leaves the row **working**; the decoder still drops the three terminal statuses, as
-the one defense that stays useful if the upstream filter ever loosens.
+work to wake it"*, and is *"empty when nothing is in flight"*. Presence in the list
+is the signal, not the status word — **minus two types**. The decoder still drops
+the three terminal statuses, as the one defense that stays useful if the upstream
+filter ever loosens.
+
+**The two types, and why they are Claude Code's exclusion and not ours.** Its own
+"active tasks" view, read in the binary, starts from the very predicate that builds
+this payload and then removes exactly two:
+
+```js
+Object.values(e).filter(bL).filter((t)=>t.type!=="remote_agent"&&t.type!=="dream")
+```
+
+`dream` is its background memory consolidation: it starts on an idle session,
+writes nothing to the transcript (`skipTranscript: true`), and does not wake the
+session when it ends. A hook payload lists it; the user never sees it. Counting it
+as work held a row yellow for a day — thirteen of sixteen turns in one session
+stayed `working -> working`, with no background shell ever launched and the
+transcript silent from one second after `Stop`. The payload carries display names,
+so the exclusion is `dream` and `cloud session`. Anything else, including a type
+we have never seen, still counts as work: guessing "busy" costs a yellow that
+clears on the next clean turn, guessing "done" costs the lie the field exists to
+prevent.
 
 Green returns on its own: the work finishes, wakes the session, and that turn ends
 with an empty list — so there is no counter to get stuck, which the subagent design

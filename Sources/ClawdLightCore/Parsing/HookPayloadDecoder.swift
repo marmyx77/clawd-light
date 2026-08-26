@@ -86,7 +86,7 @@ public enum HookPayloadDecoder {
             lastAssistantMessage: optionalString(object, key: "last_assistant_message"),
             sessionSource: optionalString(object, key: "source"),
             failureReason: failureReason(in: object, event: event),
-            inFlightBackgroundTasks: inFlightBackgroundTasks(in: object),
+            inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes(in: object),
             transcriptPath: absolutePath(object, key: "transcript_path")
         )
     }
@@ -132,14 +132,14 @@ public enum HookPayloadDecoder {
     ///
     /// The status is still read, for the one case that survives: if that upstream
     /// filter ever loosened, a finished task must not hold the row yellow for ever.
-    private static func inFlightBackgroundTasks(in object: [String: Any]) -> Int {
-        guard let tasks = object["background_tasks"] as? [[String: Any]] else { return 0 }
+    private static func inFlightBackgroundTaskTypes(in object: [String: Any]) -> [String] {
+        guard let tasks = object["background_tasks"] as? [[String: Any]] else { return [] }
         return tasks.filter { task in
             guard let status = (task["status"] as? String)?.trimmed.lowercased() else {
                 return true
             }
             return !finishedTaskStatuses.contains(status)
-        }.count
+        }.map { ($0["type"] as? String)?.trimmed.nilIfEmpty ?? "?" }
     }
 
     // MARK: - Helpers

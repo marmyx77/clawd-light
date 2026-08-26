@@ -191,7 +191,12 @@
       "",
       "This check exists because of tmux, which keeps the same kind of table of",
       "what an undocumented dependency actually does — and has no test that any",
-      "of it is still true."
+      "of it is still true.",
+      "",
+      "notWorkTypes mirrors Claude Code's own active-tasks view, which drops",
+      "remote_agent and dream after applying the payload filter. If activeViewFilterPattern",
+      "stops matching the binary, Claude Code changed its mind about what counts as work",
+      "and so must we - in either direction."
     ],
     "wireField": "background_tasks",
     "filterMarkers": [
@@ -212,6 +217,11 @@
       "failed",
       "killed"
     ],
+    "notWorkTypes": [
+      "dream",
+      "cloud session"
+    ],
+    "activeViewFilterPattern": "t\\.type!==\"remote_agent\"&&t\\.type!==\"dream\"",
     "knownTypes": [
       "local_bash",
       "local_agent",

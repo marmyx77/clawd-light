@@ -176,6 +176,22 @@ public enum AppConfig {
         "sdk", "sdk-cli", "sdk-ts", "sdk-py", "print",
     ]
 
+    // MARK: - Background work
+
+    /// Entries of `background_tasks` that are **not** work the user is waiting on.
+    ///
+    /// Claude Code's own "active tasks" view starts from the very predicate that
+    /// builds the hook payload and then removes exactly these two types — read in
+    /// the binary: `.filter(bL).filter(t => t.type !== "remote_agent" && t.type
+    /// !== "dream")`. `dream` is its background memory consolidation: it runs on
+    /// an idle session, writes nothing to the transcript, and never wakes the
+    /// session when it ends. Counting it as work held a row yellow for a day
+    /// after the answer had been sitting there since one second after `Stop`.
+    ///
+    /// The payload carries display names, not registry names: `remote_agent` is
+    /// written as `cloud session`.
+    public static let backgroundTaskTypesThatAreNotWork: Set<String> = ["dream", "cloud session"]
+
     // MARK: - Remote hosts
 
     /// Hosts to read sessions from, one name per line, `#` for comments.

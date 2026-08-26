@@ -346,7 +346,7 @@ enum BackgroundTaskSuite {
             cwd: "/dev/project",
             entrypoint: "claude-vscode",
             lastAssistantMessage: "here is the recap",
-            inFlightBackgroundTasks: inFlight
+            inFlightBackgroundTaskTypes: Array(repeating: "shell", count: inFlight)
         )
     }
 
@@ -432,6 +432,69 @@ enum BackgroundTaskSuite {
             let data = try! JSONSerialization.data(withJSONObject: payload)
             let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
             t.expectEqual(signal?.inFlightBackgroundTasks, 1, "present in the list is the signal")
+        },
+
+        // The count alone could not explain a row: what is kept is the list of
+        // types, in Claude Code's order, so the log can say *what* held it.
+        TestCase("The type of each piece of in-flight work is kept") { t in
+            let payload: [String: Any] = [
+                "session_id": "s1", "hook_event_name": "Stop", "cwd": "/dev/project",
+                "background_tasks": [
+                    ["id": "a", "type": "shell", "status": "running"],
+                    ["id": "b", "type": "subagent", "status": "pending"],
+                    ["id": "c", "type": "dream", "status": "running"],
+                    ["id": "d", "type": "shell", "status": "completed"],
+                    ["id": "e", "status": "running"],
+                ],
+            ]
+            let data = try! JSONSerialization.data(withJSONObject: payload)
+            let signal = try? HookPayloadDecoder.decode(data, entrypoint: "claude-vscode")
+            t.expectEqual(signal?.inFlightBackgroundTaskTypes, ["shell", "subagent", "dream", "?"], "types")
+            t.expectEqual(signal?.inFlightBackgroundTasks, 4, "the count is the list's length")
+        },
+
+        // Claude Code's own task view drops these two types before showing
+        // anything; a rule wider than the producer's own is inventing work.
+        TestCase("Housekeeping in flight does not hold the row") { t in
+            let dreaming = HookSignal(
+                sessionId: "s1", event: .stop, cwd: "/dev/project",
+                entrypoint: "claude-vscode", inFlightBackgroundTaskTypes: ["dream"]
+            )
+            t.expectEqual(
+                StateReducer.reduce(.empty, action: .signal(dreaming, workspace: workspace), now: Date())
+                    .sessions["s1"]?.status,
+                .ready, "memory consolidation is not the user's work"
+            )
+            let cloud = HookSignal(
+                sessionId: "s1", event: .stop, cwd: "/dev/project",
+                entrypoint: "claude-vscode", inFlightBackgroundTaskTypes: ["cloud session"]
+            )
+            t.expectEqual(
+                StateReducer.reduce(.empty, action: .signal(cloud, workspace: workspace), now: Date())
+                    .sessions["s1"]?.status,
+                .ready, "a cloud session runs elsewhere"
+            )
+        },
+
+        TestCase("Housekeeping next to real work still holds the row") { t in
+            let both = HookSignal(
+                sessionId: "s1", event: .stop, cwd: "/dev/project",
+                entrypoint: "claude-vscode", inFlightBackgroundTaskTypes: ["dream", "workflow"]
+            )
+            t.expectEqual(
+                StateReducer.reduce(.empty, action: .signal(both, workspace: workspace), now: Date())
+                    .sessions["s1"]?.status,
+                .working, "the workflow is work"
+            )
+            t.expect(both.hasWorkInFlight, "hasWorkInFlight")
+        },
+
+        TestCase("An unknown type is still work") { t in
+            let odd = HookSignal(
+                sessionId: "s1", event: .stop, cwd: "/dev/project",
+                entrypoint: "claude-vscode", inFlightBackgroundTaskTypes: ["something-new"]
+            )
+            t.expect(odd.hasWorkInFlight, "a new way of being busy, until classified")
         },
 
         TestCase("A payload with no background tasks at all is fine") { t in

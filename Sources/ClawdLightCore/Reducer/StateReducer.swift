@@ -248,7 +248,12 @@ public enum StateReducer {
             // by its own definition one the session is paused waiting for. Adding a
             // second valve here would mean guessing which of *those* really count,
             // and a guess is exactly what the column must not contain.
-            return signal.inFlightBackgroundTasks > 0 ? .working : .ready
+            //
+            // "Anything in the list" was the first rule, and it was too wide by one
+            // type: `dream`, Claude Code's own memory consolidation, sits in the
+            // list while the session is idle and never wakes it when it ends.
+            // Thirteen of sixteen turns in one session stayed yellow on it.
+            return signal.hasWorkInFlight ? .working : .ready
 
         case .stopFailure:
             // A turn that was cut short produced nothing to read: showing it green
