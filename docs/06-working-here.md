@@ -25,7 +25,7 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run ClawdLightTests              # 420 cases, instantaneous
+swift run ClawdLightTests              # 434 cases, instantaneous
 swift run ClawdLightE2E                # 75 cases, about a minute
 swift run ClawdLightTests "Subagents"  # filter by suite or by case
 ```

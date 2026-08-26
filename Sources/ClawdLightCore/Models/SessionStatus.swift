@@ -1,6 +1,6 @@
 import Foundation
 
-/// The five states of a traffic light.
+/// The six states of a traffic light.
 ///
 /// The semantics are deliberate: green does not mean "all good", it means
 /// "there is an answer you haven't read yet".
@@ -10,6 +10,18 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
 
     /// Claude is thinking or running tools. Yellow.
     case working
+
+    /// The turn is over, and something Claude started is still running — a
+    /// background shell, a monitor on a CI run, a subagent — and will wake it.
+    /// Soft blue.
+    ///
+    /// Neither yellow nor green would be true. Yellow says *Claude is thinking*,
+    /// and it is not: it handed control back. Green says *there is an answer and
+    /// nothing more is coming*, and more is coming. This is exactly the second of
+    /// the two things Claude Code says `background_tasks` exists to tell apart:
+    /// "session is done" from "session is paused waiting for background work to
+    /// wake it". Nothing is inferred from silence or timestamps.
+    case waiting
 
     /// Claude is blocked waiting for a decision from you. Blinking amber.
     case awaiting
@@ -36,7 +48,10 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
         case .ready: return 1
         case .failed: return 2
         case .working: return 3
-        case .idle: return 4
+        // Below working: a session that has stopped is less worth watching than
+        // one that is producing, and nothing about it needs you.
+        case .waiting: return 4
+        case .idle: return 5
         }
     }
 
@@ -51,7 +66,9 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     public var clearsOnFocus: Bool {
         switch self {
         case .ready, .awaiting, .failed: return true
-        case .idle, .working: return false
+        // A wait is a fact about the session, not about you: a click has nothing
+        // to clear, and the row stays blue until the work wakes it.
+        case .idle, .working, .waiting: return false
         }
     }
 
@@ -62,7 +79,10 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     /// after an error, yellow is the correct information and red would be a leftover.
     public var blocksDowngrade: Bool {
         switch self {
-        case .ready, .awaiting: return true
+        // `waiting` resists for the same reason `ready` does: a wake-up always
+        // begins with a prompt, so a tool event with no prompt before it is the
+        // tail of the turn that already closed, and must not repaint the row yellow.
+        case .ready, .awaiting, .waiting: return true
         case .idle, .working, .failed: return false
         }
     }

@@ -21,11 +21,17 @@ through all of them.
 | 🟢 green | `ready` | The turn has finished: there is an answer to read. |
 | 🔴 solid red | `failed` | The turn stopped without producing anything: rate limit, overload, authentication error. |
 | 🟡 yellow | `working` | Claude is processing or running tools. |
+| 🔵 soft blue | `waiting` | The turn is over, but something Claude started is still running — a shell, a monitor on a CI run, a subagent — and will wake it. Nothing for you to do yet. |
 | 🔴 dim red | `idle` | The session is at rest. Nothing to read. |
 
 The order of the table is the order the rows take in the column. Green does not
 mean "all good", it means "there is something you haven't seen yet". Clicking the
 traffic light returns the session to dim red: you've seen it.
+
+Blue is the one state that says *neither* "working" nor "done". Before it existed,
+a session that had stopped and was waiting an hour for a CI run stayed yellow the
+whole hour — and yellow reads as "Claude is thinking". The tooltip says what the
+row is waiting on: `waiting on monitor ×2, shell`.
 
 `failed` and `idle` share the hue and are told apart by brightness and glow — the
 same grammar the palette uses for urgency, so the difference reads in compact
@@ -40,7 +46,7 @@ the same:
 
 | State | Shows | Why |
 |---|---|---|
-| `working` | `42m`, `7h` | On a working session what counts is *how long*: `7h` on a yellow reads in half a second, `08:14` has to be computed |
+| `working`, `waiting` | `42m`, `7h` | On a working or waiting session what counts is *how long*: `7h` on a yellow reads in half a second, `08:14` has to be computed |
 | `failed` | `rate limit`, `auth`, `billing` | What counts is *why* it died, not when |
 | the others | `14:49`, `yesterday`, `2d ago`, `22/07` | The time of the last activity |
 
@@ -660,7 +666,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 420 domain tests, instantaneous
+swift run ClawdLightTests              # 434 domain tests, instantaneous
 swift run ClawdLightE2E                # 75 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

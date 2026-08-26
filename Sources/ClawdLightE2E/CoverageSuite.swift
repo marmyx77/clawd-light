@@ -59,7 +59,9 @@ enum CoverageSuite {
 
             // MARK: - 1.2 subagent counter
 
-            TestCase("a started subagent keeps the session working") { a in
+            TestCase("a subagent starting after the Stop turns the row blue") { a in
+                // It arrives after the parent's Stop, so it is a background agent:
+                // the session has stopped and is waiting for it — not working (D22).
                 let id = "e2e-subagent"
                 app.sendHook(HookPayloads.stop(sessionId: id, cwd: secondWorkspace))
                 a.expect(
@@ -71,7 +73,7 @@ enum CoverageSuite {
                     sessionId: id, cwd: secondWorkspace, agentId: "agent-1"
                 ))
                 a.expect(
-                    app.waitUntil { app.status(of: id) == "working" },
+                    app.waitUntil { app.status(of: id) == "waiting" },
                     "status: \(app.status(of: id))"
                 )
                 a.expectEqual(app.session(id: id)?.activeSubagents, 1, "counter")
@@ -88,7 +90,7 @@ enum CoverageSuite {
                 )
             },
 
-            TestCase("with a subagent still alive the session does not go green") { a in
+            TestCase("with a subagent still alive the session stays blue, not green") { a in
                 let id = "e2e-subagent"
                 app.sendHook(HookPayloads.subagentStop(
                     sessionId: id, cwd: secondWorkspace, agentId: "agent-1"
@@ -99,18 +101,18 @@ enum CoverageSuite {
                 )
                 // The parent's turn isn't over: no `Stop` has arrived and an agent
                 // is still working.
-                a.expectEqual(app.status(of: id), "working", "status")
+                a.expectEqual(app.status(of: id), "waiting", "status")
             },
 
-            TestCase("the turn ending doesn't clear the yellow while an agent works") { a in
+            TestCase("the turn ending with an agent alive is a wait, not a finish") { a in
                 let id = "e2e-subagent"
                 // This is the background-agent case: the parent turn returns
                 // control — `Stop` — while the agents keep going for tens of
-                // minutes. Taking that `Stop` literally would paint a working
-                // session green.
+                // minutes. Taking that `Stop` literally would paint it green;
+                // calling it "working" would be the other half-truth (D22).
                 app.sendHook(HookPayloads.stop(sessionId: id, cwd: secondWorkspace))
                 usleep(400_000)
-                a.expectEqual(app.status(of: id), "working", "status")
+                a.expectEqual(app.status(of: id), "waiting", "status")
                 a.expectEqual(app.session(id: id)?.activeSubagents, 1, "counter")
             },
 

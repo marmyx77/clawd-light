@@ -210,7 +210,7 @@ struct TrafficLightRow: View {
     /// counts is *why*. The timestamp stays in the tooltip in both cases.
     private var timeLabel: String {
         switch row.status {
-        case .working:
+        case .working, .waiting:
             return CompactDuration.label(seconds: row.primary.statusDuration(at: now))
         case .failed:
             return (row.primary.failureReason ?? .unknown).shortLabel
@@ -230,6 +230,17 @@ struct TrafficLightRow: View {
             "\(row.workspace.label) — \(StatusPalette.label(for: row.status))",
             RelativeTime.detailedLabel(for: row.updatedAt, now: now),
         ]
+
+        // A blue row has to say what is holding it, or a wait that lasts a day is
+        // indistinguishable from a defect. "monitor ×2, shell" is the difference.
+        if row.status == .waiting {
+            let counts = row.primary.waitingOn.reduce(into: [(String, Int)]()) { acc, type in
+                if let i = acc.firstIndex(where: { $0.0 == type }) { acc[i].1 += 1 } else { acc.append((type, 1)) }
+            }
+            if !counts.isEmpty {
+                lines.append("waiting on " + counts.map { $0.1 > 1 ? "\($0.0) ×\($0.1)" : $0.0 }.joined(separator: ", "))
+            }
+        }
 
         if let slot = row.slot {
             lines.append("Slot \(slot) — clawd-light open \(slot)")

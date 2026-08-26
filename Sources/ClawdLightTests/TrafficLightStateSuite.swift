@@ -105,9 +105,9 @@ enum SessionStatusSuite {
 
         // A failed turn clears on click like the others, but it must not survive
         // a restart: if the turn resumes, yellow is the correct information.
-        TestCase("Only green and amber resist a trailing signal") { t in
+        TestCase("Green, amber and blue resist a trailing signal") { t in
             t.expectEqual(
-                Set(SessionStatus.allCases.filter(\.blocksDowngrade)), [.ready, .awaiting]
+                Set(SessionStatus.allCases.filter(\.blocksDowngrade)), [.ready, .awaiting, .waiting]
             )
         },
 

@@ -646,6 +646,52 @@ defensible and the latency goes away; without one, this decision stands.
 
 ---
 
+## D22 · A sixth state, for a session that has stopped but is not done
+
+**Decided.** `waiting`, soft blue: the turn is over, and something Claude started
+— a background shell, a monitor on a CI run, a subagent — is still running and
+will wake the session. It sits between `working` and `idle`, does not blink, has
+nothing to clear on click, and resists a trailing tool event the way green does.
+
+**Why five were not enough.** The rule "work in flight at `Stop` keeps the row
+working" fixed a real lie — green over a session with a shell still running — by
+telling a smaller one. Yellow means *Claude is thinking*. After a `Stop` with two
+monitors on a CI run and a shell serving the tests, Claude is not thinking: it has
+handed control back and is **waiting for an event**. A CI run takes an hour; the
+row said "working" for an hour; and the person looking at it, rightly, asked what
+on earth it was working on. Measured on the log that answered:
+
+```
+Stop  working -> working  inFlight=3[monitor,monitor,shell]
+```
+
+**It is not an inference.** The state is exactly what the payload declares:
+Claude Code documents `background_tasks` as the way to tell *"session is done"*
+from *"session is paused waiting for background work to wake it"*. The first is
+green, the second is blue. Nothing is guessed from timestamps or silence.
+
+**What the row says.** `waitingOn` keeps the types, so the tooltip reads
+`waiting on monitor ×2, shell`. A blue row that stays blue for a day is now a
+row that names the shell holding it — which is what makes the remaining honest
+question, "is that shell a dev server nobody will ever stop?", askable.
+
+**Subagents follow the same grammar.** A subagent alive after the parent's `Stop`
+used to paint yellow over any state; it now paints blue, for the same reason.
+And a subagent *starting* proves the turn is running, so the declared state
+becomes `working` wherever the row was — that is what releases a pending question
+too (D20's sibling rule).
+
+**The way back is the same as before.** The work finishes, Claude Code starts a
+turn to report it, `UserPromptSubmit` paints yellow and empties `waitingOn`, and
+that turn's `Stop` is green if nothing else is in flight.
+
+**Alternatives.** Keeping it yellow with a tooltip — but the colour is what you
+see from across the room, and it was the colour that lied. Going straight to
+green — the lie D17's ancestor fixed. A blinking blue — blinking is spent on the
+one state that blocks you, and this one does not.
+
+---
+
 # Negative decisions
 
 What was decided **against**. If somebody picks these up again, they have to

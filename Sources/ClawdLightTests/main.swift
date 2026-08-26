@@ -32,6 +32,7 @@ let suites: [TestSuite] = [
     SubagentSuite.suite,
     AwaitingReleaseSuite.suite,
     RemoteSessionsSuite.suite,
+    WaitingSuite.suite,
     AccessTokenSuite.suite,
     SessionsPayloadSuite.suite,
     HTTPRequestParserSuite.suite,

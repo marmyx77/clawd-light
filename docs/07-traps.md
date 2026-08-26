@@ -668,7 +668,8 @@ project, probed, documented — and deliberately not used. The reasoning was
 written down: *"the turn genuinely ended and an answer genuinely exists, so green
 is correct."*
 
-**Correction.** A `Stop` reporting any in-flight task leaves the row working. Green
+**Correction.** A `Stop` reporting any in-flight task leaves the row out of green —
+first as `working`, later as its own state, `waiting` (D22). Green
 returns on its own when the work finishes and the following turn ends clean, so
 there is no counter to get stuck.
 

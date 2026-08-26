@@ -1,14 +1,14 @@
 # Code map
 
-~18,500 lines of Swift across five targets. For each file: what it contains, why
+~18,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,578 lines · 39 files   pure logic, zero AppKit
-  ClawdLightApp/    7,022 lines · 38 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,125 lines · 28 files   420 cases, instantaneous
-  ClawdLightE2E/    1,680 lines ·  9 files   75 cases, the real binary
+  ClawdLightCore/   4,648 lines · 39 files   pure logic, zero AppKit
+  ClawdLightApp/    7,038 lines · 38 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,270 lines · 29 files   434 cases, instantaneous
+  ClawdLightE2E/    1,682 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
@@ -37,13 +37,13 @@ is what makes the e2e tests possible without touching the real `~/.claude`.
 ## `Models/`
 
 ### `SessionStatus.swift`
-The five states and the three properties governing their behavior:
+The six states and the three properties governing their behavior:
 `urgencyRank`, `clearsOnFocus`, `blocksDowngrade`.
 
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 214
+### `SessionState.swift` · 243
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -226,7 +226,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 379
+### `StateReducer.swift` · 392
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -246,7 +246,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 124
+### `SessionsPayload.swift` · 132
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -389,11 +389,11 @@ installations in the same second used to fail.
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 568 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 266 | one row: dot, name, badge, timestamp, menu |
+| `TrafficLightRow.swift` | 277 | one row: dot, name, badge, timestamp, menu |
 | `TrafficLightColumn.swift` | 187 | the column, the hidden summary, the filter note |
 | `PanelRootView.swift` | 175 | the general menu |
 | `TrafficLightDot.swift` | 49 | the dot and the silenceable blink |
-| `StatusPalette.swift` | 107 | colors and measurements |
+| `StatusPalette.swift` | 112 | colors and measurements |
 | `FloatingPanel.swift` | 45 | non-activating `NSPanel` |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
@@ -413,7 +413,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 420 cases
+## `ClawdLightTests/` — 434 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -432,6 +432,7 @@ script, before it was split. The most important ones:
 | `IDELockLivenessSuite` | a running editor is believed however old its lock is |
 | `LivePruningSuite` | a session you can see running is never pruned for being quiet |
 | `AwaitingReleaseSuite` | a question you have answered stops flashing |
+| `WaitingSuite` | a session that has stopped but is not done is blue, and says what it waits on |
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |

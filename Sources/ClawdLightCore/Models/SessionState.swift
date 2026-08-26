@@ -39,6 +39,15 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// when the turn closes and nothing arrives in between.
     public let activeSubagents: Int
 
+    /// What the session is waiting on, when it is `waiting`: the types Claude Code
+    /// listed in flight at the last `Stop`, in its order — `monitor`, `shell`,
+    /// `subagent`. Empty otherwise.
+    ///
+    /// Kept so the row can say *why* it is blue. A wait that lasts a day is only a
+    /// defect if you cannot tell what is holding it; naming the shell makes the
+    /// honest question — is that a dev server nobody will stop? — askable.
+    public let waitingOn: [String]
+
     /// Where this session's transcript lives, when a hook has told us.
     ///
     /// Optional and it stays optional: a session adopted from the filesystem has
@@ -55,8 +64,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         statusSince: Date,
         failureReason: StopFailureReason? = nil,
         activeSubagents: Int = 0,
-        transcriptPath: String? = nil
+        transcriptPath: String? = nil,
+        waitingOn: [String] = []
     ) {
+        self.waitingOn = waitingOn
         self.id = id
         self.baseStatus = status
         self.workspace = workspace
@@ -83,9 +94,19 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     ///
     /// The one exception is waiting for a permission, which always wins: it blocks
     /// everything, subagents included, and it needs you now.
+    ///
+    /// What a live subagent paints depends on whether the parent is still in its
+    /// turn. While it is (`working`), the row is working. After the parent's
+    /// `Stop`, a subagent still alive is a session **waiting** to be woken by it —
+    /// not one working. It used to paint yellow over any state, and yellow over a
+    /// session that has stopped is the half-truth D22 exists to remove.
     public var status: SessionStatus {
         guard activeSubagents > 0 else { return baseStatus }
-        return baseStatus == .awaiting ? .awaiting : .working
+        switch baseStatus {
+        case .awaiting: return .awaiting
+        case .working: return .working
+        case .ready, .idle, .waiting, .failed: return .waiting
+        }
     }
 
     // MARK: - Copies
@@ -125,6 +146,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     public func markedUnread(at now: Date) -> SessionState {
         guard baseStatus == .idle else { return self }
         return replacing(status: .ready, statusSince: now)
+    }
+
+    /// Copy that records — or forgets — what the session is waiting on.
+    public func with(waitingOn types: [String]) -> SessionState {
+        guard types != waitingOn else { return self }
+        return replacing(waitingOn: types)
     }
 
     /// Copy with a new preview message.
@@ -197,7 +224,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         statusSince: Date? = nil,
         failureReason: StopFailureReason?? = nil,
         activeSubagents: Int? = nil,
-        transcriptPath: String?? = nil
+        transcriptPath: String?? = nil,
+        waitingOn: [String]? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -208,7 +236,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             statusSince: statusSince ?? self.statusSince,
             failureReason: failureReason ?? self.failureReason,
             activeSubagents: activeSubagents ?? self.activeSubagents,
-            transcriptPath: transcriptPath ?? self.transcriptPath
+            transcriptPath: transcriptPath ?? self.transcriptPath,
+            waitingOn: waitingOn ?? self.waitingOn
         )
     }
 }

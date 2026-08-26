@@ -155,6 +155,9 @@ public enum StateReducer {
             .with(status: newStatus, at: now)
             .with(lastMessage: preview(of: signal.lastAssistantMessage))
             .with(failureReason: newStatus == .failed ? (signal.failureReason ?? .unknown) : nil)
+            // What the row is waiting on is a fact about *this* Stop; any other
+            // event means the wait is over or never was.
+            .with(waitingOn: newStatus == .waiting ? signal.inFlightBackgroundTaskTypes : [])
 
         // A new question opens a new turn: the previous turn's subagents no longer
         // count, and if some `SubagentStop` got lost along the way this is where
@@ -195,12 +198,18 @@ public enum StateReducer {
         }
 
         // A subagent **starting** releases a pending question, and this is the one
-        // place that can tell. A main loop blocked on a permission prompt cannot
-        // spawn anything: if a child is being born, the prompt was answered.
+        // place that can tell: a main loop blocked on a permission prompt cannot
+        // spawn anything, so if a child is being born the prompt was answered.
         //
-        // A subagent *finishing* proves nothing — one that was already running
-        // when the prompt opened can finish while the turn is still blocked — so
-        // only a positive delta releases.
+        // It does **not** prove the turn is running in general, and a first draft
+        // of this rule said it did. A background agent launched at the end of a
+        // turn sends its `SubagentStart` *after* the parent's `Stop` — the log
+        // shows it — and repainting that row yellow would call a session that has
+        // stopped "working". Left to the derived state, it reads `waiting`, which
+        // is what it is.
+        //
+        // A subagent *finishing* proves nothing either way — one already running
+        // when the prompt opened can finish while the turn is still blocked.
         let released = delta > 0 && existing.baseStatus == .awaiting
         let base = released
             ? existing.with(status: .working, at: now)
@@ -253,7 +262,11 @@ public enum StateReducer {
             // type: `dream`, Claude Code's own memory consolidation, sits in the
             // list while the session is idle and never wakes it when it ends.
             // Thirteen of sixteen turns in one session stayed yellow on it.
-            return signal.hasWorkInFlight ? .working : .ready
+            //
+            // And it is not `working` either. Claude has handed control back; what
+            // remains is a wait for the work to wake it. Yellow here lasted as long
+            // as a CI run and read as "thinking" the whole time. D22.
+            return signal.hasWorkInFlight ? .waiting : .ready
 
         case .stopFailure:
             // A turn that was cut short produced nothing to read: showing it green

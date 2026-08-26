@@ -23,6 +23,10 @@ enum StatusPalette {
             return Color(red: 1.00, green: 0.45, blue: 0.10)
         case .ready:
             return Color(red: 0.20, green: 0.85, blue: 0.42)
+        // The one cool hue in a warm palette, on purpose: everything else is a
+        // shade of "attention", and this is the state that asks for none.
+        case .waiting:
+            return Color(red: 0.42, green: 0.66, blue: 0.98)
         }
     }
 
@@ -35,7 +39,7 @@ enum StatusPalette {
     static func glowRadius(for status: SessionStatus) -> CGFloat {
         switch status {
         case .idle: return 0
-        case .working: return 3
+        case .working, .waiting: return 3
         case .awaiting, .ready, .failed: return 6
         }
     }
@@ -63,6 +67,7 @@ enum StatusPalette {
         switch status {
         case .idle: return "idle"
         case .working: return "working"
+        case .waiting: return "waiting on background work"
         // Neutral with respect to the reason: it covers both the permission
         // request and a dialog opened by an MCP server, without having to
         // propagate the cause.

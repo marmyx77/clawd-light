@@ -48,7 +48,8 @@ enum SessionsPayloadSuite {
             )
             // Whoever reads the endpoint has to see what the column sees:
             // exposing `ready` while the dot is yellow would be two truths.
-            t.expectEqual(SessionsCodec.snapshot(of: session).status, "working", "status")
+            // A live subagent over a green base is a session waiting, not working (D22).
+            t.expectEqual(SessionsCodec.snapshot(of: session).status, "waiting", "status")
         },
 
         TestCase("Encoding and decoding are reversible") { t in

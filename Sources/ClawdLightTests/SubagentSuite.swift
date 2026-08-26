@@ -78,7 +78,7 @@ enum SubagentSuite {
 
         // MARK: Derived state
 
-        TestCase("The turn ending doesn't clear the yellow while an agent works") { t in
+        TestCase("The turn ending with an agent alive is a wait, not a finish") { t in
             let state = apply([
                 signal(.userPromptSubmit),
                 signal(.subagentStart, agentId: "a1"),
@@ -86,7 +86,8 @@ enum SubagentSuite {
             ])
             // This is the background-agent case: `Stop` arrives when the parent
             // turn returns control, not when the work finishes.
-            t.expectEqual(state.sessions["s1"]?.status, .working, "displayed status")
+            // Not yellow: the parent has stopped. Not green: more is coming.
+            t.expectEqual(state.sessions["s1"]?.status, .waiting, "displayed status")
             t.expectEqual(state.sessions["s1"]?.baseStatus, .ready, "declared status")
         },
 

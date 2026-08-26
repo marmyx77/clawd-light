@@ -13,6 +13,11 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let updatedAt: Date
     public let statusSince: Date
     public let activeSubagents: Int
+
+    /// What a `waiting` session is waiting on — `monitor`, `shell`, `subagent` —
+    /// in Claude Code's order. Empty unless the status is `waiting`. A reader that
+    /// shows a blue dot without this cannot tell a CI wait from a forgotten server.
+    public let waitingOn: [String]
     public let failureReason: String?
     public let lastMessage: String?
     public let muted: Bool
@@ -39,6 +44,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         updatedAt: Date,
         statusSince: Date,
         activeSubagents: Int = 0,
+        waitingOn: [String] = [],
         failureReason: String? = nil,
         lastMessage: String? = nil,
         muted: Bool = false,
@@ -53,6 +59,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.updatedAt = updatedAt
         self.statusSince = statusSince
         self.activeSubagents = activeSubagents
+        self.waitingOn = waitingOn
         self.failureReason = failureReason
         self.lastMessage = lastMessage
         self.muted = muted
@@ -113,6 +120,7 @@ public enum SessionsCodec {
             updatedAt: session.updatedAt,
             statusSince: session.statusSince,
             activeSubagents: session.activeSubagents,
+            waitingOn: session.waitingOn,
             failureReason: session.failureReason?.rawValue,
             lastMessage: session.lastMessage,
             muted: muted,

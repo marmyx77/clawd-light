@@ -63,7 +63,7 @@ Claude Code exposes around thirty. These are the ones that move a traffic light:
 | `SessionStart` | startup, resume, clear, **compact**, fork | `idle` — **except** when `source == "compact"` |
 | `UserPromptSubmit` | the user submits a prompt | `working`, and clears the subagents |
 | `Notification` | see the subtype table | it depends |
-| `Stop` | the turn closes normally | `ready` |
+| `Stop` | the turn closes normally | `ready` — or `waiting`, when `background_tasks` lists work still running |
 | `StopFailure` | the turn is interrupted by an error | `failed`, or `ready` when truncated |
 | `SessionEnd` | the session terminates | removes the row |
 | `SubagentStart` | a subagent starts | counter +1 |

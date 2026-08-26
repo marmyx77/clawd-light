@@ -117,7 +117,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-420 cases, instantaneous. They verify Core.
+434 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
@@ -132,7 +132,7 @@ function: they were in the **seams** between a function and the world. See
 
 ## The state machine
 
-Five states, ordered by urgency — the order in which they appear in the column:
+Six states, ordered by urgency — the order in which they appear in the column:
 
 | # | State | Meaning | Color |
 |---|---|---|---|
@@ -140,7 +140,8 @@ Five states, ordered by urgency — the order in which they appear in the column
 | 1 | `ready` | there is an answer to read | green |
 | 2 | `failed` | turn cut short, nothing to read | solid red |
 | 3 | `working` | processing | yellow |
-| 4 | `idle` | at rest | dim red |
+| 4 | `waiting` | the turn is over; work Claude started is still running and will wake it | soft blue |
+| 5 | `idle` | at rest | dim red |
 
 Three properties govern the behavior, and they live on `SessionStatus`:
 

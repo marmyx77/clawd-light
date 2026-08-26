@@ -376,12 +376,13 @@ enum BackgroundTaskSuite {
         },
 
         // The case the user found by using it.
-        TestCase("A turn with a shell still running stays yellow") { t in
-            t.expectEqual(apply(stop(inFlight: 1)), .working, "green would be a lie")
+        TestCase("A turn with a shell still running is waiting") { t in
+            // Green would be a lie, and so would yellow: Claude has stopped.
+            t.expectEqual(apply(stop(inFlight: 1)), .waiting, "the truth is in between")
         },
 
-        TestCase("Several running shells are still just working") { t in
-            t.expectEqual(apply(stop(inFlight: 4)), .working, "status")
+        TestCase("Several running shells are still just one wait") { t in
+            t.expectEqual(apply(stop(inFlight: 4)), .waiting, "status")
         },
 
         // Green comes back on its own: the task finishes, wakes the session, and
@@ -484,7 +485,7 @@ enum BackgroundTaskSuite {
             t.expectEqual(
                 StateReducer.reduce(.empty, action: .signal(both, workspace: workspace), now: Date())
                     .sessions["s1"]?.status,
-                .working, "the workflow is work"
+                .waiting, "the workflow is work still to come"
             )
             t.expect(both.hasWorkInFlight, "hasWorkInFlight")
         },
