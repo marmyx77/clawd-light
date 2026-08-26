@@ -196,7 +196,12 @@
       "notWorkTypes mirrors Claude Code's own active-tasks view, which drops",
       "remote_agent and dream after applying the payload filter. If activeViewFilterPattern",
       "stops matching the binary, Claude Code changed its mind about what counts as work",
-      "and so must we - in either direction."
+      "and so must we - in either direction.",
+      "",
+      "Identifiers in these patterns are generic on purpose: the minifier renames them",
+      "on every release. 2.1.240 wrote t.type, 2.1.246 wrote o.type, and a pattern that",
+      "spelled the letter fired on a change of nothing. The semantics is the contract;",
+      "the letter is not."
     ],
     "wireField": "background_tasks",
     "filterMarkers": [
@@ -221,7 +226,7 @@
       "dream",
       "cloud session"
     ],
-    "activeViewFilterPattern": "t\\.type!==\"remote_agent\"&&t\\.type!==\"dream\"",
+    "activeViewFilterPattern": "[A-Za-z_$][A-Za-z0-9_$]*\\.type!==\"remote_agent\"&&[A-Za-z_$][A-Za-z0-9_$]*\\.type!==\"dream\"",
     "knownTypes": [
       "local_bash",
       "local_agent",
