@@ -29,6 +29,9 @@ severity.
 8. **A name in an enum is not a measurement.** It is worse than no evidence,
    because it feels like some — and being careful about a change's risk is not
    the same as checking whether it does anything.
+9. **A correct model proves nothing about the screen.** The reducer was right and
+   under test; the defect lived in the one layer no test touches, and it showed
+   up in a state the model says cannot blink.
 
 ---
 
@@ -493,6 +496,69 @@ symmetry with the green case, which is what the first attempt did.
 **And a note on the instrument.** This was diagnosed in one log read. The
 per-signal color-transition log was added three weeks earlier, after a defect
 that took three evenings to find without it. It has now paid for itself.
+
+---
+
+## The blink that outlived its state
+
+**Symptom.** Reported by use, two days after the previous fix in this family:
+*"why is the development-methodology session blinking red?"* Red is `idle`, and
+`idle` cannot blink: `shouldBlink` is true for `awaiting` alone, and a test pins
+that down.
+
+**Measure.** The model was right. The server snapshot said `idle` since 14:37,
+and the per-signal log had the row's whole day:
+
+```
+11:23:28  Notification/permission_prompt   working -> awaiting
+11:38:29  PostToolUse                      awaiting -> working
+13:20:33  Stop                             working -> ready
+14:37:12  (click on the row)               ready -> idle
+```
+
+Then the screen, by a means that can see it: the panel is a non-activating
+`NSPanel` with no title, absent from every window list, so it was found by
+`CGWindowListCopyWindowInfo` and photographed with `screencapture -l <id>` four
+times, 0.35 s apart — half a blink period. The dot alternated between full red
+and the dim red of rest. The six other idle dots did not move. This was the only
+row that had been `awaiting` since the app started, nine hours earlier.
+
+**Cause.** In the view, not the model. The dot was one `Circle` with a `@State`
+flag. Status becomes `awaiting` → the flag goes on → `.animation(repeatForever,
+value: flag)` starts the pulse. Status leaves `awaiting` → **that same render**
+puts the opacity back to rest, *unanimated*, because the flag has not moved yet
+and the `.animation(value:)` modifier sits out → then `onChange` flips the flag
+off, with a short animation of nothing, because the opacity no longer changes.
+
+SwiftUI stops a `repeatForever` animation in exactly one way: by replacing it
+with another animation on the same value. Nothing replaced it. It kept driving
+the presentation under every colour that followed — yellow for two hours, green
+for an hour, then red for six.
+
+**Correction.** Blinking is a different view. `Blinking` is a modifier put behind
+an `if`: while `shouldBlink && !calm` the row shows a pulsing circle; the moment
+that stops holding, the view is removed and a steady one takes its place. A
+removed view takes its animations with it — that is the entire mechanism, and it
+does not depend on how SwiftUI reconciles a running animation with an unanimated
+change. The dictation button had the same shape and got the same fix.
+
+**Verified in reverse.** With the new build running, a throwaway session in the
+same folder was sent a synthetic `permission_prompt`: four window-id screenshots
+0.35 s apart, all different — blinking. Then a `PostToolUse`: four more, all
+byte-identical — steady, at the resting opacity. Before the fix the second set
+would have differed like the first.
+
+**Lesson.** Every test in this project runs on the reducer, and the reducer was
+right. The defect lived in the one layer nothing tests, and it surfaced in a
+state the model says cannot blink. *When a symptom is impossible by the model,
+stop reading the model and look at the screen* — with an instrument that can
+actually see it, which here meant a window id and two frames half a period apart.
+
+**And on the previous fix.** The same words had come in two days earlier — *"it
+keeps blinking after I answered"* — and were fixed in the reducer, where the log
+showed a genuinely stuck `awaiting`. That was a real cause, and not the only one.
+Two defects wore one symptom; fixing the first hid the second until the next
+amber went through cleanly, and the survivor showed up in red.
 
 ---
 

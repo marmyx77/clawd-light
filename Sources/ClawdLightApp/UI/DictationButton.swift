@@ -57,28 +57,30 @@ struct DictationButton: View {
     /// Called with the finished text when listening stops.
     let onFinish: (String) -> Void
 
-    @State private var pulsing = false
-
     var body: some View {
         Button(action: press) {
-            Image(systemName: service.isListening ? "mic.fill" : "mic")
-                .font(.system(size: 14))
-                .foregroundStyle(service.isListening ? Color.red : Color.primary.opacity(0.7))
-                .opacity(service.isListening && pulsing ? 0.45 : 1)
+            // The pulse is the only proof the microphone is open. Without it, a
+            // dictation that silently failed to start looks exactly like one that
+            // is listening to you patiently.
+            //
+            // Two views on purpose: the pulsing one exists only while listening,
+            // so stopping is removal, not a flag — see `Blinking` for why a flag
+            // is not enough.
+            if service.isListening {
+                microphone(filled: true).blinking(to: 0.45).transition(.identity)
+            } else {
+                microphone(filled: false).transition(.identity)
+            }
         }
         .buttonStyle(.borderless)
         .help(service.isListening ? "Stop dictating" : "Dictate the message")
-        // The pulse is the only proof the microphone is open. Without it, a
-        // dictation that silently failed to start looks exactly like one that is
-        // listening to you patiently.
-        .onChange(of: service.isListening) { _, listening in
-            pulsing = false
-            guard listening else { return }
-            withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
-                pulsing = true
-            }
-        }
         .task { await service.refreshAvailability() }
+    }
+
+    private func microphone(filled: Bool) -> some View {
+        Image(systemName: filled ? "mic.fill" : "mic")
+            .font(.system(size: 14))
+            .foregroundStyle(filled ? Color.red : Color.primary.opacity(0.7))
     }
 
     private func press() {

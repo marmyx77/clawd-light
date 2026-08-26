@@ -17,33 +17,36 @@ struct TrafficLightDot: View {
     /// been waiting for half an hour and you don't intend to answer yet.
     var calm: Bool = false
 
-    @State private var dimmed = false
-
+    /// Two views, not one view with two behaviours.
+    ///
+    /// The first version toggled a `@State` flag on the same circle and relied on
+    /// SwiftUI to cancel the `repeatForever` animation when the flag went back.
+    /// It did not: the render that ends the amber changes the *status*, and the
+    /// opacity returns to rest in that same render, unanimated; by the time the
+    /// flag flips there is no opacity change left to animate, so the running
+    /// animation is never replaced and keeps pulsing under every colour that
+    /// follows — yellow, green, and finally the red of an idle row.
+    ///
+    /// Here the blinking dot is a different view. When the status stops blinking
+    /// the view is removed, and a removed view takes its animations with it.
     var body: some View {
+        if status.shouldBlink && !calm {
+            glowing(circle.blinking(to: 0.25)).transition(.identity)
+        } else {
+            glowing(circle).transition(.identity)
+        }
+    }
+
+    private var color: Color { StatusPalette.color(for: status) }
+
+    private var circle: some View {
         Circle()
-            .fill(StatusPalette.color(for: status))
+            .fill(color)
             .frame(width: Layout.dotSize, height: Layout.dotSize)
-            .opacity(currentOpacity)
-            .shadow(
-                color: StatusPalette.color(for: status).opacity(0.8),
-                radius: StatusPalette.glowRadius(for: status)
-            )
-            .animation(blinkAnimation, value: dimmed)
-            .onAppear { dimmed = blinks }
-            .onChange(of: status) { _, _ in dimmed = blinks }
-            .onChange(of: calm) { _, _ in dimmed = blinks }
+            .opacity(StatusPalette.opacity(for: status))
     }
 
-    private var blinks: Bool { status.shouldBlink && !calm }
-
-    private var currentOpacity: Double {
-        let base = StatusPalette.opacity(for: status)
-        guard blinks, dimmed else { return base }
-        return base * 0.25
-    }
-
-    private var blinkAnimation: Animation? {
-        guard blinks else { return .easeInOut(duration: 0.2) }
-        return .easeInOut(duration: AppConfig.blinkPeriod).repeatForever(autoreverses: true)
+    private func glowing<Dot: View>(_ dot: Dot) -> some View {
+        dot.shadow(color: color.opacity(0.8), radius: StatusPalette.glowRadius(for: status))
     }
 }
