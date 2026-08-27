@@ -214,9 +214,17 @@ Written by the extension, one per window:
   "entrypoint": "claude-vscode",
   "kind": "interactive",
   "name": "event-tracker-64",
-  "nameSource": "derived"
+  "nameSource": "derived",
+  "procStart": "Wed Aug 26 17:07:24 2026"
 }
 ```
+
+**`procStart` is the guard against a reused pid.** On macOS it is a ctime string
+**in UTC with no zone marker** (the process above started at 19:07 local); on
+Linux it is clock ticks since boot (`"5480393"`). Compared with the kernel's
+start time before a click on a terminal row trusts the pid. A `cli` session's
+file also carries `status`/`statusUpdatedAt`, only ever seen as `idle` — not a
+state source.
 
 **These files survive the death of the process too.** The liveness check is
 `kill(pid, 0)`: a syscall that sends no signal and only asks the kernel whether

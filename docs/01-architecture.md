@@ -202,6 +202,11 @@ project to answer a permission would erase the ready answer of another session i
 the same project — and grouping would become a loss of information instead of a
 reduction in noise.
 
+The name a row shows can be the user's own (`RowNames`, D26): keyed by folder,
+threaded through `ColumnOptions.names` into `ColumnRow.alias`, shown by every
+surface that names a session to a person and believed by nothing that finds a
+window or a file.
+
 ## Getting back to the window
 
 This is the gesture that justifies the widget, and it is the most fragile part.

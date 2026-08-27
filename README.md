@@ -1,8 +1,8 @@
 # clawd-light
 
 A floating column of traffic lights that tells you, at a glance, what state your
-Claude Code sessions inside VS Code are in. One traffic light per project. You
-click it and you're in that window.
+Claude Code sessions are in — in VS Code, in a terminal, on another machine. One
+traffic light per project. You click it and you're in that window, or that tab.
 
 It comes from a concrete problem: with a dozen VS Code windows open, finding out
 which one is waiting for an answer and which one is still working means going
@@ -332,17 +332,30 @@ Claude makes, the session file's does not. It exists only while
 `~/.claude/sessions/` has a live file for it, and turning the switch off takes
 those rows away at once.
 
+Clicking a terminal row takes you to the **tab** hosting the session — found
+through the session's process, never by guessing a window title:
+
+| Where `claude` runs | How the tab is found | What it needs |
+|---|---|---|
+| **Terminal.app** | by tty, through Terminal's dictionary | Automation → Terminal, asked once |
+| **iTerm2** | by tty, through iTerm2's dictionary | Automation → iTerm2, asked once |
+| **Ghostty** | by the conversation title, the folder, or Claude's own `✳` mark when only one terminal carries it | Automation → Ghostty, asked once |
+| **WezTerm** | by tty, through `wezterm cli` | nothing |
+| **kitty** | by pid, over kitty's remote-control socket | `allow_remote_control yes` and `listen_on unix:/tmp/kitty` in `kitty.conf`; without them the click activates kitty and the menu says why |
+| **tmux** pane | the pane is selected inside tmux, then the attached client's tab as above | nothing |
+| **zellij** pane | the client is paired with its server, then its tab as above; the pane inside zellij is yours to find | nothing |
+| VS Code's integrated terminal | the session belongs to that window (see below) | as any editor row |
+
 Two limits, stated. A `claude` in a terminal tab **inside a folder that is open
-in VS Code** is an editor row like any other, and its click raises the VS Code
-window. And clicking a terminal row selects its tab in **Terminal.app and iTerm2**,
-asking once for the Automation permission for that application — through
-**tmux** (the pane is selected, then the attached client's tab) and **zellij**
-(the client's tab; the pane inside it is yours to find) as well. **Ghostty** (by the
-terminal's title, folder, or Claude's own `✳` mark when it is the only one,
-through its dictionary) and **WezTerm** (by tty,
-through `wezterm cli`) work out of the box; **kitty** needs remote control on —
-`allow_remote_control yes` and `listen_on unix:/tmp/kitty` in `kitty.conf` —
-and without it the click activates kitty and the menu says why.
+in VS Code** is an editor row like any other — same project, same window — and
+its click raises the VS Code window. And a `claude` started from a shell that a
+Claude Code session opened (a nested one) writes no session file, so it gets no
+row.
+
+Rows can be **renamed** (right-click → Rename…, or `clawd-light rename <folder>
+[name]`): the name is what the panel shows, by folder, and nothing else changes —
+the window is still found by its title, `/sessions` still says the folder. Leave
+the name empty to go back to the original.
 
 ## Installation
 
@@ -375,8 +388,12 @@ authorizations**, granted in two different panes:
 - **Privacy & Security › Accessibility** — to raise the exact VS Code window
 - **Privacy & Security › Automation › clawd-light › System Events** — to read the
   window titles
+- **Privacy & Security › Automation › clawd-light › Terminal / iTerm2 / Ghostty**
+  — one entry per terminal application, asked at the first click on a row of
+  a session running there (only with *Show terminal sessions* on). WezTerm and
+  kitty are driven through their own CLIs and ask for nothing.
 
-Both are needed. Without them the click falls back to `open`: VS Code still comes
+Both of the first two are needed. Without them the click falls back to `open`: VS Code still comes
 to the front, but it may open a new window instead of raising the right one.
 
 > **It has to be re-authorized after every rebuild.** The bundle is ad-hoc signed,
@@ -606,6 +623,8 @@ clawd-light status                   configuration and detected sessions
 clawd-light selftest                 check the whole chain and report what's missing
 clawd-light sessions                 the column as the running app sees it
 clawd-light terminal on|off|status   rows for claude started in a terminal
+clawd-light rename <folder> [name]   the panel's word for a row; no name restores it
+clawd-light remote add|install|check|remove <host>   another machine's sessions (see above)
 clawd-light next                     raise the next waiting session
 clawd-light open <n>                 raise the project bound to slot n
 clawd-light open                     list what the slots address
@@ -636,10 +655,16 @@ curl -H "X-Clawd-Token: $(cat ~/.clawd-light/token)" \
      http://127.0.0.1:9877/sessions
 ```
 
-It returns state, project, path, timestamps, subagent counter and **keyboard
-slot** for every session, with the dates in ISO 8601. The slot is in the contract
-because no outside reader could work it out: the column's order is the one you
-arranged, and it lives in the preferences. The token lives in `~/.clawd-light/token`
+It returns, for every session: `status`, `workspace` (the folder's name) and
+`path`, the timestamps in ISO 8601, `activeSubagents` and `waitingOn`,
+`failureReason` and `lastMessage`, `muted`, the **keyboard slot**, the
+`transcriptPath`, the `host` when the session runs on another machine, the
+`entrypoint` Claude Code reported, the `origin` (`editor` or `terminal`), the
+conversation `title` once there is one, and the `label` — what the panel calls
+the row: the name you gave it, or the title of a lone terminal row, or the
+folder. The slot and the label are in the contract because no outside reader
+could work them out: the order and the names are yours, and they live in the
+preferences. The token lives in `~/.clawd-light/token`
 with mode `0600`; if the app finds the permissions any wider it **regenerates** the
 token instead of narrowing them: a secret that has been readable by others must be
 considered burned.
