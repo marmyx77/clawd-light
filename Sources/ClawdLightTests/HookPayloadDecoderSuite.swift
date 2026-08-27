@@ -82,6 +82,12 @@ enum HookPayloadDecoderSuite {
             // The value ends up in a row label and, later, in an ssh argument.
             let hostile = try? HookPayloadDecoder.decode(json(validStop), host: "-oProxyCommand=evil")
             t.expectNil(hostile?.host, "a name ssh would misread is dropped, the signal is kept")
+
+            // A path on the node is not a path here: the chat window would open
+            // an empty conversation and call it "nothing was said".
+            let withPath = payload(["transcript_path": "/home/dev/.claude/projects/p/s.jsonl"])
+            t.expectNil((try? HookPayloadDecoder.decode(withPath, host: "node"))?.transcriptPath, "a remote transcript path is dropped")
+            t.expect((try? HookPayloadDecoder.decode(withPath))?.transcriptPath != nil, "a local one is kept")
         },
 
         TestCase("Decodes a permission request notification") { t in

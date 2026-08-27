@@ -626,10 +626,14 @@ the chat window says so rather than opening empty.
 
 **We assume** three things about the other machine: Claude Code there reads hooks
 from `~/.claude/settings.json` with the same schema as here (so
-`HookConfigMerger` applies unchanged); `curl` and `python3` exist; and nothing
-listens on `127.0.0.1:9877` there, so `ssh -R 127.0.0.1:9877:127.0.0.1:<port>` can
-bind it. And one thing about VS Code on this Mac: a Remote-SSH window's title ends
-in `[SSH: <what the user typed to connect>]`.
+`HookConfigMerger` applies unchanged); `curl` and `python3` exist; and it is
+Linux, so `/proc/net/tcp` and `/proc/net/tcp6` say where a port is bound — the
+one fact the tunnel refuses to take on trust. **Not assumed**: that the ssh
+server is OpenSSH. The machine this was built against runs **Tailscale SSH**,
+whose daemon forwards as root; it honoured `-R 127.0.0.1:<port>` (measured in
+`/proc/net/tcp`), and created a requested Unix socket `root:root 0600`, which is
+why the transport is a port. And one thing about VS Code on this Mac: a
+Remote-SSH window's title ends in `[SSH: <what the user typed to connect>]`.
 
 **Depends at** [RemoteInstallScripts.swift](../Sources/ClawdLightCore/Setup/RemoteInstallScripts.swift)
 · [HookScriptBuilder.swift](../Sources/ClawdLightCore/Setup/HookScriptBuilder.swift) (`host:`)
@@ -646,11 +650,15 @@ open on this Mac at the time, titled `resume — <folder> [SSH: 100.x.x.x]` and
 accepts the configured name, the `HostName` ssh resolves it to, and their
 addresses.
 
-**Failure mode** — a port taken on the node ends the tunnel at once
-(`ExitOnForwardFailure`) with a reason in the log and the Settings window; a
-missing `curl` is refused before anything is written; a title format change in
-VS Code Remote-SSH would make every remote click report "no Remote-SSH window of
-that folder" while the rows keep working — loud, at the click.
+**Failure mode** — a port already bound is seen before the connect and waited
+out; a bind refused ends the tunnel at once (`ExitOnForwardFailure`) with a
+reason in the log and the Settings window; a bind on anything but loopback
+closes the tunnel with "exposed on <address>" and no retry; a `~/.clawd-light`
+there that is a symlink or another user's is refused
+before anything is written, as is a missing `curl`; a settings file that changed
+between the read and the write is left alone and the operation says so; a title
+format change in VS Code Remote-SSH would make every remote click report "no
+Remote-SSH window of that folder" while the rows keep working — loud, at the click.
 
 ---
 

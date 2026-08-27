@@ -8,13 +8,18 @@ import Foundation
 /// widget wasn't running.
 public enum HookScriptBuilder {
 
-    /// - Parameter host: when given, the script runs on another machine and says
-    ///   so in an `X-Clawd-Host` header, so that a signal arriving through the
-    ///   tunnel is told apart from a local one. The value is embedded in single
-    ///   quotes; it has passed `RemoteHostList.isUsable`, whose allow-list has no
-    ///   quote, space or backslash in it, so nothing here can escape.
+    /// - Parameters:
+    ///   - port: where to post. Locally the app's port; on another machine the
+    ///     per-user loopback port the tunnel binds there (`AppConfig.remotePort`).
+    ///   - host: when given, the script runs on another machine and says which in
+    ///     an `X-Clawd-Host` header, so that a signal arriving through the tunnel is
+    ///     told apart from a local one. The value is embedded in single quotes; it
+    ///     has passed `RemoteHostList.isUsable`, whose allow-list has no quote,
+    ///     space or backslash in it, so nothing here can escape.
     public static func script(port: UInt16 = AppConfig.listenPort, host: String? = nil) -> String {
         let origin = host.map { "     --header '\(AppConfig.remoteHostHeader): \($0)' \\\n" } ?? ""
+        let socket = ""
+        let target = "http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)"
         let where_ = host.map { " It runs on \($0) and posts through the ssh tunnel clawd-light keeps open." } ?? ""
         return """
         #!/bin/bash
@@ -33,8 +38,8 @@ public enum HookScriptBuilder {
              --request POST \\
              --header 'Content-Type: application/json' \\
              --header "X-Claude-Entrypoint: ${CLAUDE_CODE_ENTRYPOINT:-}" \\
-        \(origin)     --data-binary "$BODY" \\
-             'http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)' \\
+        \(origin)\(socket)     --data-binary "$BODY" \\
+             '\(target)' \\
              2>/dev/null || true
 
         exit 0

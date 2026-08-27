@@ -66,6 +66,12 @@ enum CoverageSuite {
             TestCase("a signal from another machine gets a row on that machine") { a in
                 let id = "e2e-remote-\(UUID().uuidString.prefix(8))"
                 let cwd = "/home/dev/.notes"
+                // The header is believed only for a machine this app was told
+                // about: a host anyone on loopback could write does not get to
+                // skip the gate that bounds every local signal.
+                a.expectEqual(app.runCommand(["remote", "add", "node"]).status, 0, "host configured")
+                defer { app.runCommand(["remote", "remove", "node"]) }
+                usleep(300_000)
                 a.expectEqual(
                     app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: cwd), entrypoint: "cli", host: "node"),
                     204, "accepted"
@@ -84,6 +90,12 @@ enum CoverageSuite {
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: local, cwd: cwd), entrypoint: "cli")
                 usleep(300_000)
                 a.expectEqual(app.status(of: local), "absent", "no host, no row")
+
+                // A host nobody configured is a header, not a machine.
+                let forged = "e2e-remote-forged-\(UUID().uuidString.prefix(8))"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: forged, cwd: cwd), entrypoint: "cli", host: "stranger")
+                usleep(300_000)
+                a.expectEqual(app.status(of: forged), "absent", "unknown host, no row")
             },
             TestCase("a subagent starting after the Stop turns the row blue") { a in
                 // It arrives after the parent's Stop, so it is a background agent:

@@ -80,6 +80,8 @@ public enum HookPayloadDecoder {
             throw HookPayloadError.ignoredEvent(eventName)
         }
 
+        let host = host?.trimmed.nilIfEmpty.flatMap { RemoteHostList.isUsable($0) ? $0 : nil }
+
         return HookSignal(
             sessionId: sessionId,
             event: event,
@@ -92,8 +94,11 @@ public enum HookPayloadDecoder {
             sessionSource: optionalString(object, key: "source"),
             failureReason: failureReason(in: object, event: event),
             inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes(in: object),
-            transcriptPath: absolutePath(object, key: "transcript_path"),
-            host: host?.trimmed.nilIfEmpty.flatMap { RemoteHostList.isUsable($0) ? $0 : nil }
+            // A transcript on another machine is not a file here. Keeping the path
+            // would make the chat window open an empty conversation and call it
+            // "nothing was said".
+            transcriptPath: host == nil ? absolutePath(object, key: "transcript_path") : nil,
+            host: host
         )
     }
 

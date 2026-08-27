@@ -296,8 +296,10 @@ gave rows that never changed colour and that a click could not open.
 Now the machine's hooks **reach this Mac**. Right-click the panel → **Settings…**,
 add the machine under the name ssh knows it by, and press **Install hooks**:
 clawd-light writes the hook script and registers it in that machine's
-`~/.claude/settings.json` (dated backup, atomic write), and keeps a reverse ssh
-tunnel open so that `127.0.0.1:9877` *over there* is this app. From a terminal:
+`~/.claude/settings.json` (dated backup, atomic write, refused if the file changed
+in between), and keeps a reverse ssh tunnel open so that a loopback port *of your
+own over there* — derived from your uid, and checked after every connect to be
+bound to loopback and nothing else — is this app. From a terminal:
 
 ```bash
 clawd-light remote add node         # a name ssh understands; key login only
@@ -311,11 +313,11 @@ the process is gone. Clicking the row raises the **Remote-SSH** window of that
 folder here, if one is open (`… — folder [SSH: host]`); otherwise the menu says
 where the session is. The chat window cannot open a remote transcript.
 
-The machine needs ssh key login (no password prompt is possible), `python3`,
-`curl`, and port 9877 free on its loopback. The tunnel is restarted with backoff
-when the machine sleeps or the VPN drops; the Settings window shows its state and
-the outcome of every operation. Hosts were read from `~/.clawd-light/remotes`
-before; that file is imported once and no longer consulted. See
+The machine needs ssh key login (no password prompt is possible), `python3` and
+`curl`. The tunnel is restarted with backoff when the machine sleeps or the VPN
+drops; the Settings window shows its state and the outcome of every operation.
+Hosts were read from `~/.clawd-light/remotes` before; that file is imported once
+and no longer consulted. See
 [D24](docs/04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
 
 ## Installation
@@ -678,7 +680,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 438 domain tests, instantaneous
+swift run ClawdLightTests              # 442 domain tests, instantaneous
 swift run ClawdLightE2E                # 76 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

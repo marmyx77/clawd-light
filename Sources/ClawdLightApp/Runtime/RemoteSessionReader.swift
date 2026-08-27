@@ -49,10 +49,8 @@ struct RemoteSessionReader {
     private func run() -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = [
-            "-o", "BatchMode=yes",
+        process.arguments = RemoteCommand.hardening + [
             "-o", "ConnectTimeout=\(Int(timeout))",
-            "-o", "StrictHostKeyChecking=accept-new",
             host, "python3", "-",
         ]
 

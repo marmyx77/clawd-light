@@ -224,6 +224,18 @@ public enum AppConfig {
 
     /// Where the hook script goes on a remote machine, relative to its home.
     public static let remoteHookScriptRelativePath = ".clawd-light/hook.sh"
+    /// The far end of the tunnel on a remote machine: a loopback port **derived
+    /// from the user's uid**, so two accounts on one machine never share it.
+    ///
+    /// A Unix socket in the user's home was tried first — owner-only by
+    /// construction, immune to `GatewayPorts`. It failed on measurement: the
+    /// machine at hand runs Tailscale SSH, whose daemon does the forwarding as
+    /// root and created the socket `root:root 0600`, which the user cannot open.
+    /// A port it is, then — verified after every connect to be bound to loopback
+    /// and to nothing else (`RemoteInstallScripts.checkTunnel`).
+    public static func remotePort(forUID uid: Int) -> UInt16 {
+        UInt16(30_000 + max(uid, 0) % 20_000)
+    }
     /// Claude Code's settings on a remote machine, relative to its home.
     public static let remoteClaudeSettingsRelativePath = ".claude/settings.json"
 

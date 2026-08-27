@@ -28,6 +28,11 @@ enum Diagnostics {
         log("session started")
     }
 
+    /// One writer at a time. Lines now come from the main actor and from the
+    /// tasks that talk to other machines; two appends racing on the same file
+    /// would interleave, and a log that has to be second-guessed is no instrument.
+    private static let writer = DispatchQueue(label: "clawd-light.diagnostics")
+
     static func log(_ message: String) {
         guard isEnabled else { return }
 
@@ -37,13 +42,15 @@ enum Diagnostics {
 
         // A diagnostic log that brings the app down would be worse than the
         // problem it exists to diagnose: every write error is swallowed here.
-        do {
-            let handle = try FileHandle(forWritingTo: logURL)
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: data)
-        } catch {
-            try? data.write(to: logURL)
+        writer.sync {
+            do {
+                let handle = try FileHandle(forWritingTo: logURL)
+                defer { try? handle.close() }
+                try handle.seekToEnd()
+                try handle.write(contentsOf: data)
+            } catch {
+                try? data.write(to: logURL)
+            }
         }
     }
 }

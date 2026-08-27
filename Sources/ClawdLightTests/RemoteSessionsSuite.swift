@@ -19,6 +19,22 @@ enum RemoteSessionsSuite {
 
     private static let host = "node"
 
+    /// `true` when the local python3 can parse `script`. Parsing only: nothing runs.
+    private static func pythonParses(_ script: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["python3", "-c", "import ast, sys; ast.parse(sys.stdin.read())"]
+        let input = Pipe()
+        process.standardInput = input
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return false }
+        input.fileHandleForWriting.write(Data(script.utf8))
+        try? input.fileHandleForWriting.close()
+        process.waitUntilExit()
+        return process.terminationStatus == 0
+    }
+
     private static func decode(_ json: String) -> [LiveSession] {
         (try? RemoteSessionsDecoder.decode(
             Data(json.utf8), host: host
@@ -232,6 +248,35 @@ enum RemoteSessionsSuite {
 
         // A pid outlives its process: after a reboot the same number names
         // something else, and kill(pid, 0) would keep a dead session's row alive.
+        // A script that does not parse is a promise nobody can keep, and no
+        // `contains` check sees it: two literals joined without a newline once
+        // produced `return Nonedef bound_addresses` and a tunnel that retried
+        // forever. python3 is on every Mac; let it read what the node will read.
+        TestCase("Every script sent to another machine is valid Python") { t in
+            for (name, script) in [
+                ("probe", RemoteProbeScript.script),
+                ("inspect", RemoteInstallScripts.inspect),
+                ("apply", RemoteInstallScripts.apply(payloadBase64: "e30=")),
+                ("prepareTunnel", RemoteInstallScripts.prepareTunnel),
+                ("checkTunnel", RemoteInstallScripts.checkTunnel(port: 31000)),
+            ] {
+                t.expect(pythonParses(script), "\(name) does not parse")
+            }
+        },
+
+        // What runs on the node to install the hooks, and the promises it keeps.
+        TestCase("The install scripts check the directory, compare before writing, and keep the mode") { t in
+            let apply = RemoteInstallScripts.apply(payloadBase64: "e30=")
+            t.expect(apply.contains("expectedSha256"), "compare-and-swap on the settings")
+            t.expect(apply.contains("shutil.copy2"), "the backup keeps the file's mode")
+            t.expect(apply.contains("os.chmod(tmp, mode)") && apply.contains("os.replace(tmp, settings_path)"), "atomic write, same mode")
+            t.expect(apply.contains("S_ISLNK") && apply.contains("st_uid != os.getuid()"), "a symlinked or foreign ~/.clawd-light is refused")
+            t.expect(RemoteInstallScripts.inspect.contains("settingsSha256"), "the inspection hands back what to compare")
+            // The bind is a request; whether it was honoured is read where it is a fact.
+            t.expect(RemoteInstallScripts.prepareTunnel.contains("/proc/net/tcp"), "a taken port is seen before the tunnel asks for it")
+            t.expect(RemoteInstallScripts.checkTunnel(port: 31000).contains("bound_addresses(31000)"), "the tunnel check reports where the port is bound")
+        },
+
         TestCase("The probe refuses a pid that has been reused") { t in
             t.expect(RemoteProbeScript.script.contains("/proc/%d/stat"), "reads the start time where it is")
             t.expect(

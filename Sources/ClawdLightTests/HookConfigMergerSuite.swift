@@ -179,15 +179,41 @@ enum HookScriptBuilderSuite {
 
         // The script installed on another machine has to say which machine, or
         // its signals would be looked up among local editor windows and dropped.
-        TestCase("A script for another machine names it in a header") { t in
-            let remote = HookScriptBuilder.script(port: 9877, host: "node")
+        TestCase("A script for another machine names it in a header and posts to its own port") { t in
+            let remote = HookScriptBuilder.script(port: 31000, host: "node")
             t.expect(
                 remote.contains("--header 'X-Clawd-Host: node' \\\n     --data-binary"),
                 "host header missing or misplaced in:\n\(remote)"
             )
             t.expect(remote.contains("posts through the ssh tunnel"), "the script says where it runs")
-            t.expect(remote.contains("http://127.0.0.1:9877/signal"), "still posts to loopback — the tunnel's end")
+            // The per-user loopback port the tunnel binds over there — never the
+            // Mac's own port, which another account on that machine could share.
+            t.expect(remote.contains("'http://127.0.0.1:31000/signal'"), "posts to the tunnel's far end in:\n\(remote)")
             t.expect(!HookScriptBuilder.script(port: 9877).contains("X-Clawd-Host"), "a local script carries no host")
+        },
+
+        TestCase("The remote port is the user's, and both sides compute it the same way") { t in
+            t.expectEqual(AppConfig.remotePort(forUID: 1000), 31000, "uid 1000")
+            t.expectEqual(AppConfig.remotePort(forUID: 0), 30000, "root, should anyone")
+            t.expectEqual(AppConfig.remotePort(forUID: 21000), 31000, "wraps inside the range")
+            t.expect(
+                RemoteInstallScripts.prepareTunnel.contains("30000 + max(uid, 0) % 20000"),
+                "the Python formula must stay textually identical to AppConfig.remotePort"
+            )
+        },
+
+        // The boundary that keeps "any process on your machine can start a turn in
+        // your voice" (D15) from extending to every process on the node.
+        TestCase("The remote merge registers no message delivery") { t in
+            let merged = HookConfigMerger.install(
+                into: [:], scriptPath: "/home/dev/.clawd-light/hook.sh",
+                rewakeScriptPath: nil, registerMessageDelivery: false
+            )
+            let hooks = (merged["hooks"] as? [String: Any]) ?? [:]
+            let stop = (hooks["Stop"] as? [[String: Any]]) ?? []
+            t.expectEqual(stop.count, 1, "one Stop group: the traffic light's")
+            let text = String(decoding: try! JSONSerialization.data(withJSONObject: merged), as: UTF8.self)
+            t.expect(!text.contains("asyncRewake") && !text.contains("rewake"), "no rewake anywhere in the remote settings")
         },
     ])
 }

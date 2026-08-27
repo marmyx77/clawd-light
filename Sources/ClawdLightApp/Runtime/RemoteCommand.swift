@@ -28,11 +28,17 @@ enum RemoteCommandError: LocalizedError, Equatable {
     var short: String {
         switch self {
         case .unreachable(let detail):
+            if detail.localizedCaseInsensitiveContains("IDENTIFICATION HAS CHANGED") {
+                return "host key changed — remove its old line from ~/.ssh/known_hosts"
+            }
             if detail.localizedCaseInsensitiveContains("permission denied") {
                 return "ssh refused the key (BatchMode: no password prompt is possible)"
             }
             if detail.localizedCaseInsensitiveContains("host key") {
-                return "host key changed or unknown — connect once from a terminal"
+                return "host key not accepted — connect once from a terminal"
+            }
+            if detail.localizedCaseInsensitiveContains("python3") {
+                return "python3 is missing there"
             }
             return "unreachable: \(detail.prefix(80))"
         case .remoteFailure(let detail): return "failed there: \(detail.prefix(80))"
@@ -53,6 +59,21 @@ enum RemoteCommandError: LocalizedError, Equatable {
 /// Blocking, by design: callers run it off the main thread.
 enum RemoteCommand {
 
+    /// What every ssh this app starts carries, before anything else.
+    ///
+    /// The user's `~/.ssh/config` for that host applies to us too, and a dev box
+    /// commonly has `ForwardAgent yes`. A compromised node must not get the Mac's
+    /// agent, X11, or a `LocalCommand` run here: `-a -x` and the two options say so
+    /// explicitly. `ClearAllForwardings` is **not** used — it would also clear the
+    /// `-R` the tunnel is made of.
+    static let hardening: [String] = [
+        "-a", "-x",
+        "-o", "ForwardAgent=no",
+        "-o", "PermitLocalCommand=no",
+        "-o", "BatchMode=yes",
+        "-o", "StrictHostKeyChecking=accept-new",
+    ]
+
     static func runPython(
         on host: String, script: String, timeout: TimeInterval = AppConfig.remoteProbeTimeout
     ) -> Result<Data, RemoteCommandError> {
@@ -60,10 +81,8 @@ enum RemoteCommand {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = [
-            "-o", "BatchMode=yes",
+        process.arguments = hardening + [
             "-o", "ConnectTimeout=\(Int(timeout))",
-            "-o", "StrictHostKeyChecking=accept-new",
             host, "python3", "-",
         ]
 

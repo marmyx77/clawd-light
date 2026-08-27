@@ -161,7 +161,7 @@ struct TrafficLightRow: View {
     /// The menu entry exists because a modifier nobody discovers is dead code.
     private func activate() {
         let modifiers = NSEvent.modifierFlags
-        if modifiers.contains(.command) {
+        if modifiers.contains(.command), !row.workspace.isRemote {
             activateChat()
         } else if modifiers.contains(.option) {
             actions.peek(row)
@@ -181,7 +181,12 @@ struct TrafficLightRow: View {
 
     @ViewBuilder
     private var menu: some View {
-        Button("Read here — opens the conversations", action: { actions.openChat(row) })
+        // The transcript of a remote session is on the other machine, and a new
+        // conversation opens in the local editor: neither entry can mean anything
+        // for a row that lives elsewhere, so neither is offered.
+        if !row.workspace.isRemote {
+            Button("Read here — opens the conversations", action: { actions.openChat(row) })
+        }
         Button("Open", action: { actions.open(row) })
         Button("Open without marking as read", action: { actions.peek(row) })
 
@@ -209,9 +214,10 @@ struct TrafficLightRow: View {
                    action: { actions.toggleMuted(row) })
         }
 
-        Divider()
-
-        Button("New conversation here", action: { actions.newConversation(row) })
+        if !row.workspace.isRemote {
+            Divider()
+            Button("New conversation here", action: { actions.newConversation(row) })
+        }
     }
 
     // MARK: - Content

@@ -52,6 +52,17 @@ final class StateStore: ObservableObject {
     /// — the same rule that stopped this app pruning live local sessions.
     private var remoteSessions: [String: [LiveSession]] = [:]
 
+    /// When each host's last answer was **asked for** — not received. A probe may
+    /// only declare dead what it looked for after a row's last sign of life: a
+    /// session that spoke through the tunnel after the probe started is not
+    /// "missing from the answer", it is newer than the question.
+    private var remoteAnsweredAt: [String: Date] = [:]
+
+    /// `true` while a pass over the hosts is running off the main actor. A pass
+    /// slower than the timer is skipped, not queued: two unreachable hosts would
+    /// otherwise stack passes forever.
+    private var isProbing = false
+
     /// The hosts to ask, as configured in the settings.
     private var remoteHosts: [String] { preferences.remoteHosts }
 
@@ -68,24 +79,61 @@ final class StateStore: ObservableObject {
         // stop being confirmed and go on the next pass rather than lingering.
         for gone in remoteSessions.keys where !hosts.contains(gone) {
             remoteSessions.removeValue(forKey: gone)
+            remoteAnsweredAt.removeValue(forKey: gone)
         }
 
         guard !hosts.isEmpty else {
             poll()
             return
         }
+        guard !isProbing else { return }
+        isProbing = true
 
-        for host in hosts {
-            guard let answer = RemoteSessionReader(host: host).readLiveSessions() else {
+        // The ssh handshakes happen **off the main actor**. The first version
+        // awaited them on it, and with one unreachable host the panel, the click
+        // and the chat window froze for the connect timeout every twenty seconds —
+        // and a host is unreachable exactly when its tunnel is down, which is the
+        // common case this feature exists for.
+        let startedAt = clock()
+        Task.detached(priority: .utility) { [weak self] in
+            let answers = hosts.map { host in
+                (host: host, sessions: RemoteSessionReader(host: host).readLiveSessions())
+            }
+            await MainActor.run { [weak self] in
+                self?.absorbRemoteAnswers(answers, askedAt: startedAt)
+            }
+        }
+    }
+
+    /// Records what the hosts said, then realigns the column.
+    private func absorbRemoteAnswers(
+        _ answers: [(host: String, sessions: [LiveSession]?)], askedAt: Date
+    ) {
+        isProbing = false
+        for (host, sessions) in answers {
+            guard let sessions else {
                 // No answer. Keep what we had and say so once.
                 Diagnostics.log("remote \(host): no answer, keeping \(remoteSessions[host]?.count ?? 0) known rows")
                 continue
             }
-            let usable = answer.filter(\.deservesTrafficLight)
-            if usable.count != (remoteSessions[host]?.count ?? -1) {
-                Diagnostics.log("remote \(host): \(usable.count) sessions")
+            // The whole answer, unfiltered: it is a confirmation set now, not a
+            // list of rows to create, and a session that spoke through the tunnel
+            // must be confirmable whatever its file says about its kind.
+            if sessions.count != (remoteSessions[host]?.count ?? -1) {
+                Diagnostics.log("remote \(host): \(sessions.count) sessions")
             }
-            remoteSessions[host] = usable
+            remoteSessions[host] = sessions
+            remoteAnsweredAt[host] = askedAt
+        }
+
+        // An answer that is days old is not an answer. Dropping it puts the host
+        // back among the silent ones: its rows are no longer confirmed or denied,
+        // and only the age rule can remove them.
+        let staleBefore = clock().addingTimeInterval(-AppConfig.remotePollInterval * 10)
+        for (host, askedAt) in remoteAnsweredAt where askedAt < staleBefore {
+            Diagnostics.log("remote \(host): last answer is stale, forgetting it")
+            remoteSessions.removeValue(forKey: host)
+            remoteAnsweredAt.removeValue(forKey: host)
         }
         poll()
     }
@@ -98,12 +146,18 @@ final class StateStore: ObservableObject {
     func handle(_ signal: HookSignal) {
         let now = clock()
         let workspace: Workspace?
-        if let host = signal.host {
+        if let host = signal.host, remoteHosts.contains(host) {
             // Through the tunnel. No lock on this machine can claim a folder that
             // lives on another one, so the session's own folder is the workspace,
             // and the host travels with it — that is what the click will raise.
             workspace = Workspace(path: signal.cwd, host: host)
         } else {
+            if let host = signal.host {
+                // A host this app was never told about is a header anyone on
+                // loopback could have written. It does not get to skip the gate
+                // that bounds every local signal.
+                Diagnostics.log("signal names unknown host \(host); treated as local")
+            }
             workspace = WorkspaceResolver.resolve(
                 cwd: signal.cwd,
                 in: windowReader.readWindows(),
@@ -252,19 +306,21 @@ final class StateStore: ObservableObject {
         //
         // `reconcile` keeps only what it is handed, so every remote row that must
         // survive has to be in the set: the ones the probe confirmed, and the ones
-        // on a configured host that has not answered yet — silence is not death.
-        // A row on a host no longer configured is in neither and goes.
+        // it **could not have seen** — on a configured host that has not answered
+        // yet (silence is not death), or newer than the question the host last
+        // answered (a session that spoke after the probe started is not missing
+        // from the answer). Without the second clause every new remote session
+        // was erased by the next local pass, five seconds after its first hook,
+        // and came back only when it spoke again. A row on a host no longer
+        // configured is in neither set and goes.
         let configured = Set(remoteHosts)
         let unconfirmed = state.sessions.values.compactMap { session -> String? in
-            guard let host = session.workspace.host,
-                  configured.contains(host), remoteSessions[host] == nil
-            else { return nil }
-            return session.id
+            guard let host = session.workspace.host, configured.contains(host) else { return nil }
+            guard let askedAt = remoteAnsweredAt[host], remoteSessions[host] != nil else { return session.id }
+            return session.updatedAt > askedAt ? session.id : nil
         }
-        let alive = Set(live.map(\.sessionId))
-            .union(knownRemote.map(\.sessionId))
-            .union(unconfirmed)
-        apply(.reconcile(alive: alive), now: now)
+        let confirmed = Set(live.map(\.sessionId)).union(knownRemote.map(\.sessionId))
+        apply(.reconcile(alive: confirmed.union(unconfirmed)), now: now)
 
         for session in live {
             guard let workspace = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now) else {
@@ -303,9 +359,11 @@ final class StateStore: ObservableObject {
             )
         }
 
-        // The same set `reconcile` used. Without it, pruning removes sessions we
-        // have just proved are running.
-        apply(.prune(alive: alive), now: now)
+        // Only what was actually confirmed is exempt from the age rule. A remote
+        // row nobody can confirm — its host silent, its probe broken — must still
+        // be bounded by the twelve-hour prune like every other mistake, or a
+        // session killed without a `SessionEnd` stays in the column forever.
+        apply(.prune(alive: confirmed), now: now)
     }
 
     // MARK: - Internal

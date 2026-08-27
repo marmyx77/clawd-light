@@ -35,7 +35,7 @@ struct RemoteHostStatus: Equatable {
 @MainActor
 final class RemoteFleet: ObservableObject {
 
-    enum Operation: Sendable { case check, install, uninstall, test }
+    enum Operation: Sendable { case check, install, uninstall }
 
     @Published private(set) var hosts: [String]
     @Published private(set) var status: [String: RemoteHostStatus] = [:]
@@ -135,8 +135,15 @@ final class RemoteFleet: ObservableObject {
                     hooks = inspection.hooksInstalled ? .installed : .absent
                     var notes = ["python \(inspection.pythonVersion)"]
                     if !inspection.hasCurl { notes.append("curl missing — the hook script needs it") }
+                    if let problem = inspection.directoryProblem { notes.append("~/.clawd-light there \(problem)") }
                     if let error = inspection.error { notes.append("settings.json unreadable: \(error)") }
-                    outcome = .success("\(host) answered: " + notes.joined(separator: "; "))
+                    // The one question only the node can answer: where is the port
+                    // the hooks post to bound, and does it reach this Mac right now?
+                    switch RemoteHookInstaller.tunnelStatus(on: host, port: inspection.port) {
+                    case .success(let tunnel): notes.append(tunnel.sentence)
+                    case .failure(let error): notes.append("tunnel not checked: \(error.short)")
+                    }
+                    outcome = .success("\(host): " + notes.joined(separator: "; "))
                 case .failure(let error):
                     hooks = .failed(error.short)
                     outcome = .failure(error)
@@ -147,12 +154,6 @@ final class RemoteFleet: ObservableObject {
             case .uninstall:
                 outcome = RemoteHookInstaller.uninstall(on: host)
                 if case .success = outcome { hooks = .absent }
-            case .test:
-                outcome = RemoteHookInstaller.tunnelReaches(host).map { reaches in
-                    reaches
-                        ? "from \(host), 127.0.0.1:\(AppConfig.listenPort) answers — the tunnel reaches this Mac"
-                        : "\(host) answered, but 127.0.0.1:\(AppConfig.listenPort) there is not this Mac"
-                }
             }
 
             let message: String

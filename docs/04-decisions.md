@@ -755,14 +755,18 @@ the top, in slot order, and everything else below as it is seen.
 ## D24 · Other machines are heard through a tunnel we open
 
 **Decided.** A remote machine's Claude Code hooks reach this Mac through a reverse
-ssh tunnel clawd-light opens and keeps open: `ssh -N -R 127.0.0.1:9877:127.0.0.1:9877
-host`. On the node, `127.0.0.1:9877` *is* this app, so the hook script installed
-there — by clawd-light, over ssh, with the same merge the local installer uses —
-posts exactly like the local one and adds one header, `X-Clawd-Host`, naming the
-machine. A remote row is **born when the session speaks** and **dies when the
-node's probe no longer lists its pid** (or on `SessionEnd`). Clicking it raises the
-Remote-SSH window of its folder, if one is open here. Hosts are configured in the
-Settings window (or `clawd-light remote add`), not in a file.
+ssh tunnel clawd-light opens and keeps open: `ssh -N -R
+127.0.0.1:<port>:127.0.0.1:9877 host`, where `<port>` is **derived from the
+user's uid over there** (`30000 + uid % 20000`). On the node, that loopback port
+*is* this app, so the hook script installed there — by clawd-light, over ssh, with
+the same merge the local installer uses — posts to it and adds one header,
+`X-Clawd-Host`, naming the machine; the header is believed only for a host this
+app was told about. After every connect the node is asked, from `/proc/net/tcp`,
+**where the port is actually bound**: anything but loopback closes the tunnel
+and says so. A remote row is **born when the session speaks** and **dies when
+the node's probe no longer lists its pid** (or on `SessionEnd`). Clicking it
+raises the Remote-SSH window of its folder, if one is open here. Hosts are
+configured in the Settings window (or `clawd-light remote add`), not in a file.
 
 **What was wrong with D21, measured.** Reading alone produced rows that never
 changed colour — no hook ever reached this machine — and that a click could not
@@ -775,11 +779,33 @@ host]`: there was a window to raise all along.
 
 **Why a tunnel and not a token.** D7's argument stands: `/signal` has no token,
 and putting it on a network interface would be unauthenticated state injection
-from every device on the VPN. The tunnel does not do that. Its far end is bound to
-the node's loopback, so the only thing that can post through it is a process
-running on the node as that user — the same trust the local loopback already
-extends to every process on this Mac. A token would have to be distributed and
-rotated on every node; the tunnel needs only what already exists, the ssh key.
+from every device on the VPN. The tunnel does not do that: its far end is bound
+to the node's loopback — *verified*, not assumed — so the only thing that can
+post through it is a process running on the node, the same trust the local
+loopback already extends to every process on this Mac. A token would have to be
+distributed and rotated on every node; the tunnel needs only what already exists,
+the ssh key.
+
+**What the review found wrong with `-R 127.0.0.1:9877`, and what became of it.**
+The adversarial review before shipping found three things wrong with a plain
+port, none visible from the Mac. The bind address is a *request*: under
+`GatewayPorts yes` OpenSSH binds the wildcard address instead and tells the
+client only in a debug message — the exact exposure this decision claims not to
+have, with the app showing "connected". A fixed port is every account's: another
+user on the node could post into this column, and the hook script would hand
+`last_assistant_message` to whoever held the port while the tunnel was down. And
+a connection that dies — sleep, VPN — can leave the server holding the port, so
+the reconnect fails against its own ghost until the backoff gives up. The
+review's answer was a Unix socket in the user's home, which has none of these.
+It was built and **failed on measurement**: the machine at hand runs **Tailscale
+SSH**, not OpenSSH; its daemon does the forwarding as root and created the socket
+`root:root 0600`, which the user's `curl` cannot open. What shipped keeps the
+port and answers each problem where it lives: the port is the user's own
+(uid-derived), so accounts never share one; the node reports the bound addresses
+after every connect and the tunnel closes itself on anything but loopback; and a
+port already bound is seen *before* the connect and waited out, one log line,
+not a failure loop. The same review found the probe blocking the main actor and a
+newborn remote row erased by the next local pass; both are fixed below.
 
 **Why born by hooks, not by the probe.** The obvious presence rule — "the cwd is
 inside a folder some editor window has open on the node", i.e. the local rule
@@ -793,11 +819,22 @@ removed from the settings takes its rows with it.
 
 **What it cost.** A remote session that has said nothing since the panel started
 is invisible until it does. The tunnel is a long-lived ssh process per host,
-restarted with backoff when the node sleeps or the VPN drops, and `POST /signal`
-is reachable by any process on the node's loopback. Installing the hooks means
-clawd-light writes `~/.claude/settings.json` on another machine — with a dated
-backup, atomically, through Python fed on stdin so no shell ever sees the data.
-No tab deep link for a remote row: the link goes to the local extension host.
+restarted with backoff when the node sleeps or the VPN drops, and every route of
+this server — `/sessions` and the token-gated ones included — is reachable from
+the node's loopback, by any account on it while the tunnel is up; the token is
+now doing the network-facing work it was sized for, and the residual risk — on a
+machine with several accounts, a squatter on the user's port while the tunnel is
+down would receive hook payloads — is stated here rather than engineered away.
+Installing the hooks means clawd-light writes
+`~/.claude/settings.json` on another machine — with a dated backup that keeps the
+file's mode, atomically, through Python fed on stdin so no shell ever sees the
+data, and **only if the file is still the one that was read** (sha256): Claude
+Code over there writes it too. No tab deep link for a remote row: the link goes
+to the local extension host. The probe runs off the main actor — an unreachable
+host is the common case now, and it must never freeze the panel — and a row is
+protected from its verdict until the probe has looked *after* the row's last
+sign of life. Every ssh this app starts carries `-a -x ForwardAgent=no
+PermitLocalCommand=no`, whatever `~/.ssh/config` says for that host.
 
 **Discarded:** reading Claude Code's own `status` from the session files. It is
 there — for `cli` sessions, since 2.1.243 — but not for the VS Code extension's
@@ -807,6 +844,15 @@ timestamp.
 **Discarded:** a token on `/signal` and the port on the tailnet. Right in
 principle, and a second secret to manage on every node for what one existing key
 already does.
+
+**Deferred, and why.** Attributing a signal by the listener it arrived on — one
+local port and one `SignalServer` per host — instead of by a header the node
+writes. It is the cleaner design (renaming a host, two Macs naming one node
+differently, a header-less post all resolve by construction) and the review asked
+for it. What is shipped instead: the header is only believed for a configured
+host, and with the socket the only processes that can write it are that user's on
+that machine. That closes the forgery that mattered; the rest is a rename that
+today needs the hooks reinstalled, which `remote add` says out loud.
 
 **Signal to revisit:** a node that is not reachable over ssh but can reach the Mac
 — the tunnel then has to be opened from the other side, and that is a different

@@ -718,12 +718,37 @@ carried the message; `clawd-light remote check` reports python, curl, hooks and
 whether the tunnel answers — asked *from* the node, the only place the question
 means anything.
 
+**And what the review found before it shipped.** The second design was put to an
+adversarial review — three lenses, every serious finding attacked by a skeptic —
+while the first lines were being written. Eight findings survived, none refuted.
+Three were blockers: the probe ran its ssh handshakes **on the main actor**, so an
+unreachable host (the common case, once tunnels exist) would have frozen the
+panel for the connect timeout every twenty seconds; a remote row born from a hook
+was erased by the next local pass whenever the host's last probe answer predated
+it — the fake session used to verify the tunnel had in fact vanished between its
+`Stop` and its `SessionEnd`, and the log line was read as "cleanup" instead of
+"defect"; and `-R 127.0.0.1:9877` was a *request* sshd may override to the
+wildcard address under `GatewayPorts yes`, telling the client only in a debug
+message. The port was also every account's on the node, and a dead connection
+left the server holding it against the reconnect. The review's answer — a Unix
+socket in the user's home — was built, and **failed its first measurement**: the
+socket appeared as `root:root 0600`, because the ssh server on the node is not
+OpenSSH at all but **Tailscale SSH**, whose daemon forwards as root. One `ps` on
+the node (`tailscaled be-child ssh --uid=1000 …`) settled what a page of
+`sshd_config(5)` could not. What shipped keeps the port and checks each of the
+three claims where it can be checked: the port is the user's (uid-derived), the
+node reports the bound addresses after every connect, and a taken port is seen
+before the ask.
+
 **Lesson.** *A feature that answers its own security question first can end up
 answering nothing else.* The right order was: what does the user need the row to
 do (change colour, open on click), then which mechanism can do that, then whether
 the mechanism is safe — and the tunnel was safe all along. And measure the
 machine before designing for it: one `ls ~/.claude/ide/` on the node would have
 shown the second design's presence rule was wrong, too, before it was written.
+*And*: a "loopback" you did not verify from the other side is a claim, not a
+fact — the same lesson this project had already paid for once with a socket that
+looked local and was `*:9877`.
 
 ---
 

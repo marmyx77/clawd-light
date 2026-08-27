@@ -1,14 +1,14 @@
 # Code map
 
-~20,500 lines of Swift across five targets. For each file: what it contains, why
+~20,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,869 lines · 40 files   pure logic, zero AppKit
-  ClawdLightApp/    8,349 lines · 47 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,321 lines · 29 files   438 cases, instantaneous
-  ClawdLightE2E/    1,716 lines ·  9 files   76 cases, the real binary
+  ClawdLightCore/   5,014 lines · 40 files   pure logic, zero AppKit
+  ClawdLightApp/    8,602 lines · 47 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,398 lines · 29 files   442 cases, instantaneous
+  ClawdLightE2E/    1,728 lines ·  9 files   76 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
@@ -281,7 +281,7 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 > stands a second listener down. Every path out is `exit 0` except the deliberate
 > `exit 2` — a failing hook can interrupt a Claude Code turn.
 
-### `RemoteInstallScripts.swift` · 94
+### `RemoteInstallScripts.swift` · 216
 The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved.
 
 ## `Workspace/`
@@ -331,7 +331,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 325 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 412 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -342,8 +342,8 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
-| `RemoteCommand.swift` | 128 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
-| `RemoteTunnel.swift` | 159 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason |
+| `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
+| `RemoteTunnel.swift` | 242 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason |
 | `RemoteFleet.swift` | 190 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
@@ -397,7 +397,7 @@ The names a Remote-SSH window may carry for a host — the configured one, what 
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail.
 
-### `RemoteHookInstaller.swift` · 122
+### `RemoteHookInstaller.swift` · 181
 The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers.
 
 ## `UI/`
@@ -420,7 +420,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 121 | the Settings form: remote machines, their state, the buttons |
+| `SettingsView.swift` | 143 | the Settings form: remote machines, their state, the buttons |
 | `SettingsWindowController.swift` | 57 | owns the Settings window; activates the app so it comes up in front |
 | `Alerts.swift` | | dialogs |
 
@@ -433,7 +433,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 438 cases
+## `ClawdLightTests/` — 442 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

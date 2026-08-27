@@ -8,15 +8,19 @@ struct SettingsView: View {
 
     @State private var newHost = ""
     @State private var addError: String?
+    /// The machine whose hooks are about to be installed; the alert asks first,
+    /// because this writes a file on another computer.
+    @State private var installTarget: String?
 
     var body: some View {
         Form {
             Section {
                 Text("""
                 Sessions running on another machine reach the panel through an ssh \
-                tunnel this app opens and keeps open. The machine needs ssh key login \
-                (no password prompt), python3 and curl, and port \(AppConfig.listenPort) \
-                free on its loopback. Add it, then install the hooks there.
+                tunnel this app opens and keeps open — a loopback port of your own over \
+                there, checked after every connect to be bound to nothing else. The machine \
+                needs ssh key login (no password prompt), python3 and curl. Add it, then \
+                install the hooks there.
                 """)
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -54,6 +58,24 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 580, minHeight: 340)
+        .alert(
+            "Install the hooks on \(installTarget ?? "")?",
+            isPresented: Binding(get: { installTarget != nil }, set: { if !$0 { installTarget = nil } })
+        ) {
+            Button("Install") {
+                if let host = installTarget { fleet.run(.install, on: host) }
+                installTarget = nil
+            }
+            Button("Cancel", role: .cancel) { installTarget = nil }
+        } message: {
+            Text(
+                "clawd-light will write ~/.clawd-light/hook.sh and register "
+                + "\(HookConfigMerger.defaultEvents.count) hooks in ~/.claude/settings.json on "
+                + "\(installTarget ?? "that machine"), over ssh. A dated backup of that file is left there, "
+                + "and nothing is written if the file changes in the meantime. The panel can show that "
+                + "machine's sessions; it cannot answer them."
+            )
+        }
     }
 
     private func add() {
@@ -72,9 +94,8 @@ struct SettingsView: View {
                 if status.hooks == .installed {
                     Button("Remove hooks", action: { fleet.run(.uninstall, on: host) })
                 } else {
-                    Button("Install hooks", action: { fleet.run(.install, on: host) })
+                    Button("Install hooks…", action: { installTarget = host })
                 }
-                Button("Test tunnel", action: { fleet.run(.test, on: host) })
                 Button(action: { fleet.remove(host) }) {
                     Image(systemName: "minus.circle")
                 }
@@ -106,6 +127,7 @@ struct SettingsView: View {
         case .up: return "link"
         case .starting: return "ellipsis.circle"
         case .down: return "exclamationmark.triangle"
+        case .exposed: return "exclamationmark.shield"
         case .stopped: return "link.badge.plus"
         }
     }

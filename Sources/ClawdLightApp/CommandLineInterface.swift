@@ -645,9 +645,9 @@ enum CommandLineInterface {
                 print("\(host): python \(inspection.pythonVersion), curl \(inspection.hasCurl ? "present" : "MISSING"), "
                       + "hooks \(inspection.hooksInstalled ? "installed" : "not installed")")
                 if let error = inspection.error { print("  settings.json unreadable: \(error)") }
-                switch RemoteHookInstaller.tunnelReaches(host) {
-                case .success(true): print("  tunnel: 127.0.0.1:\(AppConfig.listenPort) there answers — it reaches this Mac")
-                case .success(false): print("  tunnel: nothing answers on 127.0.0.1:\(AppConfig.listenPort) there — is the panel running?")
+                if let problem = inspection.directoryProblem { print("  ~/.clawd-light there \(problem)") }
+                switch RemoteHookInstaller.tunnelStatus(on: host, port: inspection.port) {
+                case .success(let tunnel): print("  tunnel (127.0.0.1:\(inspection.port) there): \(tunnel.sentence)")
                 case .failure(let error): print("  tunnel: could not ask (\(error.short))")
                 }
                 return 0
