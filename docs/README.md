@@ -3,10 +3,11 @@
 This folder exists for a precise reason: **whoever comes next should not have to
 pay again what this project has already paid.**
 
-clawd-light is a two-hundred-pixel widget, but it balances on three things that
-are documented nowhere — the Claude Code hooks, the files the VS Code extension
-leaves on disk, and the way macOS decides whether you may touch another
-application's windows. Each of the three has a trap that shows up as "sometimes
+clawd-light is a two-hundred-and-forty-pixel widget, but it balances on four things that are documented nowhere — the Claude Code hooks,
+the files the VS Code extension leaves on disk, the way macOS decides whether
+you may touch another application's windows, and what each terminal's
+dictionary, CLI or socket will tell you about which tab a process lives in. (and
+"Each of the three has a trap" → "Each of them has a trap") Each of the three has a trap that shows up as "sometimes
 it doesn't work", and each has already swallowed at least a day.
 
 ## Where to start

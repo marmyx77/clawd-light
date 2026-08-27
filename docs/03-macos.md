@@ -209,8 +209,10 @@ leaves the panel non-key, so every visit began with a click that only knocked
 first click from a second one.
 
 `occlusionState` is **not reliable**: it reports `occluded` even with the window
-in plain sight. Using it as a switch would suppress legitimate alerts; here it is
-combined with keyboard inactivity and counts as an attenuator.
+in plain sight. Using it as a switch would suppress legitimate alerts; `occlusionState` is **not reliable**: it reports `occluded` even with the window
+in plain sight. It once attenuated notifications together with keyboard
+inactivity; that gate was removed (04-decisions, 'The gate holds only explicit
+silences'), and today the value is only logged.
 
 ---
 
@@ -313,8 +315,9 @@ guard Bundle.main.bundleIdentifier != nil else { return }
 exception. Forgetting it there crashes `swift run ClawdLightApp` at startup,
 before the panel even appears.
 
-Authorization must be requested **when the user turns the feature on**, not at
-startup: a dialog that appears unasked gets a "no", and that "no" is forever.
+Authorization must be requested **when the user turns the feature on** — and at
+startup only if the switch is already on — never unasked: a dialog that appears
+unprompted gets a "no", and that "no" is forever.: a dialog that appears unasked gets a "no", and that "no" is forever.
 
 ---
 
@@ -418,9 +421,10 @@ The chains measured on a real machine, which `SeatSuite` pins:
 The two VS Code helpers are told apart by bundle name — the pty host lives in
 `Code Helper.app`, the extension host in `Code Helper (Plugin).app` — and both
 are editor seats. tty names come as `ttys003` from the kernel and
-`/dev/ttys003` from dictionaries and tmux; `TTYName` normalises them, and it is
-the only string from the process table that may enter a script, matched
-against `^/dev/ttys[0-9]+$` rather than escaped.
+`/dev/ttys003` from dictionaries and tmux; `TTYName` normalises them, and `TTYName` normalises them; a tty is matched against a pattern rather than
+escaped before it may enter a script, and the same rule holds for the only other
+process-table string that does — the zellij session name, validated against
+`^[A-Za-z0-9._-]{1,128}$` before the title-match fallback.
 
 **Each host, its own way.** Terminal.app and iTerm2 expose the tty on their
 tabs and sessions, so the tab is selected by tty. Ghostty has no tty but lists

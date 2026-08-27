@@ -54,7 +54,7 @@ before changing anything here: it is the heart of the subagent correction.
 > **Touching the computation of `status`** risks reintroducing green during
 > background work. Coverage: `SubagentSuite`.
 
-### `ColumnLayout.swift` · 300
+### `ColumnLayout.swift` · 327
 From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
@@ -90,12 +90,12 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 158
+### `HookSignal.swift` · 168
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
 ### `HookEventKind.swift`
-The nine registered events, plus one decoded but not registered (`PreToolUse`), and the five
+The nine events registered by default, plus one decoded and registered only with `install-hooks --with-tool-events` (`PreToolUse`), and the five
 `Notification` subtypes. An unknown event is not an
 error: it is ignored, so the app doesn't break when Anthropic adds more.
 
@@ -135,7 +135,7 @@ to the front (D25). Pure: the shell reads the process table, this decides.
 ### `ProcessAncestor.swift`
 One process on the way up, and `TTYName`: tty names come as `ttys003` from the
 kernel and `/dev/ttys003` from dictionaries, and only the normalised form —
-matched against `^/dev/ttys[0-9]+$`, not escaped — may enter a script.
+matched, after any `/dev/` prefix is stripped, against `^ttys[0-9]{1,4}$` and re-prefixed — not escaped — may enter a script.
 
 ### `Seat.swift`
 `TerminalKind`, a short table like `IDEKind` (Terminal, iTerm2, Ghostty, kitty,
@@ -211,28 +211,6 @@ hook to tell us — after a restart, that is all of them. The rule matched 7065 
 7066 real transcripts; the exception is a git worktree, which is why the result is
 a candidate the caller has to find on disk.
 
-### `RemoteHostList.swift` · 45
-Which machines to read, from `~/.clawd-light/remotes`. Absent or empty means the
-feature is off, which is the default. `isUsable` is an allow-list because the name
-becomes an argument to `ssh`: one starting with a dash would be read as *options*.
-
-### `RemoteProbeScript.swift` · 76
-The script that runs **on** the other machine, in one piece and under test. It is a
-promise made to a machine we do not control, and the shape it prints is what
-`RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
-the session file, which is the frozen one.
-
-> **Why the work happens there.** Two of the three facts a row needs are only true
-> where the processes are: whether the pid is alive, and when the transcript last
-> changed. Deciding here from shipped files would answer both about the wrong
-> machine.
-
-### `RemoteSessionsDecoder.swift` · 64
-The other machine's answer, entering the domain. Validates like
-`HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
-thrown**. The output comes from a Claude Code version we do not control, and one
-unparsable entry is not a reason to blank a whole host.
-
 ## `Chat/`
 
 ### `Mailbox.swift` · 264
@@ -288,7 +266,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 396
+### `StateReducer.swift` · 414
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -344,12 +322,36 @@ The Python that runs on another machine to inspect it, write the hook script and
 
 ## `Workspace/`
 
+### `RemoteHostList.swift` · 45
+The rules for a remote host's name: `isUsable` is an allow-list because the name
+becomes an argument to `ssh` — one starting with a dash would be read as
+*options* — and `parse` reads the old `~/.clawd-light/remotes` file, imported
+once into the preferences on upgrade (D24). The hosts themselves live in the
+Settings window.
+
+### `RemoteProbeScript.swift` · 88
+The script that runs **on** the other machine, in one piece and under test. It is a
+promise made to a machine we do not control, and the shape it prints is what
+`RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
+the session file, which is the frozen one.
+
+> **Why the work happens there.** Two of the three facts a row needs are only true
+> where the processes are: whether the pid is alive, and when the transcript last
+> changed. Deciding here from shipped files would answer both about the wrong
+> machine.
+
+### `RemoteSessionsDecoder.swift` · 64
+The other machine's answer, entering the domain. Validates like
+`HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
+thrown**. The output comes from a Claude Code version we do not control, and one
+unparsable entry is not a reason to blank a whole host.
+
 ### `WorkspaceResolver.swift`
 `cwd` + locks → which window. `window(hosting:)` also returns **which editor**,
 because Cursor's bundle identifier differs from VS Code's.
 
 ### `WindowTitleMatcher.swift` · 137
-Scores 100/50/10. It lives in Swift rather than inside AppleScript precisely so
+Scores 100/50/10, plus 1000 for a Remote-SSH window whose label is a name the host is known by. It lives in Swift rather than inside AppleScript precisely so
 it can be verified without opening windows.
 
 ### `IDEKind.swift`
@@ -382,8 +384,8 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 754
-Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
+### `CommandLineInterface.swift` · 786
+Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
@@ -396,7 +398,7 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 499 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 518 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 294 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -410,7 +412,7 @@ there, the hooks are registered — and it names the link that broke.
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
 | `RemoteTunnel.swift` | 242 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason |
-| `RemoteFleet.swift` | 190 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
+| `RemoteFleet.swift` | 191 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
@@ -455,7 +457,7 @@ seat: by tty through the terminal's dictionary, or activates the application
 and says where it stopped. Automation is per target application, and a refusal
 names the one that refused.
 
-### `VSCodeFocuser.swift` · 393
+### `VSCodeFocuser.swift` · 418
 The most delicate file. Two strategies, three explicit outcomes.
 
 > **To be read in full before touching it.** Every long comment in here
@@ -480,22 +482,22 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 693 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 303 | one row: dot, slot, name, badge, timestamp, handle, menu |
+| `TrafficLightRow.swift` | 322 | one row: dot, slot, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
-| `PanelRootView.swift` | 175 | the general menu |
+| `PanelRootView.swift` | 181 | the general menu |
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `StatusPalette.swift` | 112 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
-| `ChatShellView.swift` | 205 | the two columns, and one row of the list |
+| `ChatShellView.swift` | 197 | the two columns, and one row of the list |
 | `ChatSession.swift` | 245 | one conversation: transcript on disk + status from the hooks + the composer's state |
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 164 | the Settings form: remote machines, their state, the buttons |
+| `SettingsView.swift` | 164 | the Settings form: remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 57 | owns the Settings window; activates the app so it comes up in front |
 | `Alerts.swift` | | dialogs |
 
@@ -557,7 +559,7 @@ XCTest nor a complete swift-testing (D11).
 |---|---|
 | `TransportSuite` | **the socket via `lsof`**, token, methods, refusals |
 | `LifecycleSuite` | the states walked over HTTP |
-| `CoverageSuite` | integrated terminal, subagents |
+| `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, non-headless startup |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token |
@@ -574,4 +576,6 @@ the realignment is asynchronous.
 |---|---|
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
-| `Scripts/test.sh` | both suites |
+| `Scripts/test.sh` | both suites, then the documentation check |
+| `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
+| `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state |

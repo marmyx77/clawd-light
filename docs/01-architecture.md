@@ -83,7 +83,7 @@ The periodic realignment does three things, in this order:
 |---|---|---|
 | `reconcile(alive:)` | keeps only the sessions with a live process | remove the dead first |
 | `adopt(_:)` | inserts the sessions never seen, as `idle` | then add the new… |
-| `prune` | drops whatever has been silent for 12 hours | …and finally prune |
+| `prune(alive:)` | drops whatever has been silent for 12 hours, unless its process was just confirmed alive | …and finally prune |
 
 `adopt` **never overwrites** an existing row: what the hooks know is always more
 precise than a deduction from the filesystem. Without that rule, a ready answer
@@ -97,8 +97,9 @@ Taking it literally would empty the column at the first I/O error.
 
 ### `ClawdLightCore` — pure domain
 
-No `import AppKit`, no network or filesystem access, no clock: `now` is always a
-parameter. Everything that **decides** lives here: how a payload is interpreted,
+No `import AppKit`, no network, no clock: `now` is always a parameter.
+Filesystem access is confined to `Mailbox`, which creates and restricts the
+mailbox directory through an injected `FileManager`. Everything that **decides** lives here: how a payload is interpreted,
 which window matches a workspace, what color a traffic light takes, how the
 column is composed.
 
@@ -121,7 +122,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightE2E` — the real chain
 
-472 cases. They launch **the production binary** against a fake home and talk to
+79 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -148,7 +149,7 @@ Three properties govern the behavior, and they live on `SessionStatus`:
 
 - **`urgencyRank`** — which session is a row's face, and what a hidden summary shows
 - **`clearsOnFocus`** — whether a click clears it (`awaiting`, `ready`, `failed`)
-- **`blocksDowngrade`** — whether it resists a late signal (`awaiting`, `ready`)
+- **`blocksDowngrade`** — whether it resists a late signal (`awaiting`, `ready`, `waiting`)
 
 `failed` is deliberately outside `blocksDowngrade`: if the turn **resumes**,
 yellow is the correct information and red would be a leftover. But a late
@@ -163,7 +164,11 @@ and it **computes** what you see:
 ```swift
 public var status: SessionStatus {
     guard activeSubagents > 0 else { return baseStatus }
-    return baseStatus == .awaiting ? .awaiting : .working
+    switch baseStatus {
+    case .awaiting: return .awaiting
+    case .working: return .working
+    case .ready, .idle, .waiting, .failed: return .waiting
+    }
 }
 ```
 
@@ -235,9 +240,10 @@ note in the menu, an alert. Flattening them has already produced two defects.
 
 ## Other machines
 
-A session on another machine is heard the same way a local one is: its hooks
-post to `127.0.0.1:9877` — which *there* is the far end of a reverse ssh tunnel
-this app opens and keeps open (`RemoteTunnel`) — and the script installed there
+A session on another machine is heard the same way a local one is: its hooks post to a loopback port *there* derived from that user's uid
+(`AppConfig.remotePort(forUID:)`, 30000 + uid % 20000) — the far end of a
+reverse ssh tunnel this app opens and keeps open (`RemoteTunnel`) back to its
+own 9877 — and the script installed there
 (`RemoteHookInstaller`, over ssh, with the same merge as the local installer) adds
 an `X-Clawd-Host` header. A signal with a host skips the editor-window lookup: no
 lock on this Mac claims `/home/…`, so the session's own folder is its workspace,
@@ -267,10 +273,12 @@ head of the transcript (`SessionTitleReader` → `TranscriptTitleScanner`, the r
 The click resolves the session's **seat** at click time (`SeatResolver`): the
 pid from the session file, the `procStart` guard against a reused pid, the
 ancestry from the kernel (`ProcessTree`, no `ps`), and a pure classification
-(`SeatClassifier`) into a Terminal.app or iTerm2 tab on a tty, a tmux or zellij
-pane, an editor, or some other application. `TerminalFocuser` then asks the
-terminal's own dictionary to select the tab on that tty — the only string from
-the process table that enters a script, and only after `TTYName` has matched it.
+(`SeatClassifier`) into a tab of a known terminal (Terminal.app, iTerm2,
+Ghostty, WezTerm, kitty) on a tty, a tmux or zellij pane, an editor, some other
+application, or unknown. `TerminalFocuser` then asks the
+terminal's own dictionary to select the tab on that tty — one of two strings from the process table that enter a script — the other is the
+zellij session name in the title fallback — and each only after validation
+(`TTYName` for the tty, the session-name pattern for the name).
 A tmux seat is two hops — the pane on that tty selected inside tmux, then the
 attached client's own chain; a zellij seat pairs the client with its server
 through their Unix sockets and follows the client's chain, falling back to the
@@ -313,8 +321,12 @@ widget. The risk is asymmetric.
 `GET /sessions` — the state as JSON. **With a token**, because it exposes the
 names and paths of the open projects.
 
-`POST /next` — raises the next waiting session. **With a token**: it is the only
-route that acts outside the process.
+`POST /next` — raises the next waiting session. **With a token**, like the three
+slot routes below: they are the routes that act outside the process.
+
+`POST /open`, `POST /new`, `POST /chat` — slot-addressed (the slot number is the
+body, 1–9): raise the slot's window, open a new conversation in its project, or
+open its chat window. **With a token**, for the same reason as `/next`.
 
 `GET /health` — free, it only tells you whether the app is alive.
 

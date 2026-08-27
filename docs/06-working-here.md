@@ -13,7 +13,7 @@ macOS 14 or later. Swift 6, language mode 5.
 
 ```bash
 swift build                    # compile
-./Scripts/test.sh              # both suites
+./Scripts/test.sh              # both suites, then the documentation checks
 ./Scripts/build-app.sh         # bundle into dist/
 pkill -x clawd-light; sleep 1; open dist/ClawdLight.app
 ```
@@ -26,12 +26,12 @@ permission. It has already cost one wasted diagnosis.
 
 ```bash
 swift run ClawdLightTests              # 472 cases, instantaneous
-swift run ClawdLightE2E                # 472 cases, about a minute
+swift run ClawdLightE2E                # 79 cases, about a minute
 swift run ClawdLightTests "Subagents"  # filter by suite or by case
 ```
 
-**`ClawdLightTests`** verifies pure functions. It touches neither network nor
-filesystem.
+**`ClawdLightTests`** verifies pure functions. It touches no network and, apart from the mailbox permission cases, which work
+in a temporary root they delete, no filesystem.
 
 **`ClawdLightE2E`** launches the production binary against a fake home
 (`CLAWD_LIGHT_HOME`) and talks to it over HTTP. It goes as far as running
@@ -220,8 +220,9 @@ somewhere else.
 
 ## Adding a traffic light state
 
-1. `SessionStatus`: the case, and the three properties (`urgencyRank`,
-   `clearsOnFocus`, `blocksDowngrade`)
+1. `SessionStatus`: the case, and the four properties (`urgencyRank`,
+`shouldBlink`, `clearsOnFocus`, `blocksDowngrade`); then `SessionState.status`,
+the switch that decides what an active subagent paints over it
 2. `StatusPalette`: color, opacity, glow, label
 3. `StateReducer.status(for:)`: which event it comes from
 4. `TrafficLightRow.timeLabel`: what the right-hand slot shows
@@ -233,13 +234,13 @@ somewhere else.
 1. `HookEventKind`: the case with the exact name — **verify it in the binary**
 2. `HookPayloadDecoder`: the additional fields
 3. `StateReducer`: the effect
-4. `HookConfigMerger.defaultEvents`: **only if the cost justifies it**
+4. `HookConfigMerger.defaultEvents`: **only if the cost justifies it** — and the same name in `Contracts/required-fields.json` → `hookEventInventory.registered` (removed from `decodedButNotRegistered`), or `check-docs.sh` fails
 5. `HookPayloads` in E2E: the real shape, not an invented one
 6. warn that an `install-hooks` is needed and that open sessions won't see it
 
 ```bash
 # verify that an event really exists
-strings -a ~/.local/share/claude/versions/2.1.220 | grep -c '"EventName"'
+strings -a ~/.local/share/claude/versions/2.1.247 | grep -c '"EventName"'   # or the version check-contract.sh reports
 ```
 
 ## Adding an editor

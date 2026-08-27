@@ -43,7 +43,7 @@ falls into, is in `required-fields.json` under `hookEventInventory`, and
 register disappearing is a failure, a new event appearing is a note asking for it
 to be classified. Before that, neither would have been reported by anything.
 
-The twenty-two we do not use fall into three groups, and the difference between
+Twenty-one of the twenty-two we do not use fall into three groups; the twenty-second, `PreToolUse`, is treated on its own below., and the difference between
 them is the difference between **measured** and **read**:
 
 - **Decision hooks** — `PermissionRequest`, `PermissionDenied`, `Elicitation`,
@@ -112,8 +112,8 @@ else depends on it.
 
 ## hook.subagent.shape · SubagentStart/Stop carry agent_id and agent_type
 
-**Depends at** [HookSignal.swift:84](../Sources/ClawdLightCore/Models/HookSignal.swift#L84) ·
-[SessionState.swift:77](../Sources/ClawdLightCore/Models/SessionState.swift#L77)
+**Depends at** [HookSignal.swift:23](../Sources/ClawdLightCore/Models/HookSignal.swift#L23) ·
+[SessionState.swift:129](../Sources/ClawdLightCore/Models/SessionState.swift#L129)
 
 **How verified** — `probe`. A session was made to launch one general-purpose
 agent; both events recorded, with `agent_id`, `agent_type`, and on the stop also
@@ -131,7 +131,7 @@ expensive lie the column can tell.
 
 **We assume** the parent turn can return control while its agents keep working.
 
-**Depends at** [SessionState.swift:77](../Sources/ClawdLightCore/Models/SessionState.swift#L77)
+**Depends at** [SessionState.swift:129](../Sources/ClawdLightCore/Models/SessionState.swift#L129)
 — the reason `status` is computed rather than stored.
 
 **How verified** — `runtime`, on real background workflows. The probe records the
@@ -146,7 +146,7 @@ not if it changes.
 
 ## hook.sessionstart.source · SessionStart carries source, and `compact` fires mid-turn
 
-**Depends at** [StateReducer.swift:185](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L185)
+**Depends at** [StateReducer.swift:250](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L250)
 
 **How verified** — `probe` for the field (`source: startup`); `binary` for the
 `compact` value.
@@ -176,7 +176,7 @@ A deny-list that admits too much shows rows, it doesn't hide them.
 **We assume** `sdk`, `sdk-cli`, `sdk-ts`, `sdk-py`, `print` are sessions nobody is
 watching, and everything else deserves a row.
 
-**Depends at** [AppConfig.swift:131](../Sources/ClawdLightCore/Config/AppConfig.swift#L131)
+**Depends at** [AppConfig.swift:175](../Sources/ClawdLightCore/Config/AppConfig.swift#L175)
 
 **How verified** — `probe` + `binary`. **This record is the reason the harness
 exists.** The list had been written from the documentation and was missing
@@ -332,7 +332,7 @@ still in flight at the end of the turn, **already filtered** by Claude Code to t
 things the session is waiting on.
 
 **Depends at** [HookPayloadDecoder.swift:135](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L135)
-· [StateReducer.swift:239](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L239)
+· [StateReducer.swift:259](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L259)
 
 **How verified** — `probe`, then `binary`. A session told to run `sleep 45` in the
 background produced, on `Stop`:
@@ -389,8 +389,8 @@ as work held a row yellow for a day — thirteen of sixteen turns in one session
 stayed `working -> working`, with no background shell ever launched and the
 transcript silent from one second after `Stop`. The payload carries display names,
 so the exclusion is `dream` and `cloud session`. Anything else, including a type
-we have never seen, still counts as work: guessing "busy" costs a yellow that
-clears on the next clean turn, guessing "done" costs the lie the field exists to
+we have never seen, still counts as work: guessing "busy" costs a blue `waiting` row (D22) that clears on the next clean
+turn, guessing "done" costs the lie the field exists to
 prevent.
 
 Green returns on its own: the work finishes, wakes the session, and that turn ends
@@ -503,11 +503,11 @@ being wrong harmless.
 `text` / `tool_use` on the assistant side and `text` / `tool_result` / `image` /
 `document` on the user side cover what needs rendering.
 
-**Depends at** [TranscriptDecoder.swift:110](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L110)
+**Depends at** [TranscriptDecoder.swift:151](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L151)
 
 **How verified** — `runtime`, 40 transcripts sampled by the static check on every
-run. New block types are **reported, not failed**: an unknown block draws a
-placeholder, which is the right outcome for a dependency that grows.
+run. New block types are **reported, not failed**: an unknown block is skipped (only `image` and `document` draw a placeholder), so
+a new type shows as a gap until it is handled — and the check names it.
 
 **Failure mode** — **visible**: a new content type shows up as a gap in a bubble.
 The check names it on the next run.
@@ -522,7 +522,7 @@ with code **2** its stdout is enqueued as the session's next turn. The message
 arrives wrapped in `<task-notification>` with `rewakeMessage` as its preamble.
 
 **Depends at** [RewakeScriptBuilder.swift:60](../Sources/ClawdLightCore/Setup/RewakeScriptBuilder.swift#L60)
-· [HookConfigMerger.swift:160](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L160)
+· [HookConfigMerger.swift:180](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L180)
 
 **How verified** — `runtime`, by reproduction on 2026-08-01. Three times, twice
 through the shipped scripts: a session idle for thirty seconds, a message written
@@ -618,8 +618,8 @@ would be skipped, and every remote row on it would be pruned on the next pass as
 "not listed". `clawd-light status` and `clawd-light remote check` print each host
 and what it said for exactly this reason.
 
-**Not assumed** — that the remote transcript can be read from here. It cannot, and
-the chat window says so rather than opening empty.
+**Not assumed** — that the remote transcript can be read from here. It cannot: a remote signal's transcript path is dropped at the decoder, and the
+row menu does not offer "Read here" for a row that lives on another machine.
 
 ---
 
@@ -644,7 +644,7 @@ Remote-SSH window's title ends in `[SSH: <what the user typed to connect>]`.
 **How verified** — against the same node on 27 Aug 2026: `settings.json` there had
 no `hooks` key; after `clawd-light remote install` it registered the nine events
 with the script at `~/.clawd-light/hook.sh`, a dated backup was written, and a
-`curl` **from the node** to `127.0.0.1:9877/signal` with the `X-Clawd-Host` header
+`curl` **from the node** to `127.0.0.1:<per-user port>/signal` — the port `remotePort(forUID:)` derives and `remote install` prints — with the `X-Clawd-Host` header
 produced `absent -> working host=minisforum` here. Two Remote-SSH windows were
 open on this Mac at the time, titled `resume — <folder> [SSH: 100.x.x.x]` and
 `<folder> [SSH: <alias>]` — the label is whatever was typed, hence the matcher

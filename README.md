@@ -60,8 +60,8 @@ With grouping off, the sessions of one project share its place: the most urgent
 comes first, then the one waiting longest — never the alphabetically luckier name.
 
 A badge can appear next to the name: `×3` is the number of **subagents** at work
-in that session, `3` is the number of **sessions** collected into that row. The
-first wins when both apply, because it explains *why* the row is yellow.
+in that session, `3` is the number of **sessions** collected into that row. The first wins when both apply, because it explains *why* the row is yellow — or
+blue, once the parent turn has stopped and only the agents are left.
 
 ## One row per project
 
@@ -119,8 +119,9 @@ column with two rows must not suggest there are only two sessions.
 
 ## When you're not looking
 
-Two features, both **off by default**. Neither turns itself on, and each asks for
-its own system permission only at the moment you enable it.
+Two features, both **off by default**. Neither turns itself on. Notifications ask for their system permission only at
+the moment you enable them; presence needs no permission, only the environment
+variable below.
 
 **Notify when a session gets blocked.** Only `awaiting`, never `ready`. That
 distinction is the whole feature: a ready answer can wait until you look at it, a
@@ -250,8 +251,8 @@ you as well:
   the current turn ends. That is deliberate — it is what lets you type *while* a
   session is busy, which a socket could not.
 - **A dormant session hears nothing at first.** A listener can only be born at the
-  end of a turn, so a conversation that is doing nothing has nobody waiting. The
-  window says *"this session is dormant"* rather than spinning. Anything you do in
+  end of a turn, so a conversation that is doing nothing has nobody waiting. The window says *"this conversation is asleep — a message will wait for it, not
+vanish"* rather than spinning. Anything you do in
   that session fixes it.
 - **The mechanism is undocumented.** `asyncRewake` is `@internal` in Claude Code
   and can be renamed without warning — at which point delivery stops **in
@@ -401,8 +402,8 @@ authorizations**, granted in two different panes:
   a session running there (only with *Show terminal sessions* on). WezTerm and
   kitty are driven through their own CLIs and ask for nothing.
 
-Both of the first two are needed. Without them the click falls back to `open`: VS Code still comes
-to the front, but it may open a new window instead of raising the right one.
+Both of the first two are needed. Without them the click falls back to `open -b`: VS Code still comes to the
+front, but the right window is not raised.
 
 > **It has to be re-authorized after every rebuild.** The bundle is ad-hoc signed,
 > and the signature changes on every build: macOS considers it a different app and
@@ -456,7 +457,7 @@ needed: six at the edges of the turn — `SessionStart`, `UserPromptSubmit`,
 `Notification`, `Stop`, `StopFailure`, `SessionEnd` — plus `SubagentStart`,
 `SubagentStop`, and `PostToolUse`, the one in-turn heartbeat, which is there for
 a single reason: it is the only event that can prove a permission prompt was
-answered. A fifteen-line shell script forwards them to the local server and
+answered. A shell script of some twenty lines forwards them to the local server and
 **always exits 0**: a failing hook can interrupt a Claude Code turn, and nobody
 wants their work to stop because a widget wasn't running.
 
@@ -473,14 +474,15 @@ it runs *before* the prompt, not after the answer.
 it, the app reads the lock files the extension drops in `~/.claude/ide/`, one per
 window, with `workspaceFolders` inside. The match is by longest prefix, comparing
 path components rather than strings: `/dev/project-old` must not come out as
-inside `/dev/project`. If no window contains that `cwd`, the session belongs to no
-open editor and is ignored.
+inside `/dev/project`. If no window contains that `cwd`, the session belongs to no open editor: it is
+ignored — unless *Show terminal sessions* is on, in which case the folder it
+started in becomes its place (see 'Sessions in a terminal').
 
 **It doesn't matter how you started the session, it matters where it runs.**
 `claude` launched from VS Code's *integrated* terminal sits in the same window and
-the same project, and deserves the same traffic light. The only filter left
-excludes what isn't interactive — `sdk`, `print` — because there nobody is
-waiting. It is a **deny**-list, not an allow-list: when it's wrong it shows one
+the same project, and deserves the same traffic light. The only filter left excludes what isn't interactive — the `sdk*` entrypoints,
+`print`, and a session file whose `kind` is not `interactive` — because there
+nobody is waiting. It is a **deny**-list, not an allow-list: when it's wrong it shows one
 row too many, a mistake you can see and fix, instead of hiding one, which stays
 silent.
 
@@ -517,7 +519,11 @@ wrote, it is **derived**:
 ```swift
 public var status: SessionStatus {
     guard activeSubagents > 0 else { return baseStatus }
-    return baseStatus == .awaiting ? .awaiting : .working
+    switch baseStatus {
+    case .awaiting: return .awaiting
+    case .working: return .working
+    case .ready, .idle, .waiting, .failed: return .waiting
+    }
 }
 ```
 
@@ -632,7 +638,7 @@ clawd-light selftest                 check the whole chain and report what's mis
 clawd-light sessions                 the column as the running app sees it
 clawd-light terminal on|off|status   rows for claude started in a terminal
 clawd-light rename <folder> [name]   the panel's word for a row; no name restores it
-clawd-light remote add|install|check|remove <host>   another machine's sessions (see above)
+clawd-light remote [list|add|install|check|uninstall|remove] [host]   another machine's sessions (see above)
 clawd-light next                     raise the next waiting session
 clawd-light open <n>                 raise the project bound to slot n
 clawd-light open                     list what the slots address
@@ -681,7 +687,8 @@ considered burned.
 
 `clawd-light selftest` checks, in order: the server opens the port, a signal
 crosses HTTP, it gets decoded, the current folder resolves to a workspace, the
-Accessibility permission is there, the hooks are registered. It says which link
+Accessibility permission is there, the Automation permission for System Events
+is there, the hooks are registered. It says which link
 broke instead of leaving you staring at an unlit dot.
 
 `clawd-light status` reports how many sessions have a live process, how many
@@ -732,8 +739,13 @@ Sources/
     Reducer/          (state, action) -> new state
     Server/           HTTP parser, JSON contract, token
     Setup/            hook script generation and merge into settings.json
-    Workspace/        IDE locks, live sessions, window title matching
-  ClawdLightApp/      AppKit/SwiftUI shell — panel, server, focus, notifications
+    Workspace/        IDE locks, live sessions, window title matching, remote hosts
+    Seat/             where a session's process lives: chains, terminals, tty, procStart
+    Transcript/       reading what was said: records, the tail, the window, the title
+    Chat/             the mailbox files and the dictation locale
+    Markdown/         parsing of the answers the extended view draws
+    Config/           AppConfig — ports, paths, thresholds
+  ClawdLightApp/      AppKit/SwiftUI shell — panel, server, focus, seats, notifications
   ClawdLightTests/    domain suite, instantaneous
   ClawdLightE2E/      end-to-end run: launches the real binary
   TestKit/            minimal assertions

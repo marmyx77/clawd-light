@@ -20,9 +20,10 @@ already there. With only the first source the column fills with dead rows and
 starts empty on every launch; with only the second you would know who exists but
 not what state they're in.
 
-**Discarded:** reading the transcripts in `~/.claude/projects/`. It would give
-more context at the cost of continuous I/O and of depending on an internal format
-that changes.
+**Discarded:** reading the transcripts in `~/.claude/projects/` as a source of
+*state*. They are read today for the chat window, the preview line and the row
+clock (D14, D17, D19), never for the colour: an internal format that changes
+must not decide what a light says.
 
 **Signal to revisit:** if Claude Code exposed a reliable close event for every
 way of terminating a session — Esc included.
@@ -48,8 +49,9 @@ tried, and turned out to be exactly the wrong behavior.
 yellow. Mitigated by resetting at the **next prompt**, which is a certain boundary.
 
 **The same rule, later, through a second door.** Background shells do it too: the
-turn ends, the recap is written, and `run_in_background` work carries on. `Stop`
-carries `background_tasks`, and any of them `running` now keeps the row working.
+turn ends, the recap is written, and `run_in_background` work carries on. `Stop` carries `background_tasks`, and any of them `running` (other than `dream`
+and `cloud session`) now keeps the row from going green — it paints `waiting`,
+see D22.
 That case was examined on day one and dismissed with a coherent argument — that a
 turn had ended and an answer existed — which answered the wrong question. Green
 asserts *there is something to read* **and** *nothing more is coming*; only the
@@ -73,7 +75,7 @@ when it's wrong, shows one row too many. The second mistake can be seen and
 fixed; the first stays silent.
 
 **Signal to revisit:** if enough non-interactive sessions appeared to make noise.
-Today `kind == "interactive"` covers them.
+Today `kind == "interactive"` plus a short entrypoint deny-list (`sdk`, `sdk-cli`, `sdk-ts`, `sdk-py`, `print`) covers them — `kind` alone let claude-mem's SDK observer through.
 
 ---
 
@@ -373,9 +375,9 @@ free.
   never arrives. The contract check greps the shipped binary for the names on
   every run. That check is the warning, and it is not optional.
 - **A dormant session hears nothing.** A listener can only be born at the end of a
-  turn, so opening a conversation that is doing nothing arms nothing. The window
-  says so — *"this session is dormant"* — instead of showing a spinner for
-  something that will never happen. It resolves itself the moment anything happens
+  turn, so opening a conversation that is doing nothing arms nothing. The window says so — *"this conversation is asleep — a message will wait for it,
+not vanish"* — instead of showing a spinner for something that will never
+happen. It resolves itself the moment anything happens
   in that session.
 - **The mailbox has no authentication, so the whole feature is off by default.**
   Dropping a file in it starts a turn that speaks in the user's voice with their
@@ -649,7 +651,7 @@ for the local pass. `BatchMode=yes` so a host wanting a password fails in a seco
 instead of waiting for a prompt nobody will see, and a hard kill at twice the
 timeout so a half-open connection to a sleeping node cannot hold the poll.
 
-**Off unless asked.** Hosts come from `~/.clawd-light/remotes`, one per line.
+**Off unless asked.** Hosts came from `~/.clawd-light/remotes`, one per line — since D24 they are set in the Settings window or with `clawd-light remote add`, and that file is only imported once on upgrade.
 Absent or empty means off, which is the default: reading another machine is an
 outbound connection this app would otherwise never make. Names are checked against
 an allow-list before reaching ssh — a name starting with a dash would be read as
@@ -691,9 +693,10 @@ question, "is that shell a dev server nobody will ever stop?", askable.
 
 **Subagents follow the same grammar.** A subagent alive after the parent's `Stop`
 used to paint yellow over any state; it now paints blue, for the same reason.
-And a subagent *starting* proves the turn is running, so the declared state
-becomes `working` wherever the row was — that is what releases a pending question
-too (D20's sibling rule).
+And a subagent *starting* while a question is pending proves that question was
+answered, so an `awaiting` row becomes `working` (D20's sibling rule) — from any
+other state a starting subagent repaints nothing, because one launched at the
+end of a turn arrives after the parent's `Stop`.
 
 **The way back is the same as before.** The work finishes, Claude Code starts a
 turn to report it, `UserPromptSubmit` paints yellow and empties `waitingOn`, and
@@ -852,9 +855,10 @@ already does.
 local port and one `SignalServer` per host — instead of by a header the node
 writes. It is the cleaner design (renaming a host, two Macs naming one node
 differently, a header-less post all resolve by construction) and the review asked
-for it. What is shipped instead: the header is only believed for a configured
-host, and with the socket the only processes that can write it are that user's on
-that machine. That closes the forgery that mattered; the rest is a rename that
+for it. What is shipped instead: the header is only believed for a configured host, and
+the far end is a loopback port owned by that user's uid on that machine — so an
+unrelated device cannot write it, though another account on the node can while
+the tunnel is up. That closes the forgery that mattered; the rest is a rename that
 today needs the hooks reinstalled, which `remote add` says out loud.
 
 **Signal to revisit:** a node that is not reachable over ssh but can reach the Mac
