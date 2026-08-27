@@ -28,6 +28,9 @@ final class PanelController {
     }
 
     /// Called from outside to turn notifications on or off.
+    /// Opens the Settings window; set by whoever owns it.
+    var onOpenSettings: (() -> Void)?
+
     var onNotificationToggle: ((Bool) -> Void)?
 
     init(store: StateStore, installer: HookInstaller, preferences: Preferences = Preferences()) {
@@ -293,18 +296,14 @@ final class PanelController {
 
         let session = row.primary
 
-        // There is no window here to raise. Hunting for one would end in a modal
-        // saying "cannot open", which is true and useless: the session is on
-        // another machine on purpose.
-        if let host = session.workspace.host {
-            store.reportError(
-                "“\(session.workspace.name)” runs on \(host) — nothing to raise here."
-            )
-            return
-        }
-
+        // A remote session's window, if it has one here, is the Remote-SSH window
+        // of its folder; the focuser knows how to find it. The tab deep link is
+        // off for it — the link goes to the local extension host, and this
+        // session's is on the other machine.
+        let remoteHost = session.workspace.host
         switch VSCodeFocuser.focus(
-            workspace: session.workspace, sessionId: opensTab ? session.id : nil
+            workspace: session.workspace,
+            sessionId: opensTab && remoteHost == nil ? session.id : nil
         ) {
         case .raised:
             store.clearError()
@@ -318,6 +317,16 @@ final class PanelController {
             )
 
         case .failed(let error):
+            // Normal for a session driven from a terminal on the node: there is no
+            // window here to raise, and a modal saying so would be true and
+            // useless. The menu says where the session is instead.
+            if let remoteHost {
+                store.reportError(
+                    "“\(session.workspace.name)” runs on \(remoteHost) — "
+                        + "no Remote-SSH window of that folder is open here (\(error.shortDescription))."
+                )
+                return
+            }
             store.reportError(error.shortDescription)
             Alerts.warn(
                 title: "Cannot open “\(session.workspace.name)”",
@@ -417,6 +426,7 @@ final class PanelController {
     private func makeActions() -> PanelActions {
         PanelActions(
             openExtended: { [weak self] in self?.openExtendedWindow() },
+            openSettings: { [weak self] in self?.onOpenSettings?() },
             toggleCompact: { [weak self] in self?.toggleCompact() },
             toggleSessionTab: { [weak self] in
                 self?.preferences.opensSessionTab.toggle()

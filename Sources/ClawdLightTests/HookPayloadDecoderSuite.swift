@@ -72,6 +72,18 @@ enum HookPayloadDecoderSuite {
             t.expect(signal.deservesTrafficLight, "must deserve a traffic light")
         },
 
+        TestCase("The host header is carried, and only in a usable shape") { t in
+            let remote = try? HookPayloadDecoder.decode(json(validStop), entrypoint: "cli", host: "node")
+            t.expectEqual(remote?.host, "node", "host")
+
+            let local = try? HookPayloadDecoder.decode(json(validStop), entrypoint: "cli")
+            t.expectNil(local?.host, "no header, no host")
+
+            // The value ends up in a row label and, later, in an ssh argument.
+            let hostile = try? HookPayloadDecoder.decode(json(validStop), host: "-oProxyCommand=evil")
+            t.expectNil(hostile?.host, "a name ssh would misread is dropped, the signal is kept")
+        },
+
         TestCase("Decodes a permission request notification") { t in
             let data = payload([
                 "hook_event_name": "Notification",

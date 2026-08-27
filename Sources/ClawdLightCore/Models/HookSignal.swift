@@ -82,6 +82,14 @@ public struct HookSignal: Sendable, Equatable {
     /// and it is what the chat window reads.
     public let transcriptPath: String?
 
+    /// The machine the hook ran on, when it is not this one.
+    ///
+    /// Carried in a header by the hook script installed there, and only accepted
+    /// in the shape a configured host name can have. A signal with a host does
+    /// not go through the local editor-window lookup — no lock on this machine
+    /// claims `/home/…` — its workspace is its own folder, on that host.
+    public let host: String?
+
     public init(
         sessionId: String,
         event: HookEventKind,
@@ -93,7 +101,8 @@ public struct HookSignal: Sendable, Equatable {
         sessionSource: String? = nil,
         failureReason: StopFailureReason? = nil,
         inFlightBackgroundTaskTypes: [String] = [],
-        transcriptPath: String? = nil
+        transcriptPath: String? = nil,
+        host: String? = nil
     ) {
         self.sessionId = sessionId
         self.event = event
@@ -106,6 +115,7 @@ public struct HookSignal: Sendable, Equatable {
         self.failureReason = failureReason
         self.inFlightBackgroundTaskTypes = inFlightBackgroundTaskTypes
         self.transcriptPath = transcriptPath
+        self.host = host
     }
 
     /// `true` when the event is a context compaction: not the start of a session,

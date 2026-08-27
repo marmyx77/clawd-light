@@ -20,6 +20,7 @@ struct Preferences {
         /// pinned-rows version.
         static let pinnedWorkspaces = "panel.pinnedWorkspaces"
         static let rowOrder = "panel.rowOrder"
+        static let remoteHosts = "remote.hosts"
         static let hiddenWorkspaces = "panel.hiddenWorkspaces"
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
@@ -121,6 +122,33 @@ struct Preferences {
         }
         nonmutating set {
             defaults.set(RowOrder.normalized(newValue), forKey: Key.rowOrder)
+        }
+    }
+
+    /// Machines whose sessions join the column, by the name ssh knows them under.
+    ///
+    /// Set in the Settings window; validated on both sides of the store, because
+    /// a name becomes an argument to `ssh`. Whoever upgrades from the file-based
+    /// version finds the hosts of `~/.clawd-light/remotes` imported the first time
+    /// this is read — the one write a getter is allowed, and it happens once —
+    /// and the file is not consulted again.
+    var remoteHosts: [String] {
+        get {
+            if let stored = defaults.stringArray(forKey: Key.remoteHosts) {
+                return stored.filter(RemoteHostList.isUsable)
+            }
+            let imported = RemoteHostList.parse(
+                (try? String(contentsOf: AppConfig.remoteHostsFile, encoding: .utf8)) ?? ""
+            )
+            defaults.set(imported, forKey: Key.remoteHosts)
+            return imported
+        }
+        nonmutating set {
+            var seen = Set<String>()
+            defaults.set(
+                newValue.map { $0.trimmed }.filter { RemoteHostList.isUsable($0) && seen.insert($0).inserted },
+                forKey: Key.remoteHosts
+            )
         }
     }
 

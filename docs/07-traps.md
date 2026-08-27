@@ -39,6 +39,9 @@ severity.
 11. **In a hosted SwiftUI view, the window runs the first round.** Moving by
     background, the first click in a non-key window, a drag on a handle: AppKit
     settles them by asking the hit view, and a SwiftUI gesture cannot answer.
+12. **A feature that answers its own security question first can end up
+    answering nothing else.** Decide what the row must *do*, then the mechanism,
+    then its safety — and measure the machine before designing for it.
 
 ---
 
@@ -674,6 +677,53 @@ round. Anything that competes with a window behaviour — moving by background,
 resizing, the first click in a non-key window — is settled by AppKit's questions
 to the hit view, and a SwiftUI gesture cannot answer them. When a gesture loses
 to the window, the fix is a view that can speak AppKit, not a bigger gesture.
+
+---
+
+## The row that never spoke
+
+**Symptom.** Reported by use: *"remote sessions never worked — always red, the
+click goes nowhere, and the sessions look random: one of them I never opened."*
+
+**Measure.** On the node, over ssh: `~/.claude/settings.json` had **no hooks**;
+port 9877 there was free; the sessions the probe listed were real — a `claude` in
+a detached tmux (`vacanza2026`, two days old, started by an automation) and the
+one the user drives, whose window is **on this Mac**, titled `resume — folder
+[SSH: 100.x.x.x]`. Every remote row had been born from the probe and had never
+received a hook, because the hook on the node posts to `127.0.0.1:9877` *on the
+node*, where nothing listens. Three facts the first design had not measured: the
+node had no hooks, the user's remote window was a local window, and the
+"sessions" were processes, not things anyone had opened.
+
+**Cause.** D21 answered a security question — do not put `/signal` on the network
+— and let the answer decide the feature: *read* the node instead of hearing it.
+Reading gives presence and nothing else. A row with presence and no state is a red
+dot; a row whose workspace is a folder on another machine has nothing here to
+raise; and a probe that lists every live pid lists what nobody asked to see. The
+design was internally consistent and useless, and it shipped because the check
+was "does a row appear", not "does the row do anything".
+
+**Correction.** D24. The node's hooks reach this Mac through a reverse ssh tunnel
+the app keeps open — the far end bound to the node's loopback, so nothing on any
+network can post — and clawd-light installs those hooks on the node itself, over
+ssh, with the same merge the local installer uses. A remote row is born when the
+session speaks and confirmed alive by the probe, whose pid check now also
+compares `procStart` with `/proc/<pid>/stat`. A click raises the Remote-SSH
+window of the folder. Hosts moved from a hidden file to a Settings window and a
+`remote` verb in the CLI.
+
+**Verified.** From the node, `curl` to `127.0.0.1:9877/signal` with the host
+header: `absent -> working host=minisforum`, `working -> ready`, and the row
+carried the message; `clawd-light remote check` reports python, curl, hooks and
+whether the tunnel answers — asked *from* the node, the only place the question
+means anything.
+
+**Lesson.** *A feature that answers its own security question first can end up
+answering nothing else.* The right order was: what does the user need the row to
+do (change colour, open on click), then which mechanism can do that, then whether
+the mechanism is safe — and the tunnel was safe all along. And measure the
+machine before designing for it: one `ls ~/.claude/ide/` on the node would have
+shown the second design's presence rule was wrong, too, before it was written.
 
 ---
 

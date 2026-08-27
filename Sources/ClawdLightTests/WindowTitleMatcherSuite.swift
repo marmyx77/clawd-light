@@ -93,6 +93,45 @@ enum WindowTitleMatcherSuite {
             )
         },
 
+        // VS Code appends `[SSH: host]` to a Remote-SSH window, `host` being what
+        // the user typed to connect — an alias one day, an address the next.
+        TestCase("A Remote-SSH window is found by folder, and a known label wins") { t in
+            let titles = [
+                "notes — .notes [SSH: 192.0.2.10]",
+                "dev — .notes — Claude Minimal",
+                "todo — .notes [SSH: other-box]",
+            ]
+            t.expectEqual(
+                WindowTitleMatcher.bestRemoteMatch(
+                    workspaceName: ".notes", titles: titles, hostLabels: ["node", "192.0.2.10"]
+                ),
+                0, "the window whose label is one of the host's names"
+            )
+            t.expectEqual(
+                WindowTitleMatcher.bestRemoteMatch(
+                    workspaceName: ".notes", titles: titles.reversed(), hostLabels: ["node", "192.0.2.10"]
+                ),
+                2, "wherever it sits in the list"
+            )
+            t.expectEqual(
+                WindowTitleMatcher.bestRemoteMatch(workspaceName: ".notes", titles: titles, hostLabels: ["node"]),
+                0, "no label recognised: the first remote window of that folder, never the local one"
+            )
+            t.expectNil(
+                WindowTitleMatcher.bestRemoteMatch(workspaceName: "clawd-light", titles: titles, hostLabels: ["node"]),
+                "a folder no remote window shows"
+            )
+        },
+
+        TestCase("A local lookup never raises a Remote-SSH window") { t in
+            let titles = ["dev [SSH: node]", "Claude Code — dev — Claude Minimal"]
+            t.expectEqual(WindowTitleMatcher.bestMatch(workspaceName: "dev", titles: titles), 1, "the local one")
+            t.expectNil(
+                WindowTitleMatcher.bestMatch(workspaceName: "dev", titles: ["dev [SSH: node]"]),
+                "a remote window only is no window for a local session"
+            )
+        },
+
         TestCase("An empty name matches nothing") { t in
             t.expectNil(WindowTitleMatcher.bestMatch(workspaceName: "", titles: realTitles))
             t.expectNil(WindowTitleMatcher.bestMatch(workspaceName: "   ", titles: realTitles))

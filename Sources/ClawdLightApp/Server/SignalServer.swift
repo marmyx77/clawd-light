@@ -291,7 +291,8 @@ final class SignalServer {
         do {
             let signal = try HookPayloadDecoder.decode(
                 request.body,
-                entrypoint: request.header("X-Claude-Entrypoint")
+                entrypoint: request.header("X-Claude-Entrypoint"),
+                host: request.header(AppConfig.remoteHostHeader)
             )
             onSignal(signal)
             return HTTPRequestParser.response(status: 204, reason: "No Content")

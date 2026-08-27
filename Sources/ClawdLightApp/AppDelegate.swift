@@ -23,6 +23,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var server: SignalServer?
     private var panelController: PanelController?
+    /// The remote machines: their tunnels and their hooks. Started in every mode,
+    /// because a hook from another machine is as welcome headless as with the panel.
+    private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
+    private lazy var settingsWindow = SettingsWindowController(fleet: fleet)
     private var notifier: SessionNotifier?
     private var presence: PresenceFile?
 
@@ -46,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         store.startPolling()
+        fleet.start()
 
         if !headless && shouldPromptForInstallation {
             preferences.wasSetupPromptShown = true
@@ -56,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Everything that only makes sense with a user in front of it.
     private func startInterface() {
         let controller = PanelController(store: store, installer: installer)
+        controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         controller.show()
         panelController = controller
 
@@ -118,6 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.stopPolling()
+        fleet.stop()
         server?.stop()
         // The presence file has to go: leaving it would say "I'm at the Mac"
         // forever, and the phone push notifications would never arrive again.

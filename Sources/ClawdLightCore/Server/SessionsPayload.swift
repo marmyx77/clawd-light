@@ -37,6 +37,10 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// how a session **is**, this says where to find what was **said**.
     public let transcriptPath: String?
 
+    /// The machine the session runs on, as configured in the settings; `nil` for
+    /// this one. A reader that raises windows needs it: there is nothing local to raise.
+    public let host: String?
+
     public init(
         id: String,
         status: String,
@@ -50,7 +54,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         lastMessage: String? = nil,
         muted: Bool = false,
         slot: Int? = nil,
-        transcriptPath: String? = nil
+        transcriptPath: String? = nil,
+        host: String? = nil
     ) {
         self.id = id
         self.status = status
@@ -65,6 +70,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.muted = muted
         self.slot = slot
         self.transcriptPath = transcriptPath
+        self.host = host
     }
 }
 
@@ -123,7 +129,8 @@ public enum SessionsCodec {
             lastMessage: session.lastMessage,
             muted: muted,
             slot: slot,
-            transcriptPath: session.transcriptPath
+            transcriptPath: session.transcriptPath,
+            host: session.workspace.host
         )
     }
 }

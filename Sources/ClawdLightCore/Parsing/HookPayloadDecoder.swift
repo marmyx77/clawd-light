@@ -47,7 +47,12 @@ public enum HookPayloadDecoder {
     ///   - data: request body.
     ///   - entrypoint: value of `CLAUDE_CODE_ENTRYPOINT` read by the hook script
     ///     and carried in a header; it is not present in Claude Code's JSON.
-    public static func decode(_ data: Data, entrypoint: String? = nil) throws -> HookSignal {
+    ///   - host: the `X-Clawd-Host` header, present when the hook ran on another
+    ///     machine. Anything that is not a plausible host name is dropped rather
+    ///     than carried: the value ends up in a row label and in an ssh argument.
+    public static func decode(
+        _ data: Data, entrypoint: String? = nil, host: String? = nil
+    ) throws -> HookSignal {
         guard data.count <= AppConfig.maxRequestBodyBytes else {
             throw HookPayloadError.bodyTooLarge(data.count)
         }
@@ -87,7 +92,8 @@ public enum HookPayloadDecoder {
             sessionSource: optionalString(object, key: "source"),
             failureReason: failureReason(in: object, event: event),
             inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes(in: object),
-            transcriptPath: absolutePath(object, key: "transcript_path")
+            transcriptPath: absolutePath(object, key: "transcript_path"),
+            host: host?.trimmed.nilIfEmpty.flatMap { RemoteHostList.isUsable($0) ? $0 : nil }
         )
     }
 

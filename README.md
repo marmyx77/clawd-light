@@ -102,7 +102,8 @@ dropped.
 
 Right-click **on the panel's margins** for the general menu: compact mode,
 grouping, the "only what's waiting" filter, notifications, presence, hooks, launch
-at login.
+at login — and **Settings…**, the window for what does not fit a menu: today, the
+remote machines.
 
 **Hidden projects don't disappear.** They are collected into a summary row that
 **lights up** when one of them asks for attention. That is not an aesthetic
@@ -286,30 +287,36 @@ export CLAUDE_CLIENT_PRESENCE_FILE="$HOME/.clawd-light/presence"
 
 ## Sessions on other machines
 
-A session running over ssh on an always-on box never showed up: no hook is
+A session running over ssh on an always-on box used to be invisible: no hook is
 registered there, the hook posts to `127.0.0.1`, the server listens on
-`127.0.0.1`, and a row needs a local editor window to claim its folder — four
-barriers, all by design. The panel is a single-machine tool.
+`127.0.0.1`, and a row needs a local editor window to claim its folder. Four
+barriers, all by design — and reading the machine over ssh, the first answer,
+gave rows that never changed colour and that a click could not open.
 
-It can now **read** another machine. List hosts in `~/.clawd-light/remotes`, one
-per line, using whatever `ssh` already understands:
+Now the machine's hooks **reach this Mac**. Right-click the panel → **Settings…**,
+add the machine under the name ssh knows it by, and press **Install hooks**:
+clawd-light writes the hook script and registers it in that machine's
+`~/.claude/settings.json` (dated backup, atomic write), and keeps a reverse ssh
+tunnel open so that `127.0.0.1:9877` *over there* is this app. From a terminal:
 
+```bash
+clawd-light remote add node         # a name ssh understands; key login only
+clawd-light remote install node     # two ssh round trips, nothing else installed
+clawd-light remote check node       # python, curl, hooks, and whether the tunnel answers
 ```
-# the always-on box
-node          # via the VPN
-```
 
-Every twenty seconds the panel runs a short probe **on** each host over ssh —
-nothing is installed there, nothing is left behind — and the host's live sessions
-join the column, labeled `folder @host`. A host that does not answer keeps the
-rows it had: silence is not death. Clicking a remote row says where the session is
-instead of hunting for a window that is not here; the chat window cannot open a
-remote transcript.
+A remote session gets its row when it **speaks** — its first hook arrives through
+the tunnel — labeled `folder @host`, and loses it when the machine's probe says
+the process is gone. Clicking the row raises the **Remote-SSH** window of that
+folder here, if one is open (`… — folder [SSH: host]`); otherwise the menu says
+where the session is. The chat window cannot open a remote transcript.
 
-**Off unless asked**: an absent or empty file means the panel makes no outbound
-connections. The port is deliberately *not* opened instead — `POST /signal`
-carries no token, and putting it on a network would be unauthenticated state
-injection. See [D21](docs/04-decisions.md).
+The machine needs ssh key login (no password prompt is possible), `python3`,
+`curl`, and port 9877 free on its loopback. The tunnel is restarted with backoff
+when the machine sleeps or the VPN drops; the Settings window shows its state and
+the outcome of every operation. Hosts were read from `~/.clawd-light/remotes`
+before; that file is imported once and no longer consulted. See
+[D24](docs/04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
 
 ## Installation
 
@@ -671,8 +678,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 433 domain tests, instantaneous
-swift run ClawdLightE2E                # 75 end-to-end tests, ~1 minute
+swift run ClawdLightTests              # 438 domain tests, instantaneous
+swift run ClawdLightE2E                # 76 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

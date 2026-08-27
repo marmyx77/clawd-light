@@ -16,16 +16,61 @@ public enum WindowTitleMatcher {
     /// The em dash is the default; the others cover custom `window.title` settings.
     private static let separators: [String] = ["—", "–", "-", "|", "·", "•"]
 
-    /// Index of the title that best matches `workspaceName`, or `nil`.
+    /// What VS Code appends to the title of a Remote-SSH window: `[SSH: host]`,
+    /// where `host` is whatever the user typed to connect — an alias or an address.
+    static let sshMarker = "[SSH: "
+
+    /// Index of the **local** window title that best matches `workspaceName`, or `nil`.
+    ///
+    /// Remote-SSH windows are skipped: a local session never lives in one, and a
+    /// remote folder that happens to share the name of a local project would
+    /// otherwise be raised in its place.
     ///
     /// - Parameters:
     ///   - titles: titles in the order System Events returns them.
     public static func bestMatch(workspaceName: String, titles: [String]) -> Int? {
+        best(workspaceName: workspaceName, titles: titles) { title, base in
+            sshLabel(in: title) == nil ? base : nil
+        }
+    }
+
+    /// Index of the **Remote-SSH** window title that best matches a folder living on
+    /// one of `hostLabels`, or `nil`.
+    ///
+    /// The marker is required. Among the windows that carry it, one whose label is
+    /// a name the host is known by — the configured name, or an address it
+    /// resolves to — beats one that merely shares the folder name; but a window
+    /// with the right folder and an unrecognised label is still accepted, because
+    /// the label is what the user typed once, and nobody types the same thing twice.
+    public static func bestRemoteMatch(
+        workspaceName: String, titles: [String], hostLabels: [String]
+    ) -> Int? {
+        best(workspaceName: workspaceName, titles: titles) { title, base in
+            guard let label = sshLabel(in: title) else { return nil }
+            let known = hostLabels.contains { $0.caseInsensitiveCompare(label) == .orderedSame }
+            return base + (known ? 1000 : 0)
+        }
+    }
+
+    /// What sits inside `[SSH: …]`, or `nil` for a window that is not remote.
+    static func sshLabel(in title: String) -> String? {
+        guard let start = title.range(of: sshMarker),
+              let end = title[start.upperBound...].firstIndex(of: "]")
+        else { return nil }
+        return String(title[start.upperBound..<end]).trimmed.nilIfEmpty
+    }
+
+    private static func best(
+        workspaceName: String, titles: [String],
+        adjust: (String, Int) -> Int?
+    ) -> Int? {
         let target = workspaceName.trimmed
         guard !target.isEmpty else { return nil }
 
         let scored = titles.enumerated().compactMap { index, title -> (Int, Int)? in
-            guard let score = score(title: title, workspaceName: target) else { return nil }
+            guard let base = score(title: title, workspaceName: target),
+                  let score = adjust(title, base)
+            else { return nil }
             return (index, score)
         }
 

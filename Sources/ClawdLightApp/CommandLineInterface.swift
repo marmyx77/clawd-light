@@ -20,6 +20,9 @@ enum CommandLineInterface {
         /// Reads a slot's conversation in a window of its own.
         case chat(slot: Int?, port: UInt16)
         case sessions(port: UInt16)
+        /// The remote machines: list them, add or forget one, and install or
+        /// remove the hooks over there. `verb` is the sub-command as typed.
+        case remote(verb: String, host: String?)
         case help
     }
 
@@ -62,6 +65,11 @@ enum CommandLineInterface {
             )
         case "sessions":
             return .sessions(port: port)
+        case "remote":
+            return .remote(
+                verb: args.count > 1 ? args[1] : "list",
+                host: args.count > 2 && !args[2].hasPrefix("-") ? args[2] : nil
+            )
         case "help", "--help", "-h":
             return .help
         case .some(let unknown) where unknown.hasPrefix("-") == false:
@@ -119,6 +127,9 @@ enum CommandLineInterface {
 
         case .sessions(let port):
             return runSessions(port: port)
+
+        case .remote(let verb, let host):
+            return runRemote(verb: verb, host: host)
 
         case .help:
             print(helpText)
@@ -533,6 +544,8 @@ enum CommandLineInterface {
           clawd-light new <n>                 open a new conversation in slot n's project
           clawd-light chat <n>                read slot n's conversation in its own window,
                                               without touching the editor
+          clawd-light remote [verb] [host]    the machines whose sessions join the column:
+                                              list | add | remove | check | install | uninstall
           clawd-light help                    show this text
 
         OPTIONS
@@ -550,10 +563,16 @@ enum CommandLineInterface {
                                 Used by the tests so they never touch the real ~/.claude.
 
         SLOTS
-          Pinning a project binds it to the next free slot, 1 to \(AppConfig.maxSlots), and it
-          keeps that slot: the column reorders by urgency, the slots don't. That is
-          what makes `clawd-light open 3` worth binding to a key.
-          Assign them by right-clicking a row in the panel.
+          The first \(AppConfig.maxSlots) rows are slots 1 to \(AppConfig.maxSlots). The column keeps the order you
+          gave it — drag a row by its handle, or right-click → Move up / Move down —
+          and never reorders itself. That is what makes `clawd-light open 3` worth
+          binding to a key.
+
+        REMOTE MACHINES
+          `clawd-light remote add <host>` (a name ssh understands, key login only) and
+          `clawd-light remote install <host>` register the hooks over there. The panel
+          keeps an ssh tunnel open so those hooks reach this Mac; a remote session
+          gets its row when it speaks, and clicking it raises its Remote-SSH window.
 
         STATES
           red        the session is at rest
@@ -572,6 +591,91 @@ enum CommandLineInterface {
         """
     }
 
+    // MARK: - Remote machines
+
+    /// `clawd-light remote …`: the Settings window's buttons, from a terminal.
+    ///
+    /// The list lives in the preferences, and the running panel follows it — a
+    /// host added here gets its tunnel without a restart. Installing the hooks
+    /// needs no running panel at all: it is two ssh round trips.
+    private static func runRemote(verb: String, host: String?) -> Int32 {
+        let preferences = Preferences()
+
+        func requireHost() -> String? {
+            guard let host, RemoteHostList.isUsable(host) else {
+                print("Usage: clawd-light remote \(verb) <host>   (a name ssh understands)")
+                return nil
+            }
+            return host
+        }
+
+        switch verb {
+        case "list":
+            let hosts = preferences.remoteHosts
+            if hosts.isEmpty {
+                print("No remote machines. Add one: clawd-light remote add <host>")
+            } else {
+                for host in hosts { print(host) }
+            }
+            return 0
+
+        case "add":
+            guard let host = requireHost() else { return 2 }
+            var hosts = preferences.remoteHosts
+            guard !hosts.contains(host) else {
+                print("\(host) is already in the list.")
+                return 0
+            }
+            hosts.append(host)
+            preferences.remoteHosts = hosts
+            print("Added \(host). The panel opens its tunnel now; install the hooks there with")
+            print("  clawd-light remote install \(host)")
+            return 0
+
+        case "remove", "forget":
+            guard let host = requireHost() else { return 2 }
+            preferences.remoteHosts = preferences.remoteHosts.filter { $0 != host }
+            print("Forgot \(host). Its hooks, if installed, stay until `clawd-light remote uninstall \(host)`.")
+            return 0
+
+        case "check":
+            guard let host = requireHost() else { return 2 }
+            switch RemoteHookInstaller.inspect(host) {
+            case .success(let inspection):
+                print("\(host): python \(inspection.pythonVersion), curl \(inspection.hasCurl ? "present" : "MISSING"), "
+                      + "hooks \(inspection.hooksInstalled ? "installed" : "not installed")")
+                if let error = inspection.error { print("  settings.json unreadable: \(error)") }
+                switch RemoteHookInstaller.tunnelReaches(host) {
+                case .success(true): print("  tunnel: 127.0.0.1:\(AppConfig.listenPort) there answers — it reaches this Mac")
+                case .success(false): print("  tunnel: nothing answers on 127.0.0.1:\(AppConfig.listenPort) there — is the panel running?")
+                case .failure(let error): print("  tunnel: could not ask (\(error.short))")
+                }
+                return 0
+            case .failure(let error):
+                print("\(host): \(error.short)")
+                return 1
+            }
+
+        case "install":
+            guard let host = requireHost() else { return 2 }
+            switch RemoteHookInstaller.install(on: host) {
+            case .success(let message): print(message); return 0
+            case .failure(let error): print("\(host): \(error.short)"); return 1
+            }
+
+        case "uninstall":
+            guard let host = requireHost() else { return 2 }
+            switch RemoteHookInstaller.uninstall(on: host) {
+            case .success(let message): print(message); return 0
+            case .failure(let error): print("\(host): \(error.short)"); return 1
+            }
+
+        default:
+            print("Usage: clawd-light remote [list | add <host> | remove <host> | check <host> | install <host> | uninstall <host>]")
+            return 2
+        }
+    }
+
     // MARK: - Helpers
 
     private static func portOption(in args: [String]) -> UInt16? {
@@ -588,14 +692,12 @@ enum CommandLineInterface {
     /// Printed because there is otherwise no way to tell "no remote sessions" from
     /// "the node never answered" — and those need opposite reactions.
     private static func reportRemoteHosts() {
-        let hosts = RemoteHostList.parse(
-            (try? String(contentsOf: AppConfig.remoteHostsFile, encoding: .utf8)) ?? ""
-        )
+        let hosts = Preferences().remoteHosts
         guard !hosts.isEmpty else {
-            print("\nRemote hosts: none configured (\(AppConfig.remoteHostsFile.path))")
+            print("\nRemote hosts: none configured (panel menu → Settings…)")
             return
         }
-        print("\nRemote hosts (read over ssh, never written to):")
+        print("\nRemote hosts (their hooks reach this Mac through the tunnel; presence read over ssh):")
         for host in hosts {
             guard let sessions = RemoteSessionReader(host: host).readLiveSessions() else {
                 print("  · \(host): NO ANSWER — asleep, or ssh cannot reach it")

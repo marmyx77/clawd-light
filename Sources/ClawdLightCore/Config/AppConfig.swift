@@ -211,6 +211,22 @@ public enum AppConfig {
     /// other one is unreachable.
     public static let remoteProbeTimeout: TimeInterval = 5
 
+    /// Header a hook adds when it runs on another machine and reaches this one
+    /// through the tunnel: the name the host was configured under. Without it a
+    /// signal from the node would be indistinguishable from a local one, and its
+    /// `cwd` would be looked up among local editor windows that cannot claim it.
+    public static let remoteHostHeader = "X-Clawd-Host"
+
+    /// Backoff for a tunnel that exits: the first retry after this many seconds…
+    public static let remoteTunnelRetryMin: TimeInterval = 5
+    /// …doubling up to this.
+    public static let remoteTunnelRetryMax: TimeInterval = 60
+
+    /// Where the hook script goes on a remote machine, relative to its home.
+    public static let remoteHookScriptRelativePath = ".clawd-light/hook.sh"
+    /// Claude Code's settings on a remote machine, relative to its home.
+    public static let remoteClaudeSettingsRelativePath = ".claude/settings.json"
+
     /// How often the remote hosts are asked. Far slower than the local poll,
     /// because each one is a process spawn and an ssh handshake.
     public static let remotePollInterval: TimeInterval = 20

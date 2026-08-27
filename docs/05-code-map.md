@@ -1,18 +1,18 @@
 # Code map
 
-~19,100 lines of Swift across five targets. For each file: what it contains, why
+~20,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,672 lines · 39 files   pure logic, zero AppKit
-  ClawdLightApp/    7,312 lines · 40 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,247 lines · 29 files   433 cases, instantaneous
-  ClawdLightE2E/    1,683 lines ·  9 files   75 cases, the real binary
+  ClawdLightCore/   4,869 lines · 40 files   pure logic, zero AppKit
+  ClawdLightApp/    8,349 lines · 47 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,321 lines · 29 files   438 cases, instantaneous
+  ClawdLightE2E/    1,716 lines ·  9 files   76 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 613 lines. The limit the project sets itself is 800.
+No file exceeds 715 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -281,13 +281,16 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 > stands a second listener down. Every path out is `exit 0` except the deliberate
 > `exit 2` — a failing hook can interrupt a Claude Code turn.
 
+### `RemoteInstallScripts.swift` · 94
+The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved.
+
 ## `Workspace/`
 
 ### `WorkspaceResolver.swift`
 `cwd` + locks → which window. `window(hosting:)` also returns **which editor**,
 because Cursor's bundle identifier differs from VS Code's.
 
-### `WindowTitleMatcher.swift` · 92
+### `WindowTitleMatcher.swift` · 137
 Scores 100/50/10. It lives in Swift rather than inside AppleScript precisely so
 it can be verified without opening windows.
 
@@ -319,7 +322,7 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 613
+### `CommandLineInterface.swift` · 715
 Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -339,6 +342,9 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
+| `RemoteCommand.swift` | 128 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
+| `RemoteTunnel.swift` | 159 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason |
+| `RemoteFleet.swift` | 190 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
@@ -382,11 +388,17 @@ The most delicate file. Two strategies, three explicit outcomes.
 > `activate()` lying, `open` with a path that creates new windows, the index that
 > expires.
 
+### `RemoteHostAddresses.swift` · 73
+The names a Remote-SSH window may carry for a host — the configured one, what `ssh -G` resolves it to, and their addresses — because VS Code labels the window with whatever the user typed to connect.
+
 ## `Setup/`
 
 ### `HookInstaller.swift` · 239
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail.
+
+### `RemoteHookInstaller.swift` · 122
+The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers.
 
 ## `UI/`
 
@@ -408,6 +420,8 @@ installations in the same second used to fail.
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
+| `SettingsView.swift` | 121 | the Settings form: remote machines, their state, the buttons |
+| `SettingsWindowController.swift` | 57 | owns the Settings window; activates the app so it comes up in front |
 | `Alerts.swift` | | dialogs |
 
 > **`StatusPalette.timeColor`** is `Color.primary.opacity(0.62)` and not
@@ -419,7 +433,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 433 cases
+## `ClawdLightTests/` — 438 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -452,7 +466,7 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 
-## `ClawdLightE2E/` — 75 cases
+## `ClawdLightE2E/` — 76 cases
 
 | Suite | Covers |
 |---|---|

@@ -59,6 +59,32 @@ enum CoverageSuite {
 
             // MARK: - 1.2 subagent counter
 
+
+            // A machine's hooks reach this one through the tunnel and say where
+            // they ran. No local editor window claims `/home/…`, and without the
+            // header the signal would be dropped for exactly that reason.
+            TestCase("a signal from another machine gets a row on that machine") { a in
+                let id = "e2e-remote-\(UUID().uuidString.prefix(8))"
+                let cwd = "/home/dev/.notes"
+                a.expectEqual(
+                    app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: cwd), entrypoint: "cli", host: "node"),
+                    204, "accepted"
+                )
+                usleep(300_000)
+                guard let session = app.session(id: id) else {
+                    return a.fail("the remote session got no row")
+                }
+                a.expectEqual(session.status, "working", "status")
+                a.expectEqual(session.host, "node", "host")
+                a.expectEqual(session.workspace, ".notes", "its own folder is the workspace")
+
+                // The same signal without the header is a terminal session in a
+                // folder no window here has open: no row, as before.
+                let local = "e2e-remote-local-\(UUID().uuidString.prefix(8))"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: local, cwd: cwd), entrypoint: "cli")
+                usleep(300_000)
+                a.expectEqual(app.status(of: local), "absent", "no host, no row")
+            },
             TestCase("a subagent starting after the Stop turns the row blue") { a in
                 // It arrives after the parent's Stop, so it is a background agent:
                 // the session has stopped and is waiting for it — not working (D22).

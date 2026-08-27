@@ -127,14 +127,21 @@ final class AppUnderTest {
     // MARK: - Queries
 
     /// Sends a hook payload exactly the way the installed script does.
+    /// - Parameter host: what the script installed on another machine adds, so
+    ///   the signal is known to have come through the tunnel.
     @discardableResult
-    func sendHook(_ payload: [String: Any], entrypoint: String? = "claude-vscode") -> Int {
+    func sendHook(
+        _ payload: [String: Any], entrypoint: String? = "claude-vscode", host: String? = nil
+    ) -> Int {
         let body = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
         var request = URLRequest(url: url(AppConfig.signalPath))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let entrypoint {
             request.setValue(entrypoint, forHTTPHeaderField: "X-Claude-Entrypoint")
+        }
+        if let host {
+            request.setValue(host, forHTTPHeaderField: AppConfig.remoteHostHeader)
         }
         request.httpBody = body
         return perform(request).status

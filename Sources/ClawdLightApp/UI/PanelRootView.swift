@@ -5,6 +5,8 @@ import SwiftUI
 struct PanelActions {
     /// Opens the extended window — the conversation list plus a conversation.
     let openExtended: () -> Void
+    /// Opens the Settings window: what does not fit in this menu.
+    let openSettings: () -> Void
     let toggleCompact: () -> Void
     let toggleSessionTab: () -> Void
     let toggleGrouping: () -> Void
@@ -79,6 +81,7 @@ struct PanelRootView: View {
         // rather than changing how this panel looks. Everything below it is a
         // setting; this is the door.
         Button("Open the conversations…", action: actions.openExtended)
+        Button("Settings…", action: actions.openSettings)
 
         Divider()
 

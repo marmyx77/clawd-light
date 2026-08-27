@@ -229,5 +229,15 @@ enum RemoteSessionsSuite {
                 "a process owned by somebody else is still alive"
             )
         },
+
+        // A pid outlives its process: after a reboot the same number names
+        // something else, and kill(pid, 0) would keep a dead session's row alive.
+        TestCase("The probe refuses a pid that has been reused") { t in
+            t.expect(RemoteProbeScript.script.contains("/proc/%d/stat"), "reads the start time where it is")
+            t.expect(
+                RemoteProbeScript.script.contains("record.get(\"procStart\")"),
+                "compares it with what the session file remembers"
+            )
+        },
     ])
 }

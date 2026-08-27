@@ -588,44 +588,69 @@ too many but a notification **lost**, and lost notifications go unnoticed.
 
 ---
 
-## remote.sessions · another machine reports its own live sessions
+## remote.sessions · another machine confirms which of its sessions are alive
 
 **We assume** a machine reachable over `ssh` has `python3`, keeps session files at
-`~/.claude/sessions/<pid>.json` with the same fields this one uses, and stores
-transcripts under `~/.claude/projects/<encoded-cwd>/*.jsonl` by the same encoding
-rule.
+`~/.claude/sessions/<pid>.json` with the same fields this one uses — `pid`, `cwd`,
+`entrypoint`, `kind`, `sessionId`, and `procStart`, the process start time in
+clock ticks — and, being Linux, exposes that same start time as field 22 of
+`/proc/<pid>/stat`.
 
 **Depends at** [RemoteProbeScript.swift](../Sources/ClawdLightCore/Workspace/RemoteProbeScript.swift)
 · [RemoteSessionsDecoder.swift](../Sources/ClawdLightCore/Workspace/RemoteSessionsDecoder.swift)
+· [StateStore.swift](../Sources/ClawdLightApp/Runtime/StateStore.swift) (`poll`)
 
-**How verified** — `probe`, against a real always-on node on 24 Aug 2026. Three
-live sessions came back with exactly the fields the decoder reads:
+**What the probe is for, since D24.** Confirmation, not discovery. A remote row is
+created by the hooks (below); the probe answers *is this pid still alive*, so a
+session that died without a `SessionEnd` loses its row, and a host that has never
+answered keeps its rows — `nil` and `[]` are different answers on purpose.
 
-```json
-{"pid":24601,"sessionId":"…","cwd":"/home/dev/.notes",
- "entrypoint":"cli","name":"notes-32","kind":"interactive","activityEpoch":1787223193}
-```
-
-The node's own files carry the same keys as this machine's — `cwd`, `entrypoint`,
-`kind`, `name`, `sessionId`, `pid`, plus a `tmux` flag this app ignores.
-
-**The encoding rule is stated twice**, once in Swift (`TranscriptLocator`) and once
-in Python (`RemoteProbeScript`), because it has to run on the other machine. If the
-two ever disagree the probe finds no transcript and falls back to the session
-file's timestamp — which is written once at startup and reports how long a session
-has been *open*, not when it last did anything. A test asserts the Python side
-still contains the rule; nothing can assert the two produce the same string
-without running both.
+**How verified** — `probe`, against a real always-on node on 24 Aug 2026 (fields)
+and 27 Aug 2026 (`procStart`): for a live session the session file said
+`"procStart":"5480393"` and `/proc/<pid>/stat` field 22 was `5480393`. Without
+that comparison a pid reused after a reboot keeps a dead session's row alive.
 
 **Failure mode** — **loud in one direction, silent in the other.** A host that
-cannot be reached is logged by name and keeps its previous rows: `nil` and `[]` are
-different answers on purpose. But a host whose *file shape* changed would return
-well-formed JSON with missing fields, every record would be skipped, and the log
-would say "0 sessions" — indistinguishable from a quiet machine. `clawd-light
-status` prints each host and its count for exactly this reason.
+cannot be reached is logged by name and keeps its previous rows. But a host whose
+file shape changed would return well-formed JSON with missing fields, every record
+would be skipped, and every remote row on it would be pruned on the next pass as
+"not listed". `clawd-light status` and `clawd-light remote check` print each host
+and what it said for exactly this reason.
 
 **Not assumed** — that the remote transcript can be read from here. It cannot, and
 the chat window says so rather than opening empty.
+
+---
+
+## remote.hooks · another machine's hooks reach this one through a tunnel we open
+
+**We assume** three things about the other machine: Claude Code there reads hooks
+from `~/.claude/settings.json` with the same schema as here (so
+`HookConfigMerger` applies unchanged); `curl` and `python3` exist; and nothing
+listens on `127.0.0.1:9877` there, so `ssh -R 127.0.0.1:9877:127.0.0.1:<port>` can
+bind it. And one thing about VS Code on this Mac: a Remote-SSH window's title ends
+in `[SSH: <what the user typed to connect>]`.
+
+**Depends at** [RemoteInstallScripts.swift](../Sources/ClawdLightCore/Setup/RemoteInstallScripts.swift)
+· [HookScriptBuilder.swift](../Sources/ClawdLightCore/Setup/HookScriptBuilder.swift) (`host:`)
+· [RemoteTunnel.swift](../Sources/ClawdLightApp/Runtime/RemoteTunnel.swift)
+· [WindowTitleMatcher.swift](../Sources/ClawdLightCore/Workspace/WindowTitleMatcher.swift) (`bestRemoteMatch`)
+
+**How verified** — against the same node on 27 Aug 2026: `settings.json` there had
+no `hooks` key; after `clawd-light remote install` it registered the nine events
+with the script at `~/.clawd-light/hook.sh`, a dated backup was written, and a
+`curl` **from the node** to `127.0.0.1:9877/signal` with the `X-Clawd-Host` header
+produced `absent -> working host=minisforum` here. Two Remote-SSH windows were
+open on this Mac at the time, titled `resume — <folder> [SSH: 100.x.x.x]` and
+`<folder> [SSH: <alias>]` — the label is whatever was typed, hence the matcher
+accepts the configured name, the `HostName` ssh resolves it to, and their
+addresses.
+
+**Failure mode** — a port taken on the node ends the tunnel at once
+(`ExitOnForwardFailure`) with a reason in the log and the Settings window; a
+missing `curl` is refused before anything is written; a title format change in
+VS Code Remote-SSH would make every remote click report "no Remote-SSH window of
+that folder" while the rows keep working — loud, at the click.
 
 ---
 

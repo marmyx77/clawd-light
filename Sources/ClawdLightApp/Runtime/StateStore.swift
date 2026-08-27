@@ -39,7 +39,8 @@ final class StateStore: ObservableObject {
 
     // MARK: - Other machines
 
-    /// The last answer each remote host gave, kept between polls.
+    /// The last answer each remote host gave, kept between polls. A host with no
+    /// entry has never answered since it was configured.
     ///
     /// Kept, and not re-read on every local pass, for two reasons. The local poll
     /// runs every few seconds and an ssh handshake does not belong on that
@@ -51,6 +52,9 @@ final class StateStore: ObservableObject {
     /// — the same rule that stopped this app pruning live local sessions.
     private var remoteSessions: [String: [LiveSession]] = [:]
 
+    /// The hosts to ask, as configured in the settings.
+    private var remoteHosts: [String] { preferences.remoteHosts }
+
     /// Every remote session currently believed to exist.
     private var knownRemote: [LiveSession] {
         remoteSessions.values.flatMap { $0 }
@@ -58,13 +62,15 @@ final class StateStore: ObservableObject {
 
     /// Asks each configured host, on its own slow timer.
     func pollRemoteHosts() {
-        let hosts = RemoteHostList.parse(
-            (try? String(contentsOf: AppConfig.remoteHostsFile, encoding: .utf8)) ?? ""
-        )
+        let hosts = remoteHosts
+
+        // A host removed from the settings takes its answers with it, so its rows
+        // stop being confirmed and go on the next pass rather than lingering.
+        for gone in remoteSessions.keys where !hosts.contains(gone) {
+            remoteSessions.removeValue(forKey: gone)
+        }
+
         guard !hosts.isEmpty else {
-            guard !remoteSessions.isEmpty else { return }
-            // The file was emptied: let the rows go rather than stranding them.
-            remoteSessions = [:]
             poll()
             return
         }
@@ -91,11 +97,19 @@ final class StateStore: ObservableObject {
     /// Applies a hook signal, first resolving the workspace hosting it.
     func handle(_ signal: HookSignal) {
         let now = clock()
-        let workspace = WorkspaceResolver.resolve(
-            cwd: signal.cwd,
-            in: windowReader.readWindows(),
-            at: now
-        )
+        let workspace: Workspace?
+        if let host = signal.host {
+            // Through the tunnel. No lock on this machine can claim a folder that
+            // lives on another one, so the session's own folder is the workspace,
+            // and the host travels with it — that is what the click will raise.
+            workspace = Workspace(path: signal.cwd, host: host)
+        } else {
+            workspace = WorkspaceResolver.resolve(
+                cwd: signal.cwd,
+                in: windowReader.readWindows(),
+                at: now
+            )
+        }
 
         // A signal whose `cwd` matches no editor window is discarded — there is no
         // row to put it on. That is correct, and it used to be **silent**, which is
@@ -140,10 +154,11 @@ final class StateStore: ObservableObject {
         // no background shell ever launched, and the log could only say "something".
         let types = signal.inFlightBackgroundTaskTypes
         let inFlight = types.isEmpty ? "" : " inFlight=\(types.count)[\(types.joined(separator: ","))]"
+        let origin = signal.host.map { " host=\($0)" } ?? ""
         Diagnostics.log(
             "signal \(signal.event.rawValue)\(kind) "
                 + "session=\(signal.sessionId.prefix(8)) "
-                + "\(before) -> \(after)\(subagent)\(source)\(inFlight)"
+                + "\(before) -> \(after)\(subagent)\(source)\(inFlight)\(origin)"
         )
     }
 
@@ -226,15 +241,33 @@ final class StateStore: ObservableObject {
         let now = clock()
         let live = liveSessionReader.readLiveSessions().filter(\.deservesTrafficLight)
         let windows = windowReader.readWindows()
-        let remote = knownRemote
 
-        // Both sets, always. `reconcile` keeps only what it is handed, so leaving
-        // the remote ids out would erase those rows on the very next pass.
-        let alive = Set(live.map(\.sessionId)).union(remote.map(\.sessionId))
+        // Remote rows are **confirmed** here, never created. A session on another
+        // machine gets its row when it speaks — its hooks reach this machine
+        // through the tunnel — and loses it when that machine's probe no longer
+        // lists its pid. The first version adopted every session the probe found
+        // as a red row, and that produced a column of things nobody had opened
+        // and nothing could open: a `claude` left in a detached tmux for two days
+        // is real, and it is not a window you can click.
+        //
+        // `reconcile` keeps only what it is handed, so every remote row that must
+        // survive has to be in the set: the ones the probe confirmed, and the ones
+        // on a configured host that has not answered yet — silence is not death.
+        // A row on a host no longer configured is in neither and goes.
+        let configured = Set(remoteHosts)
+        let unconfirmed = state.sessions.values.compactMap { session -> String? in
+            guard let host = session.workspace.host,
+                  configured.contains(host), remoteSessions[host] == nil
+            else { return nil }
+            return session.id
+        }
+        let alive = Set(live.map(\.sessionId))
+            .union(knownRemote.map(\.sessionId))
+            .union(unconfirmed)
         apply(.reconcile(alive: alive), now: now)
 
-        for session in live + remote {
-            guard let workspace = workspace(for: session, in: windows, at: now) else {
+        for session in live {
+            guard let workspace = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now) else {
                 continue
             }
             // State `idle`: the app does not know what a session it has never seen
@@ -273,25 +306,6 @@ final class StateStore: ObservableObject {
         // The same set `reconcile` used. Without it, pruning removes sessions we
         // have just proved are running.
         apply(.prune(alive: alive), now: now)
-    }
-
-    /// Where a session is running, for the column's purposes.
-    ///
-    /// Locally the answer has to come from an editor window: a `cwd` nobody has
-    /// open is a session in a terminal somewhere, and the panel is about windows
-    /// you can click. Remotely there is no window to ask about — the session lives
-    /// in a tmux pane on a headless machine — so **the folder is the workspace**.
-    ///
-    /// Applying the local rule to a remote session is exactly what kept those rows
-    /// invisible: no lock on this machine claims `/home/…`, so every one of them
-    /// was dropped with "no editor window claims that folder".
-    private func workspace(
-        for session: LiveSession, in windows: [IDEWindow], at now: Date
-    ) -> Workspace? {
-        guard let host = session.host else {
-            return WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
-        }
-        return Workspace(path: session.cwd, host: host)
     }
 
     // MARK: - Internal

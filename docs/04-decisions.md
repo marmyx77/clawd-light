@@ -594,6 +594,12 @@ posture, and it is the user's to take, not the code's.
 
 ## D21 · Other machines are read, not heard
 
+**Superseded in part by [D24](#d24--other-machines-are-heard-through-a-tunnel-we-open).**
+Reading stayed — it is how a remote row is confirmed alive — but it stopped being
+how a row is *born*: a row nobody can click and that never changes colour turned
+out to be noise, and the tunnel D24 opens is not the network exposure this entry
+refused. Kept as written for the reasoning about `/signal`, which still holds.
+
 **Decided.** Sessions on another machine appear in the column because clawd-light
 **asks that machine over ssh**, on a slow timer. The alternative — installing the
 hook there and letting it post here — stays closed.
@@ -743,6 +749,68 @@ list may name projects with no live session: their slot is empty, and `open n`
 says so rather than opening the neighbour — unchanged from D13, and still the
 worst thing a blind key could do. Whoever upgrades finds their pinned projects at
 the top, in slot order, and everything else below as it is seen.
+
+---
+
+## D24 · Other machines are heard through a tunnel we open
+
+**Decided.** A remote machine's Claude Code hooks reach this Mac through a reverse
+ssh tunnel clawd-light opens and keeps open: `ssh -N -R 127.0.0.1:9877:127.0.0.1:9877
+host`. On the node, `127.0.0.1:9877` *is* this app, so the hook script installed
+there — by clawd-light, over ssh, with the same merge the local installer uses —
+posts exactly like the local one and adds one header, `X-Clawd-Host`, naming the
+machine. A remote row is **born when the session speaks** and **dies when the
+node's probe no longer lists its pid** (or on `SessionEnd`). Clicking it raises the
+Remote-SSH window of its folder, if one is open here. Hosts are configured in the
+Settings window (or `clawd-light remote add`), not in a file.
+
+**What was wrong with D21, measured.** Reading alone produced rows that never
+changed colour — no hook ever reached this machine — and that a click could not
+open; and it listed every live `claude` on the node, including one left in a
+detached tmux for two days that nobody had opened from here. *"Always red, the
+click goes nowhere, the sessions look random"* is the accurate description of a
+row that carries no state, no target and no consent. The session the user actually
+drives lives in a **Remote-SSH** window on this Mac, titled `… — folder [SSH:
+host]`: there was a window to raise all along.
+
+**Why a tunnel and not a token.** D7's argument stands: `/signal` has no token,
+and putting it on a network interface would be unauthenticated state injection
+from every device on the VPN. The tunnel does not do that. Its far end is bound to
+the node's loopback, so the only thing that can post through it is a process
+running on the node as that user — the same trust the local loopback already
+extends to every process on this Mac. A token would have to be distributed and
+rotated on every node; the tunnel needs only what already exists, the ssh key.
+
+**Why born by hooks, not by the probe.** The obvious presence rule — "the cwd is
+inside a folder some editor window has open on the node", i.e. the local rule
+applied there — was tried on paper against the node and failed: the one ide lock
+there is `/home/<user>`, and every session on the machine is under it. A row that
+exists because the session did something is a row about something you did; the
+probe still answers the one question it is good at, *is this pid still alive*,
+now with a guard against reuse (`procStart` against `/proc/<pid>/stat`). A host
+that has never answered keeps its rows — silence is not death — and a host
+removed from the settings takes its rows with it.
+
+**What it cost.** A remote session that has said nothing since the panel started
+is invisible until it does. The tunnel is a long-lived ssh process per host,
+restarted with backoff when the node sleeps or the VPN drops, and `POST /signal`
+is reachable by any process on the node's loopback. Installing the hooks means
+clawd-light writes `~/.claude/settings.json` on another machine — with a dated
+backup, atomically, through Python fed on stdin so no shell ever sees the data.
+No tab deep link for a remote row: the link goes to the local extension host.
+
+**Discarded:** reading Claude Code's own `status` from the session files. It is
+there — for `cli` sessions, since 2.1.243 — but not for the VS Code extension's
+sessions, and only `idle` was ever observed. Half a source is a guess with a
+timestamp.
+
+**Discarded:** a token on `/signal` and the port on the tailnet. Right in
+principle, and a second secret to manage on every node for what one existing key
+already does.
+
+**Signal to revisit:** a node that is not reachable over ssh but can reach the Mac
+— the tunnel then has to be opened from the other side, and that is a different
+feature.
 
 ---
 

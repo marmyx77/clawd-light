@@ -140,6 +140,23 @@ enum VSCodeFocuser {
         let ide = kind(hosting: workspace)
         guard isRunning(ide) else { return .failed(.vsCodeNotRunning) }
 
+        // A session on another machine is driven, when it is driven from here at
+        // all, from a Remote-SSH window of its folder. That window is raised by
+        // title like any other; two things are deliberately not done. No tab deep
+        // link — the link goes to the local extension host, and this session's is
+        // on the other machine. And no fallback activation — bringing the editor
+        // forward with no window of that folder open helps nobody, and the caller
+        // has something better to say: where the session is.
+        if let host = workspace.host {
+            if let error = raiseViaAccessibility(
+                workspaceName: workspace.name, ide: ide,
+                remoteLabels: RemoteHostAddresses.labels(for: host)
+            ) {
+                return .failed(error)
+            }
+            return .raised
+        }
+
         // Strategy 1: raise exactly the window hosting the workspace.
         guard let primaryError = raiseViaAccessibility(
             workspaceName: workspace.name, ide: ide
@@ -187,8 +204,10 @@ enum VSCodeFocuser {
 
     // MARK: - Strategy 1: System Events
 
+    /// - Parameter remoteLabels: when present, only Remote-SSH windows are
+    ///   considered, and one labelled with any of these names wins.
     private static func raiseViaAccessibility(
-        workspaceName: String, ide: IDEKind
+        workspaceName: String, ide: IDEKind, remoteLabels: [String]? = nil
     ) -> FocusError? {
         guard hasAccessibilityPermission else { return .accessibilityDenied }
 
@@ -206,9 +225,12 @@ enum VSCodeFocuser {
         // a permission.
         guard !titles.isEmpty else { return .noWindowsVisible(workspaceName) }
 
-        guard let index = WindowTitleMatcher.bestMatch(
-            workspaceName: workspaceName, titles: titles
-        ) else {
+        let match = remoteLabels.map { labels in
+            WindowTitleMatcher.bestRemoteMatch(
+                workspaceName: workspaceName, titles: titles, hostLabels: labels
+            )
+        } ?? WindowTitleMatcher.bestMatch(workspaceName: workspaceName, titles: titles)
+        guard let index = match else {
             return .windowNotFound(workspaceName)
         }
 

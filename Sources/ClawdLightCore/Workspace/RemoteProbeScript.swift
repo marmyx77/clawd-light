@@ -26,10 +26,9 @@ public enum RemoteProbeScript {
     def encoded(cwd):
         return "-" + re.sub(r"[^a-zA-Z0-9]", "-", cwd.lstrip("/"))
 
-    def alive(pid):
+    def alive(pid, proc_start):
         try:
             os.kill(pid, 0)
-            return True
         except ProcessLookupError:
             return False
         except PermissionError:
@@ -37,6 +36,19 @@ public enum RemoteProbeScript {
             return True
         except Exception:
             return False
+        # A pid outlives its process: after a reboot, or once the counter wraps,
+        # the same number names something else, and kill(pid, 0) says "alive"
+        # about a session that is long gone. The session file remembers the
+        # process's start time in clock ticks; on Linux /proc has the truth.
+        if proc_start:
+            try:
+                with open("/proc/%d/stat" % pid) as stat:
+                    after_comm = stat.read().rsplit(")", 1)[1].split()
+                if after_comm[19] != str(proc_start):
+                    return False
+            except Exception:
+                pass
+        return True
 
     out = []
     for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
@@ -45,7 +57,7 @@ public enum RemoteProbeScript {
             pid = int(os.path.basename(path).split(".")[0])
         except Exception:
             continue
-        if not alive(pid):
+        if not alive(pid, record.get("procStart")):
             continue
         cwd = record.get("cwd") or ""
         # The session file is written once at startup and never touched again, so

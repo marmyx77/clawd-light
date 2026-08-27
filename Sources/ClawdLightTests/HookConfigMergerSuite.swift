@@ -176,5 +176,18 @@ enum HookScriptBuilderSuite {
                 "the port is not propagated"
             )
         },
+
+        // The script installed on another machine has to say which machine, or
+        // its signals would be looked up among local editor windows and dropped.
+        TestCase("A script for another machine names it in a header") { t in
+            let remote = HookScriptBuilder.script(port: 9877, host: "node")
+            t.expect(
+                remote.contains("--header 'X-Clawd-Host: node' \\\n     --data-binary"),
+                "host header missing or misplaced in:\n\(remote)"
+            )
+            t.expect(remote.contains("posts through the ssh tunnel"), "the script says where it runs")
+            t.expect(remote.contains("http://127.0.0.1:9877/signal"), "still posts to loopback — the tunnel's end")
+            t.expect(!HookScriptBuilder.script(port: 9877).contains("X-Clawd-Host"), "a local script carries no host")
+        },
     ])
 }

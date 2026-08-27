@@ -117,11 +117,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-433 cases, instantaneous. They verify Core.
+438 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
-75 cases. They launch **the production binary** against a fake home and talk to
+76 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -227,6 +227,23 @@ no harm.
 The three outcomes (`raised`, `activatedOnly`, `failed`) are an explicit type
 rather than an `Error?`, because they deserve different reactions: silence, a
 note in the menu, an alert. Flattening them has already produced two defects.
+
+## Other machines
+
+A session on another machine is heard the same way a local one is: its hooks
+post to `127.0.0.1:9877` — which *there* is the far end of a reverse ssh tunnel
+this app opens and keeps open (`RemoteTunnel`) — and the script installed there
+(`RemoteHookInstaller`, over ssh, with the same merge as the local installer) adds
+an `X-Clawd-Host` header. A signal with a host skips the editor-window lookup: no
+lock on this Mac claims `/home/…`, so the session's own folder is its workspace,
+labelled `folder @host`.
+
+The probe (`RemoteProbeScript`) is kept for one question the hooks cannot answer
+— *is this pid still alive* — and a remote row is confirmed by it, never created:
+a `claude` left in a tmux on the node is real and is not something you opened.
+The click raises the **Remote-SSH** window of the folder, found by its `[SSH: …]`
+title (`WindowTitleMatcher.bestRemoteMatch`). See
+[D24](04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
 
 ## Concurrency
 
