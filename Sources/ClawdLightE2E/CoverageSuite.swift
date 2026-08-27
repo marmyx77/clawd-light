@@ -48,6 +48,73 @@ enum CoverageSuite {
                 a.expectEqual(app.status(of: id), "absent", "status")
             },
 
+            // MARK: - 1.2 terminal rows (D25)
+
+            // With the switch on, a folder nobody claims is a place too — but only
+            // for a session whose live file names it: the file's cwd is the row's
+            // folder, and a signal with no file behind it is still nothing.
+            TestCase("a terminal session in a folder nobody claims gets a row when told so") { a in
+                a.expectEqual(app.runCommand(["terminal", "on"]).status, 0, "switch on")
+                defer { app.runCommand(["terminal", "off"]) }
+                let id = "e2e-terminal-row"
+                let folder = "/tmp/e2e-terminal-home"
+                // pid 1: alive for certain, owned by root — `kill(1, 0)` answers
+                // EPERM, which the reader counts as alive — and a file name no
+                // other case writes.
+                app.writeLiveSession(sessionId: id, cwd: folder, entrypoint: "cli", pid: 1)
+                // Where the hook fixture says the transcript is.
+                let transcript = "/tmp/\(id).jsonl"
+                app.writeTranscript(sessionId: id, cwd: folder, title: "Wire the release script", at: transcript)
+                defer {
+                    app.removeLiveSessions()
+                    try? FileManager.default.removeItem(atPath: transcript)
+                }
+
+                app.sendHook(
+                    // The hook's cwd has moved (a `cd` in the session); the row stays
+                    // on the file's folder.
+                    HookPayloads.userPromptSubmit(sessionId: id, cwd: folder + "/deeper"),
+                    entrypoint: "cli"
+                )
+                a.expect(app.waitUntil { app.status(of: id) == "working" }, "status: \(app.status(of: id))")
+                let session = app.session(id: id)
+                a.expectEqual(session?.origin, "terminal", "origin")
+                a.expectEqual(session?.path, folder, "anchored on the file's folder, not the hook's cwd")
+                a.expect(
+                    app.waitUntil { app.session(id: id)?.title == "Wire the release script" },
+                    "title read from the transcript: \(app.session(id: id)?.title ?? "nil")"
+                )
+
+                // `new` on a terminal row has no tab to open one in.
+                if let slot = app.sessions()?.sessions.first(where: { $0.id == id })?.slot {
+                    a.expectEqual(app.runCommand(["new", String(slot)]).status == 0, false, "new refused")
+                }
+
+                a.expectEqual(app.runCommand(["terminal", "off"]).status, 0, "switch off")
+                a.expect(app.waitUntil { app.status(of: id) == "absent" }, "off takes its rows with it")
+            },
+
+            TestCase("a terminal signal with no live file behind it is still nothing") { a in
+                a.expectEqual(app.runCommand(["terminal", "on"]).status, 0, "switch on")
+                defer { app.runCommand(["terminal", "off"]) }
+                let id = "e2e-terminal-orphan"
+                app.sendHook(
+                    HookPayloads.userPromptSubmit(sessionId: id, cwd: "/tmp/e2e-terminal-orphan"),
+                    entrypoint: "cli"
+                )
+                usleep(400_000)
+                a.expectEqual(app.status(of: id), "absent", "no file, no row")
+
+                // An unknown host is treated as local, and local means the file rule.
+                let foreign = "e2e-terminal-foreign"
+                app.sendHook(
+                    HookPayloads.userPromptSubmit(sessionId: foreign, cwd: "/home/dev/x"),
+                    entrypoint: "cli", host: "stranger"
+                )
+                usleep(400_000)
+                a.expectEqual(app.status(of: foreign), "absent", "a forged host gets no local row either")
+            },
+
             TestCase("an entrypoint never seen before is not discarded") { a in
                 let id = "e2e-unknown-entrypoint"
                 app.sendHook(

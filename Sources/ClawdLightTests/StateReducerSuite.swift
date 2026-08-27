@@ -72,6 +72,85 @@ enum StateReducerSuite {
             t.expectEqual(status(state), .ready, "the transitions were not disturbed")
         },
 
+        // MARK: Terminal rows
+
+        // The origin is whatever the last resolution said: a session in a folder
+        // nobody claims is a terminal row; when that folder is opened in an
+        // editor, its next signal makes it an editor row — it moved into a window.
+        TestCase("The origin follows the latest resolution") { t in
+            let terminal = StateReducer.reduce(
+                .empty, action: .signal(signal(.sessionStart), workspace: workspace, origin: .terminal), now: t0
+            )
+            t.expectEqual(terminal.sessions[sessionId]?.origin, .terminal, "born in a terminal")
+
+            let editor = StateReducer.reduce(
+                terminal, action: .signal(signal(.userPromptSubmit), workspace: workspace), now: t0
+            )
+            t.expectEqual(editor.sessions[sessionId]?.origin, .editor, "moved into a window")
+            t.expectEqual(status(editor), .working, "the transition happened as well")
+        },
+
+        TestCase("A title is remembered, and only for a session that exists") { t in
+            let state = apply([signal(.sessionStart), signal(.userPromptSubmit)])
+            let titled = StateReducer.reduce(
+                state, action: .remember(sessionId: sessionId, title: "Wire the release script"), now: t0
+            )
+            t.expectEqual(titled.sessions[sessionId]?.title, "Wire the release script", "title")
+
+            let after = StateReducer.reduce(titled, action: .signal(signal(.stop), workspace: workspace), now: t0)
+            t.expectEqual(after.sessions[sessionId]?.title, "Wire the release script", "survives a signal")
+
+            let stranger = StateReducer.reduce(
+                state, action: .remember(sessionId: "nobody", title: "x"), now: t0
+            )
+            t.expectEqual(stranger, state, "an unknown session is not created by its title")
+        },
+
+        TestCase("Forgetting an origin removes those rows and no other") { t in
+            let both = StateReducer.reduce(
+                apply([signal(.sessionStart)]),
+                action: .signal(
+                    HookSignal(sessionId: "term-1", event: .sessionStart, cwd: "/Users/dev"),
+                    workspace: Workspace(path: "/Users/dev"), origin: .terminal
+                ),
+                now: t0
+            )
+            t.expectEqual(both.sessions.count, 2, "two rows")
+
+            let kept = StateReducer.reduce(both, action: .forget(origin: .terminal), now: t0)
+            t.expectEqual(kept.sessions.count, 1, "one left")
+            t.expectNotNil(kept.sessions[sessionId], "the editor row stays")
+        },
+
+        // The folder of a session started in `~` is a username: a terminal row
+        // is named by its conversation, once it has a title, and only while it is
+        // alone — one name for three conversations lies about two of them.
+        TestCase("A terminal row is named by its title, an editor row by its folder") { t in
+            func session(_ id: String, origin: SessionOrigin, title: String?) -> SessionState {
+                SessionState(
+                    id: id, status: .idle, workspace: Workspace(path: "/Users/dev"),
+                    updatedAt: t0, statusSince: t0, origin: origin, title: title
+                )
+            }
+            t.expectEqual(session("a", origin: .terminal, title: "Wire it").displayName, "Wire it", "terminal, titled")
+            t.expectEqual(session("a", origin: .terminal, title: nil).displayName, "dev", "terminal, no title yet")
+            t.expectEqual(session("a", origin: .editor, title: "Wire it").displayName, "dev", "editor rows keep the folder")
+
+            let one = TrafficLightState(sessions: ["a": session("a", origin: .terminal, title: "Wire it")])
+            let rows = ColumnLayout.render(one, options: ColumnOptions()).rows
+            t.expectEqual(rows.first?.displayName, "Wire it", "a row of one")
+            t.expect(rows.first?.isTerminal == true, "and it says what it is")
+
+            let two = TrafficLightState(sessions: [
+                "a": session("a", origin: .terminal, title: "Wire it"),
+                "b": session("b", origin: .terminal, title: "Other"),
+            ])
+            t.expectEqual(
+                ColumnLayout.render(two, options: ColumnOptions()).rows.first?.displayName, "dev",
+                "a row of two is the folder"
+            )
+        },
+
         TestCase("UserPromptSubmit goes to yellow") { t in
             t.expectEqual(status(apply([signal(.sessionStart), signal(.userPromptSubmit)])), .working)
         },

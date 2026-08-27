@@ -23,6 +23,8 @@ enum CommandLineInterface {
         /// The remote machines: list them, add or forget one, and install or
         /// remove the hooks over there. `verb` is the sub-command as typed.
         case remote(verb: String, host: String?)
+        /// The "Show terminal sessions" switch (D25): `on`, `off`, or `status`.
+        case terminal(verb: String)
         case help
     }
 
@@ -70,6 +72,8 @@ enum CommandLineInterface {
                 verb: args.count > 1 ? args[1] : "list",
                 host: args.count > 2 && !args[2].hasPrefix("-") ? args[2] : nil
             )
+        case "terminal":
+            return .terminal(verb: args.count > 1 ? args[1] : "status")
         case "help", "--help", "-h":
             return .help
         case .some(let unknown) where unknown.hasPrefix("-") == false:
@@ -130,6 +134,8 @@ enum CommandLineInterface {
 
         case .remote(let verb, let host):
             return runRemote(verb: verb, host: host)
+        case .terminal(let verb):
+            return runTerminal(verb: verb)
 
         case .help:
             print(helpText)
@@ -238,6 +244,7 @@ enum CommandLineInterface {
         }
 
 
+        print("  Terminal rows:    \(preferences.showsTerminalSessions ? "on" : "off")  (sessions in folders no editor claims)")
         print("  Presence:         \(preferences.presenceEnabled ? "on" : "off")")
         let presenceVariable = ProcessInfo.processInfo.environment["CLAUDE_CLIENT_PRESENCE_FILE"]
         if preferences.presenceEnabled && presenceVariable == nil {
@@ -574,6 +581,11 @@ enum CommandLineInterface {
           keeps an ssh tunnel open so those hooks reach this Mac; a remote session
           gets its row when it speaks, and clicking it raises its Remote-SSH window.
 
+        TERMINAL SESSIONS
+          `clawd-light terminal on` shows sessions started with `claude` in a terminal,
+          in folders no editor window has open, named by their conversation. Off by
+          default; `off` takes those rows away at once.
+
         STATES
           red        the session is at rest
           yellow     Claude is working
@@ -592,6 +604,26 @@ enum CommandLineInterface {
     }
 
     // MARK: - Remote machines
+
+    /// `clawd-light terminal on|off|status`: the "Show terminal sessions" switch.
+    ///
+    /// The running panel follows it within one poll: off takes the terminal rows
+    /// away, on lets the next pass adopt what is there.
+    private static func runTerminal(verb: String) -> Int32 {
+        let preferences = Preferences()
+        switch verb {
+        case "on", "off":
+            preferences.showsTerminalSessions = verb == "on"
+            print("Terminal sessions \(verb). The panel follows within five seconds.")
+            return 0
+        case "status":
+            print("Terminal sessions: \(preferences.showsTerminalSessions ? "on" : "off")")
+            return 0
+        default:
+            print("Usage: clawd-light terminal [on | off | status]")
+            return 2
+        }
+    }
 
     /// `clawd-light remote …`: the Settings window's buttons, from a terminal.
     ///

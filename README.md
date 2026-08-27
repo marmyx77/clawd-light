@@ -101,9 +101,9 @@ rather than spent on focus. A double-click counts as one — the second click is
 dropped.
 
 Right-click **on the panel's margins** for the general menu: compact mode,
-grouping, the "only what's waiting" filter, notifications, presence, hooks, launch
-at login — and **Settings…**, the window for what does not fit a menu: today, the
-remote machines.
+grouping, the "only what's waiting" filter, terminal sessions, notifications,
+presence, hooks, launch at login — and **Settings…**, the window for what does
+not fit a menu: the remote machines and the terminal-sessions switch.
 
 **Hidden projects don't disappear.** They are collected into a summary row that
 **lights up** when one of them asks for attention. That is not an aesthetic
@@ -319,6 +319,22 @@ drops; the Settings window shows its state and the outcome of every operation.
 Hosts were read from `~/.clawd-light/remotes` before; that file is imported once
 and no longer consulted. See
 [D24](docs/04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
+
+## Sessions in a terminal
+
+Off by default. `Show terminal sessions` (panel menu, Settings, or `clawd-light
+terminal on`) gives a row to every `claude` started by hand in a folder no editor
+window has open — Terminal, iTerm2, Ghostty, a tmux or zellij pane. The row is
+named by its conversation title, carries a small terminal glyph, and is anchored
+on the folder the session **started** in: the hook's folder follows every `cd`
+Claude makes, the session file's does not. It exists only while
+`~/.claude/sessions/` has a live file for it, and turning the switch off takes
+those rows away at once.
+
+Two limits, stated. A `claude` in a terminal tab **inside a folder that is open
+in VS Code** is an editor row like any other, and its click raises the VS Code
+window. And clicking a terminal row to select its tab is not built yet — the
+row says so; it is [phase C of the plan](docs/plans/terminal-sessions.md).
 
 ## Installation
 
@@ -683,8 +699,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 444 domain tests, instantaneous
-swift run ClawdLightE2E                # 76 end-to-end tests, ~1 minute
+swift run ClawdLightTests              # 449 domain tests, instantaneous
+swift run ClawdLightE2E                # 78 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

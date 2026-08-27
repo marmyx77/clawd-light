@@ -22,7 +22,9 @@ enum SessionsPayloadSuite {
             updatedAt: t0,
             statusSince: t0.addingTimeInterval(-60),
             activeSubagents: 2,
-            entrypoint: "claude-vscode"
+            entrypoint: "claude-vscode",
+            origin: .terminal,
+            title: "Wire the release script"
         )
     }
 
@@ -37,6 +39,8 @@ enum SessionsPayloadSuite {
             t.expectEqual(snapshot.activeSubagents, 2, "subagents")
             t.expectEqual(snapshot.lastMessage, "Working on it.", "preview")
             t.expectEqual(snapshot.entrypoint, "claude-vscode", "entrypoint")
+            t.expectEqual(snapshot.origin, "terminal", "origin")
+            t.expectEqual(snapshot.title, "Wire the release script", "title")
         },
 
         TestCase("The exposed status is the displayed one, not the declared one") { t in

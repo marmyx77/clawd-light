@@ -80,7 +80,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         openChat(in: row)
-        return "\(row.workspace.name) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
     }
 
     /// `true` when the panel really is under the user's eyes.
@@ -175,6 +175,7 @@ final class PanelController {
             notificationsEnabled: preferences.notificationsEnabled,
             messageSendingEnabled: preferences.messageSendingEnabled,
             presenceEnabled: preferences.presenceEnabled,
+            showsTerminalSessions: preferences.showsTerminalSessions,
             mutedUntil: preferences.mutedUntil,
             hasHidden: !preferences.hiddenWorkspaces.isEmpty,
             hooksInstalled: installer.isInstalled(),
@@ -296,6 +297,17 @@ final class PanelController {
 
         let session = row.primary
 
+        // A terminal row's place is a terminal tab, found through the session's
+        // process — the seat resolver of phase C of docs/plans/terminal-sessions.md.
+        // Until it exists the click says so rather than raising an editor window
+        // of a folder that has none.
+        if session.origin == .terminal {
+            store.reportError(
+                "“\(session.displayName)” runs in a terminal — raising its tab is not built yet."
+            )
+            return
+        }
+
         // A remote session's window, if it has one here, is the Remote-SSH window
         // of its folder; the focuser knows how to find it. The tab deep link is
         // off for it — the link goes to the local extension host, and this
@@ -352,6 +364,13 @@ final class PanelController {
     /// `session` the extension opens a new conversation instead of reattaching to
     /// an existing one.
     private func newConversation(in row: ColumnRow) {
+        // There is no tab to open one in: the deep link would land in whatever
+        // editor window has the focus, which is a conversation in the wrong
+        // project — the mess this gate exists to prevent.
+        guard !row.isTerminal else {
+            store.reportError("“\(row.displayName)” runs in a terminal — start the new conversation there.")
+            return
+        }
         activate(row, markSeen: false, opensTab: false)
         VSCodeFocuser.openNewConversation(in: row.workspace)
     }
@@ -365,7 +384,7 @@ final class PanelController {
             return nil
         }
         activate(row, markSeen: true)
-        return "\(row.workspace.name) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
     }
 
     /// Raises the project bound to a slot, for `open <n>`.
@@ -380,7 +399,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         activate(row, markSeen: true)
-        return "\(row.workspace.name) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
     }
 
     /// Opens a new conversation in the project bound to a slot, for `new <n>`.
@@ -395,16 +414,16 @@ final class PanelController {
     @discardableResult
     func newConversationInSlot(_ slot: Int) -> String? {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
-        guard let row = rendering.row(inSlot: slot) else { return nil }
+        guard let row = rendering.row(inSlot: slot), !row.isTerminal else { return nil }
         newConversation(in: row)
-        return row.workspace.name
+        return row.displayName
     }
 
     /// What each slot currently addresses, for the CLI listing.
     func slotAssignments() -> [(slot: Int, name: String, status: String)] {
         ColumnLayout.render(store.state, options: columnOptions)
             .occupiedSlots
-            .map { (slot: $0.slot, name: $0.row.workspace.name,
+            .map { (slot: $0.slot, name: $0.row.displayName,
                     status: $0.row.status.rawValue) }
     }
 
@@ -447,6 +466,7 @@ final class PanelController {
             toggleNotifications: { [weak self] in self?.toggleNotifications() },
             toggleMessageSending: { [weak self] in self?.toggleMessageSending() },
             togglePresence: { [weak self] in self?.togglePresence() },
+            toggleTerminalSessions: { [weak self] in self?.toggleTerminalSessions() },
             muteForAnHour: { [weak self] in
                 self?.preferences.mutedUntil = Date().addingTimeInterval(3600)
                 self?.rebuildContent()
@@ -547,6 +567,19 @@ final class PanelController {
                 notification too many but a notification lost.
                 """
             )
+        }
+        rebuildContent()
+    }
+
+    /// "Show terminal sessions" (D25). Off takes its rows away at once; on lets
+    /// the next poll adopt what is there, within five seconds.
+    private func toggleTerminalSessions() {
+        let wanted = !preferences.showsTerminalSessions
+        preferences.showsTerminalSessions = wanted
+        if wanted {
+            store.poll()
+        } else {
+            store.forgetTerminalSessions()
         }
         rebuildContent()
     }

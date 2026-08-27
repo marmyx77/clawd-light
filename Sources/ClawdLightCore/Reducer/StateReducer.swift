@@ -2,8 +2,17 @@ import Foundation
 
 /// The actions that can change the traffic light column.
 public enum ReducerAction: Sendable, Equatable {
-    /// A hook signal, already matched to its workspace (`nil` when it doesn't belong to VS Code).
-    case signal(HookSignal, workspace: Workspace?)
+    /// A hook signal, already matched to its workspace (`nil` when nothing claims
+    /// its folder), and the kind of place that workspace is (`SessionOrigin`).
+    case signal(HookSignal, workspace: Workspace?, origin: SessionOrigin = .editor)
+
+    /// A fact learned outside any signal: the conversation's title, read from
+    /// the transcript. Unknown session → nothing happens.
+    case remember(sessionId: String, title: String)
+
+    /// Removes every session of one origin — what "Show terminal sessions"
+    /// turning off does, at once rather than at the next poll.
+    case forget(origin: SessionOrigin)
 
     /// The user has seen the session: the "unread" states go back to red.
     case markSeen(sessionId: String)
@@ -68,9 +77,16 @@ public enum StateReducer {
             guard let session = state.sessions[sessionId] else { return state }
             return state.upserting(session.markedUnread(at: now))
 
-        case .signal(let signal, let workspace):
+        case .signal(let signal, let workspace, let origin):
             let next = apply(signal: signal, workspace: workspace, to: state, now: now)
-            return remembering(factsOf: signal, in: next)
+            return remembering(factsOf: signal, origin: origin, in: next)
+
+        case .remember(let sessionId, let title):
+            guard let session = state.sessions[sessionId] else { return state }
+            return state.upserting(session.with(title: title))
+
+        case .forget(let origin):
+            return TrafficLightState(sessions: state.sessions.filter { $0.value.origin != origin })
         }
     }
 
@@ -87,6 +103,7 @@ public enum StateReducer {
     /// nothing. That is the correct outcome, not a special case.
     private static func remembering(
         factsOf signal: HookSignal,
+        origin: SessionOrigin,
         in state: TrafficLightState
     ) -> TrafficLightState {
         guard let session = state.sessions[signal.sessionId] else { return state }
@@ -94,6 +111,7 @@ public enum StateReducer {
             session
                 .with(transcriptPath: signal.transcriptPath)
                 .with(entrypoint: signal.entrypoint)
+                .with(origin: origin)
         )
     }
 

@@ -264,7 +264,11 @@ policy table including `nil` and empty; the fact survives a signal without it;
 `/sessions` carries `entrypoint` (payload suite, two E2E cases). Docs: README,
 D5, code map.
 
-**B · The row** — one day.
+**B · The row** — **done, 2026-08-27**, with two departures from the list below:
+the `LiveSessionReader` nil/empty fix is deferred (D25 says why — the E2E
+harness leans on the current leniency), and a click on a terminal row says
+"not built yet" until phase C, rather than raising an editor window of a
+folder that has none. Originally estimated at one day.
 Origin, title, `displayName`, `.remember`; preference, menu, Settings section, CLI,
 `status`; `StateStore.handle` and `poll()` rules with the session-file condition;
 toggle-off removal; `LiveSessionReader` nil/empty and the reconcile fix;

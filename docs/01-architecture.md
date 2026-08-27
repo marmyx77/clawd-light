@@ -117,11 +117,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-444 cases, instantaneous. They verify Core.
+449 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
-76 cases. They launch **the production binary** against a fake home and talk to
+78 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -244,6 +244,23 @@ a `claude` left in a tmux on the node is real and is not something you opened.
 The click raises the **Remote-SSH** window of the folder, found by its `[SSH: …]`
 title (`WindowTitleMatcher.bestRemoteMatch`). See
 [D24](04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
+
+## Sessions in a terminal
+
+A `claude` started in a terminal posts the same hooks; what it lacks is an editor
+window claiming its folder, so the resolver answers `nil`. With "Show terminal
+sessions" on, the store then looks for the session's **live file** in
+`~/.claude/sessions/` and, finding one, makes the file's `cwd` the workspace and
+marks the row `origin: .terminal` — the file's folder, not the hook's, because the
+hook's follows every `cd` Claude makes. No file, no row: that is what keeps a
+forged host header or a foreign path out. The poll adopts such sessions the same
+way, and the switch turning off removes them at once (`.forget(origin:)`).
+
+The row is named by its conversation title, read off the main actor from the
+head of the transcript (`SessionTitleReader` → `TranscriptTitleScanner`, the rule
+`TranscriptTail` already uses) and remembered through `.remember(sessionId:title:)`.
+The click on it is phase C of [the plan](plans/terminal-sessions.md). See
+[D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
 ## Concurrency
 

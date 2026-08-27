@@ -49,6 +49,24 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// How many sessions it contains.
     public var count: Int { sessions.count }
 
+    /// `true` when the row's place is a terminal tab, not an editor window.
+    public var isTerminal: Bool { primary.origin == .terminal }
+
+    /// What a person reads on the row.
+    ///
+    /// A row holding one session is named the way that session is (its title,
+    /// for a terminal one); a row holding several is the folder — one name for
+    /// three conversations would be a lie about two of them.
+    public var displayName: String {
+        sessions.count == 1 ? primary.displayName : workspace.name
+    }
+
+    /// `displayName`, plus where it is when that is another machine.
+    public var displayLabel: String {
+        guard let host = workspace.host else { return displayName }
+        return "\(displayName) @\(host)"
+    }
+
     /// Sum of the active subagents in the row.
     public var activeSubagents: Int { sessions.reduce(0) { $0 + $1.activeSubagents } }
 
@@ -279,7 +297,7 @@ public enum ColumnLayout {
             .map(\.status)
             .min { $0.urgencyRank < $1.urgencyRank } ?? .idle
 
-        let names = Set(sessions.map(\.workspace.name)).sorted {
+        let names = Set(sessions.map(\.displayName)).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
 

@@ -13,7 +13,9 @@ public struct LiveSession: Sendable, Equatable {
     /// Working directory, from which the VS Code workspace is derived.
     public let cwd: String
 
-    /// `claude-vscode`, `cli`, … Used to exclude terminal sessions.
+    /// `claude-vscode`, `cli`, … Used to exclude what nobody sits in front of
+    /// (`sdk`, `print`), and carried into the row: it decides whether a click
+    /// may send the tab deep link.
     public let entrypoint: String?
 
     /// Readable name Claude Code derives from the project (`event-tracker-64`).

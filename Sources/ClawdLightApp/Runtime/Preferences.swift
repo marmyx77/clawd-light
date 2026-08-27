@@ -27,6 +27,7 @@ struct Preferences {
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
+        static let terminalSessions = "terminal.sessions"
         static let calmBlinkWorkspaces = "panel.calmBlink"
     }
 
@@ -203,6 +204,14 @@ struct Preferences {
     var presenceEnabled: Bool {
         get { defaults.bool(forKey: Key.presenceEnabled) }
         nonmutating set { defaults.set(newValue, forKey: Key.presenceEnabled) }
+    }
+
+    /// Whether sessions in folders no editor claims — `claude` in a terminal —
+    /// get rows (D25). Off by default: the first click on one asks for an
+    /// Automation permission for that terminal application (D8).
+    var showsTerminalSessions: Bool {
+        get { defaults.bool(forKey: Key.terminalSessions) }
+        nonmutating set { defaults.set(newValue, forKey: Key.terminalSessions) }
     }
 
     /// `true` when the panel is allowed to send messages into sessions.

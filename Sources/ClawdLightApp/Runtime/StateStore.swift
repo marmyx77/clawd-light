@@ -66,6 +66,58 @@ final class StateStore: ObservableObject {
     /// The hosts to ask, as configured in the settings.
     private var remoteHosts: [String] { preferences.remoteHosts }
 
+    /// Whether folders no editor claims get rows (D25), as configured.
+    private var showsTerminalSessions: Bool { preferences.showsTerminalSessions }
+
+    /// Sessions whose transcript is being read for a title right now, so a
+    /// burst of signals does not start a read per signal.
+    private var titleReadsInFlight: Set<String> = []
+
+    // MARK: - Terminal sessions
+
+    /// The folder a terminal row is anchored on, for a signal nothing claims:
+    /// the `cwd` of the session's live file, or `nil` when there is no such
+    /// file, the feature is off, the signal names a host, or nobody is in front
+    /// of the session (`sdk`, `print`).
+    private func terminalHome(for signal: HookSignal) -> Workspace? {
+        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight else { return nil }
+        guard let file = liveSessionReader.readLiveSessions()
+            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.deservesTrafficLight })
+        else { return nil }
+        return Workspace(path: file.cwd)
+    }
+
+    /// What "Show terminal sessions" turning off does, at once.
+    func forgetTerminalSessions() {
+        apply(.forget(origin: .terminal), now: clock())
+    }
+
+    /// Reads the conversation's title off the main actor and remembers it.
+    ///
+    /// Only for a terminal row that has none yet: the title is what names it.
+    /// Called when the row is born and at every `Stop` while it is still
+    /// unnamed — a title appears after the first exchange, not before.
+    private func requestTitleIfMissing(sessionId: String) {
+        guard let session = state.sessions[sessionId], session.origin == .terminal,
+              session.title == nil, !titleReadsInFlight.contains(sessionId)
+        else { return }
+        // The hook's word first — a session in a git worktree keeps its transcript
+        // where the derivation would not look — then the derived place, for a row
+        // adopted from the filesystem before its first hook.
+        let derived = TranscriptLocator.candidateURL(sessionId: sessionId, cwd: session.workspace.path).path
+        let path = session.transcriptPath.flatMap { FileManager.default.fileExists(atPath: $0) ? $0 : nil }
+            ?? derived
+        titleReadsInFlight.insert(sessionId)
+        Task.detached(priority: .utility) { [weak self] in
+            let title = SessionTitleReader.title(atPath: path)
+            await MainActor.run {
+                guard let self else { return }
+                self.titleReadsInFlight.remove(sessionId)
+                if let title { self.apply(.remember(sessionId: sessionId, title: title), now: self.clock()) }
+            }
+        }
+    }
+
     /// Every remote session currently believed to exist.
     private var knownRemote: [LiveSession] {
         remoteSessions.values.flatMap { $0 }
@@ -145,7 +197,7 @@ final class StateStore: ObservableObject {
     /// Applies a hook signal, first resolving the workspace hosting it.
     func handle(_ signal: HookSignal) {
         let now = clock()
-        let workspace: Workspace?
+        var workspace: Workspace?
         if let host = signal.host, remoteHosts.contains(host) {
             // Through the tunnel. No lock on this machine can claim a folder that
             // lives on another one, so the session's own folder is the workspace,
@@ -165,6 +217,19 @@ final class StateStore: ObservableObject {
             )
         }
 
+        // A folder nobody claims is a place too (D25): with terminal sessions
+        // on, the row's folder is the one the session **file** names — the hook's
+        // cwd follows every `cd` Claude makes, the file's is written once — and
+        // there is a row only if such a file exists and its process is alive. A
+        // signal alone is not enough: that condition is what keeps out a forged
+        // host header treated as local, a path from another machine, and a
+        // process already gone.
+        var origin = SessionOrigin.editor
+        if workspace == nil, let home = terminalHome(for: signal) {
+            workspace = home
+            origin = .terminal
+        }
+
         // A signal whose `cwd` matches no editor window is discarded — there is no
         // row to put it on. That is correct, and it used to be **silent**, which is
         // not.
@@ -182,13 +247,18 @@ final class StateStore: ObservableObject {
             Diagnostics.log(
                 "signal dropped: \(signal.event.rawValue) for \(signal.cwd) — "
                     + "no editor window claims that folder "
-                    + "(a window that has not reconnected writes no lock)"
+                    + (showsTerminalSessions
+                        ? "and no live session file names the session"
+                        : "(a window that has not reconnected writes no lock; terminal sessions are off)")
             )
         }
 
         let before = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
-        apply(.signal(signal, workspace: workspace), now: now)
+        apply(.signal(signal, workspace: workspace, origin: origin), now: now)
         let after = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
+        if origin == .terminal, before == "absent" || signal.event == .stop {
+            requestTitleIfMissing(sessionId: signal.sessionId)
+        }
 
         // Every signal, and what it did to the color.
         //
@@ -208,11 +278,11 @@ final class StateStore: ObservableObject {
         // no background shell ever launched, and the log could only say "something".
         let types = signal.inFlightBackgroundTaskTypes
         let inFlight = types.isEmpty ? "" : " inFlight=\(types.count)[\(types.joined(separator: ","))]"
-        let origin = signal.host.map { " host=\($0)" } ?? ""
+        let fromHost = signal.host.map { " host=\($0)" } ?? ""
         Diagnostics.log(
             "signal \(signal.event.rawValue)\(kind) "
                 + "session=\(signal.sessionId.prefix(8)) "
-                + "\(before) -> \(after)\(subagent)\(source)\(inFlight)\(origin)"
+                + "\(before) -> \(after)\(subagent)\(source)\(inFlight)\(fromHost)"
         )
     }
 
@@ -322,10 +392,21 @@ final class StateStore: ObservableObject {
         let confirmed = Set(live.map(\.sessionId)).union(knownRemote.map(\.sessionId))
         apply(.reconcile(alive: confirmed.union(unconfirmed)), now: now)
 
-        for session in live {
-            guard let workspace = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now) else {
+        // The switch turning off takes its rows with it — here, so that a switch
+        // flipped from the Settings window is honoured within one poll.
+        if !showsTerminalSessions, state.sessions.values.contains(where: { $0.origin == .terminal }) {
+            apply(.forget(origin: .terminal), now: now)
+        }
+
+        for session in live where session.host == nil {
+            let resolved = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
+            // Unclaimed and terminal sessions on: the file's own folder is the
+            // row's (D25) — the file is the anchor, so no `cd` can move it.
+            guard let workspace = resolved ?? (showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
                 continue
             }
+            let origin: SessionOrigin = resolved == nil ? .terminal : .editor
+            let known = state.sessions[session.sessionId] != nil
             // State `idle`: the app does not know what a session it has never seen
             // is doing, and this is where it says so.
             //
@@ -353,11 +434,16 @@ final class StateStore: ObservableObject {
                         workspace: workspace,
                         updatedAt: session.modifiedAt,
                         statusSince: session.modifiedAt,
-                        entrypoint: session.entrypoint
+                        entrypoint: session.entrypoint,
+                        origin: origin
                     )
                 ),
                 now: now
             )
+            if !known, origin == .terminal {
+                Diagnostics.log("adopted as a terminal session: \(session.sessionId.prefix(8)) in \(session.cwd)")
+                requestTitleIfMissing(sessionId: session.sessionId)
+            }
         }
 
         // Only what was actually confirmed is exempt from the age rule. A remote

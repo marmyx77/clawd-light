@@ -1,18 +1,18 @@
 # Code map
 
-~20,900 lines of Swift across five targets. For each file: what it contains, why
+~21,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,070 lines · 40 files   pure logic, zero AppKit
-  ClawdLightApp/    8,607 lines · 47 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,427 lines · 29 files   444 cases, instantaneous
-  ClawdLightE2E/    1,735 lines ·  9 files   76 cases, the real binary
+  ClawdLightCore/   5,209 lines · 42 files   pure logic, zero AppKit
+  ClawdLightApp/    8,816 lines · 48 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,536 lines · 29 files   449 cases, instantaneous
+  ClawdLightE2E/    1,818 lines ·  9 files   78 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 715 lines. The limit the project sets itself is 800.
+No file exceeds 747 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -43,7 +43,7 @@ The six states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 264
+### `SessionState.swift` · 309
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -101,6 +101,11 @@ instead of propagating as a free-form string all the way to the row.
 `hasUsableOutput` is true only for `maxOutputTokens`: there the text exists, it
 is merely incomplete, so the row is green rather than red.
 
+### `SessionOrigin.swift`
+`.editor` or `.terminal`: the kind of place a row lives in, set by whoever
+resolves the workspace and read by everything that treats a terminal row
+differently (D25). Not on `Workspace`, which is the row's identity.
+
 ### `Workspace.swift`
 `Workspace` plus `PathNormalizer`. Path comparison is **component by component**,
 not by string prefix: without that, `/dev/project-old` would come out as inside
@@ -146,6 +151,10 @@ than an error, because Claude Code adds record types between releases.
 The half of "follow a file" that can be silently wrong: a chunk almost always ends
 mid-object, and parsing the fragment loses one record per read. It lives in Core,
 away from the `FileHandle`, precisely so it can be tested.
+
+### `TranscriptTitleScanner.swift`
+The conversation title out of a file's head, under `TranscriptTail`'s rule —
+one rule for the chat window and the terminal rows.
 
 ### `TranscriptLocator.swift`
 Where a transcript **would** be, for sessions adopted from the filesystem with no
@@ -324,7 +333,7 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 715
+### `CommandLineInterface.swift` · 747
 Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -333,14 +342,15 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 413 | `@MainActor`, `@Published`, periodic realignment |
-| `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
+| `StateStore.swift` | 499 | `@MainActor`, `@Published`, periodic realignment |
+| `Preferences.swift` | 294 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
 | `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
 | `TranscriptReader.swift` | 89 | follows one transcript by byte offset; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
+| `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
@@ -422,7 +432,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 143 | the Settings form: remote machines, their state, the buttons |
+| `SettingsView.swift` | 164 | the Settings form: remote machines, their state, the buttons |
 | `SettingsWindowController.swift` | 57 | owns the Settings window; activates the app so it comes up in front |
 | `Alerts.swift` | | dialogs |
 
@@ -435,7 +445,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 444 cases
+## `ClawdLightTests/` — 449 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -468,7 +478,7 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 
-## `ClawdLightE2E/` — 76 cases
+## `ClawdLightE2E/` — 78 cases
 
 | Suite | Covers |
 |---|---|

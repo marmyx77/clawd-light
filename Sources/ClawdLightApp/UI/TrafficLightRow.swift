@@ -76,7 +76,15 @@ struct TrafficLightRow: View {
                         .frame(width: 7)
                 }
 
-                Text(row.workspace.label)
+                // A terminal row says so, the way a remote one says where it is:
+                // its click leads to a tab, not to an editor window.
+                if row.isTerminal {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(StatusPalette.timeColor)
+                }
+
+                Text(row.displayLabel)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
@@ -214,7 +222,8 @@ struct TrafficLightRow: View {
                    action: { actions.toggleMuted(row) })
         }
 
-        if !row.workspace.isRemote {
+        // A terminal row has no tab to open a conversation in either.
+        if !row.workspace.isRemote && !row.isTerminal {
             Divider()
             Button("New conversation here", action: { actions.newConversation(row) })
         }
@@ -258,7 +267,7 @@ struct TrafficLightRow: View {
 
     private var tooltip: String {
         var lines = [
-            "\(row.workspace.label) — \(StatusPalette.label(for: row.status))",
+            "\(row.displayLabel) — \(StatusPalette.label(for: row.status))",
             RelativeTime.detailedLabel(for: row.updatedAt, now: now),
         ]
 

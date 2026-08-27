@@ -993,6 +993,81 @@ not an observation that might have been a fluke.
 `check-contract.sh` reports it as an **opening** rather than a breakage — the one
 place where the contract checker watches for good news.
 
+## D25 · A folder nobody claims is a place too
+
+**Decided.** With "Show terminal sessions" on (panel menu, Settings, or
+`clawd-light terminal on`), a local interactive session whose folder no editor
+window claims gets a row of its own, with **the folder its session file names**
+as its workspace. It is born when the session speaks or is adopted from the
+session file, like an editor session; it exists only while a **live local
+session file** names it — a hook alone is not enough — and it leaves when the
+process is gone. Off by default (D8: clicking one will ask for an Automation
+permission per terminal application). Off takes the rows away at once.
+
+**Why the file's folder and not the hook's.** Measured: Claude Code moves its
+process directory with the Bash tool's persistent `cd`, and the hook payload
+carries that directory — one session's transcript held 16,170 records at the
+project root and 29 under `docs/`, from a single `cd docs`. Editor rows never
+noticed, because a subfolder still resolves to the window's folder. A terminal
+row anchored on the hook's `cwd` would have moved on every `cd`. The session
+file's `cwd` is written once, at startup.
+
+**Why the file at all.** A signal whose `X-Clawd-Host` names a host the app was
+never told about is treated as local (D24), and so is any process on loopback
+that speaks the protocol. Requiring a live session file for the id is the one
+condition that keeps a forged header, a foreign path and a dead process out of
+the column — and it costs nothing, since the file is what the click needs anyway
+(the pid).
+
+**The row knows what it is.** `SessionState.origin` is `.editor` or `.terminal`,
+set by whoever resolves the workspace — the resolver's answer at signal time, or
+adoption — and nowhere else. Not on `Workspace`: that type is the row's
+identity, and a terminal session and an editor session in the same folder must
+still group. Everything that treats a terminal row differently reads this field:
+the label, the glyph, the menu, the click, `new`, the switch turning off.
+Nothing infers it from the entrypoint: `claude` typed in the integrated terminal
+is `cli` and an editor row, as before.
+
+**Label.** A terminal row holding one session with a known conversation title is
+named by that title; otherwise by the folder, as every other row. The title is
+what the person sees in their terminal's title bar, and the folder of a session
+started in `~` is a username. The name changes once, when the title arrives, and
+falls back to the folder when a second session joins the row. The rule lives on
+`SessionState.displayName`, and every surface that names a session to a person
+goes through it — the row, its tooltip, the answers of `open n` and `next`, the
+notification title, the hidden summary. Window matching and `/sessions.workspace`
+keep the folder name.
+
+**The click, by origin.** An editor row takes the path it always took — window
+by folder title, no process walk — and the tab deep link only when the session's
+entrypoint is `claude-vscode` (D5). A terminal row's click will go through the
+session's process to the terminal tab hosting it (phase C of
+[the plan](plans/terminal-sessions.md)); until then it says so. Consequence,
+stated: a `claude` started in a Terminal.app tab **inside a folder that is open
+in VS Code** is an editor row and its click raises the VS Code window. The
+alternative — a process walk on every editor click — would show a Terminal
+Automation prompt with the feature off, which D8 forbids.
+
+**What does not change.** Attribution of a session whose folder is open in an
+editor. Grouping by folder. Slots, order, hide, mute, calm, the chat window,
+notifications, message delivery (hook-based, so it reaches a terminal session
+the same way). Remote rows.
+
+**Discarded:** a row per terminal tab. It would split the folder rows people have
+already placed, and the click resolves the tab anyway. **Discarded:** born only
+when it speaks, as for remote hosts — locally the pid check makes adoption safe,
+and a switch that shows nothing until the next turn reads as broken.
+**Discarded:** the process tree overriding the folder for editor rows, see *The
+click, by origin*.
+
+**Deferred, and why.** `.reconcile` ignores an empty set of live pids, so a lone
+terminal row whose process dies without `SessionEnd` stays until the twelve-hour
+prune. The fix — a reader that tells "unreadable" from "empty" — is right, and
+the end-to-end harness leans on the current leniency in a third of its cases;
+that rewrite is its own change.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

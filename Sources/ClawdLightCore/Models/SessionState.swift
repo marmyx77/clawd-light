@@ -65,6 +65,16 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// session, so it is set once and never cleared by a signal that lacks it.
     public let entrypoint: String?
 
+    /// The kind of place the row lives in. See `SessionOrigin`.
+    public let origin: SessionOrigin
+
+    /// The title Claude gave the conversation, once it has given one.
+    ///
+    /// Read from the transcript, never from a hook. It is what names a terminal
+    /// row: the folder of a session started in `~` is a username, and the title is
+    /// what the person sees in their terminal's title bar.
+    public let title: String?
+
     public init(
         id: String,
         status: SessionStatus,
@@ -76,10 +86,14 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         activeSubagents: Int = 0,
         transcriptPath: String? = nil,
         waitingOn: [String] = [],
-        entrypoint: String? = nil
+        entrypoint: String? = nil,
+        origin: SessionOrigin = .editor,
+        title: String? = nil
     ) {
         self.waitingOn = waitingOn
         self.entrypoint = entrypoint?.trimmed.nilIfEmpty
+        self.origin = origin
+        self.title = title?.trimmed.nilIfEmpty
         self.id = id
         self.baseStatus = status
         self.workspace = workspace
@@ -195,6 +209,33 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         return replacing(entrypoint: .some(newValue))
     }
 
+    /// Copy living in another kind of place. It follows the latest resolution:
+    /// a terminal session whose folder gets opened in an editor becomes an
+    /// editor row at its next signal — the session moved into a window.
+    public func with(origin newOrigin: SessionOrigin) -> SessionState {
+        guard newOrigin != origin else { return self }
+        return replacing(origin: newOrigin)
+    }
+
+    /// Copy that knows the conversation's title. `nil` or blank leaves it alone.
+    public func with(title newTitle: String?) -> SessionState {
+        guard let newTitle = newTitle?.trimmed.nilIfEmpty, newTitle != title else { return self }
+        return replacing(title: .some(newTitle))
+    }
+
+    // MARK: - Naming
+
+    /// What a person reads for this session.
+    ///
+    /// The folder name for an editor row — it is what the window title says, and
+    /// the key the window is found by. For a terminal row, the conversation title
+    /// once there is one: the folder of a session started in the home directory
+    /// is a username, and says nothing about which of three terminals it is.
+    public var displayName: String {
+        guard origin == .terminal, let title else { return workspace.name }
+        return title
+    }
+
     /// Copy with the subagent counter shifted by `delta`, never below zero.
     ///
     /// The floor at zero is not pedantry: `SubagentStop` can arrive without its
@@ -245,7 +286,9 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         activeSubagents: Int? = nil,
         transcriptPath: String?? = nil,
         waitingOn: [String]? = nil,
-        entrypoint: String?? = nil
+        entrypoint: String?? = nil,
+        origin: SessionOrigin? = nil,
+        title: String?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -258,7 +301,9 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             activeSubagents: activeSubagents ?? self.activeSubagents,
             transcriptPath: transcriptPath ?? self.transcriptPath,
             waitingOn: waitingOn ?? self.waitingOn,
-            entrypoint: entrypoint ?? self.entrypoint
+            entrypoint: entrypoint ?? self.entrypoint,
+            origin: origin ?? self.origin,
+            title: title ?? self.title
         )
     }
 }

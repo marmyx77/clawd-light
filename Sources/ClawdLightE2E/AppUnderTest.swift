@@ -294,6 +294,22 @@ final class AppUnderTest {
         try? JSONSerialization.data(withJSONObject: payload).write(to: url)
     }
 
+    /// A transcript with a title, where the app expects to find it for that
+    /// session and folder — what names a terminal row.
+    /// - Parameter path: where to write it; by default where the app derives it
+    ///   from the session id and folder. The hook fixtures name `/tmp/<id>.jsonl`,
+    ///   and a hook's word wins over the derivation.
+    func writeTranscript(sessionId: String, cwd: String, title: String, at path: String? = nil) {
+        let url = path.map { URL(fileURLWithPath: $0) }
+            ?? TranscriptLocator.candidateURL(sessionId: sessionId, cwd: cwd, home: home)
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        let record: [String: Any] = ["type": "ai-title", "sessionId": sessionId, "aiTitle": title]
+        let line = (try? JSONSerialization.data(withJSONObject: record)) ?? Data()
+        try? (line + Data("\n".utf8)).write(to: url)
+    }
+
     func removeLiveSessions() {
         let directory = home.appendingPathComponent(".claude/sessions")
         let entries = (try? FileManager.default.contentsOfDirectory(

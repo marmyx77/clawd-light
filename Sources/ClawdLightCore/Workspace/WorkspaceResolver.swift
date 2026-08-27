@@ -2,9 +2,10 @@ import Foundation
 
 /// Matches a Claude Code session's `cwd` to the VS Code window hosting it.
 ///
-/// This is where it is decided whether a session deserves a traffic light: if no
-/// VS Code window contains that folder, the session is running in a terminal and
-/// is ignored.
+/// This is where a session's **editor** row is decided: if no VS Code window
+/// contains that folder, no editor hosts the session. What happens then is the
+/// store's decision, not this one's — with terminal sessions on (D25) the
+/// session's own folder becomes its place; off, the signal is dropped.
 public enum WorkspaceResolver {
     /// Returns the workspace containing `cwd`, or `nil`.
     ///

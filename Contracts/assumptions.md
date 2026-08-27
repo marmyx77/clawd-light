@@ -672,6 +672,43 @@ Remote-SSH window of that folder" while the rows keep working — loud, at the c
 A legitimate Claude Code change will show up as a failure until somebody blesses
 it. That is not a defect of the method — it is the method.
 
+## hook.cwd · the payload's cwd follows Claude's `cd`
+
+**We assume** the `cwd` a hook carries is the session's *current* directory, which
+Claude Code moves with the Bash tool's persistent `cd` — not the folder the
+session started in. Measured on one session: 16,170 transcript records at the
+project root, 29 under `docs/`, after a single `cd docs`.
+
+**Depends at** [StateStore.swift:82](../Sources/ClawdLightApp/Runtime/StateStore.swift#L82) —
+a terminal row is anchored on the session **file's** `cwd`, written once.
+
+**How verified** — `runtime`, by reading the transcript's `cwd` fields.
+
+**Failure mode** — if the hook's `cwd` stopped moving nothing breaks; if the
+file's started moving, terminal rows would drift with every `cd`. Editor rows
+are immune either way: a subfolder still resolves to the window's folder.
+
+---
+
+## transcript.title · `ai-title` names the conversation, and repeats
+
+**We assume** the transcript carries `{"type":"ai-title","aiTitle":…}` records,
+that the first one sits within the file's head (measured: ≤ 119 KB across four
+hundred transcripts), and that later ones repeat or replace it — so the last one
+seen is the title. Claude Code writes the same text into the terminal's title bar,
+prefixed `✳`.
+
+**Depends at** [TranscriptTitleScanner.swift:15](../Sources/ClawdLightCore/Transcript/TranscriptTitleScanner.swift#L15) ·
+[TranscriptTail.swift:38](../Sources/ClawdLightCore/Transcript/TranscriptTail.swift#L38)
+
+**How verified** — `runtime`: the chat window's header and the terminal rows'
+names come from it.
+
+**Failure mode** — quiet: a terminal row keeps its folder name, which for a
+session started in `~` is a username. The chat window shows the folder too.
+
+---
+
 ## What this cannot do
 
 It cannot catch what nobody thought to write down here. The list grows the way it

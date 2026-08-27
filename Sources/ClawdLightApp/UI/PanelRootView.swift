@@ -14,6 +14,7 @@ struct PanelActions {
     let toggleNotifications: () -> Void
     let toggleMessageSending: () -> Void
     let togglePresence: () -> Void
+    let toggleTerminalSessions: () -> Void
     let muteForAnHour: () -> Void
     let clearMute: () -> Void
     let toggleLaunchAtLogin: () -> Void
@@ -34,6 +35,7 @@ struct PanelFlags {
     let notificationsEnabled: Bool
     let messageSendingEnabled: Bool
     let presenceEnabled: Bool
+    let showsTerminalSessions: Bool
     let mutedUntil: Date?
     let hasHidden: Bool
     let hooksInstalled: Bool
@@ -88,6 +90,7 @@ struct PanelRootView: View {
         Button(check(flags.compact, "Traffic lights only"), action: actions.toggleCompact)
         Button(check(flags.grouped, "One row per project"), action: actions.toggleGrouping)
         Button(check(flags.onlyWaiting, "Show only what's waiting"), action: actions.toggleOnlyWaiting)
+        Button(check(flags.showsTerminalSessions, "Show terminal sessions"), action: actions.toggleTerminalSessions)
         // The wording says what it costs, not just what it does: VS Code asks for
         // confirmation on every invocation, and for sessions with no Claude panel —
         // the integrated-terminal ones — the extension opens a new tab instead of

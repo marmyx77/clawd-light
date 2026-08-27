@@ -5,7 +5,9 @@ import SwiftUI
 /// built as a form so the next setting has a place to go.
 struct SettingsView: View {
     @ObservedObject var fleet: RemoteFleet
+    var preferences = Preferences()
 
+    @State private var showsTerminalSessions = Preferences().showsTerminalSessions
     @State private var newHost = ""
     @State private var addError: String?
     /// The machine whose hooks are about to be installed; the alert asks first,
@@ -51,6 +53,25 @@ struct SettingsView: View {
                 A machine's sessions appear when they speak — their hooks reach this Mac \
                 through the tunnel — and leave when the machine says the process is gone. \
                 Clicking one raises its Remote-SSH window here, if one is open.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Show terminal sessions", isOn: $showsTerminalSessions)
+                    .onChange(of: showsTerminalSessions) { _, wanted in
+                        preferences.showsTerminalSessions = wanted
+                    }
+            } header: {
+                Text("Terminal sessions")
+            } footer: {
+                Text("""
+                A `claude` started in a terminal — Terminal, iTerm2, Ghostty, a tmux or \
+                zellij pane — in a folder no editor window has open gets a row of its own, \
+                named by its conversation. The panel follows the switch within five seconds. \
+                Clicking such a row will ask, once per terminal application, for the \
+                Automation permission that lets the panel select its tab.
                 """)
                 .font(.caption)
                 .foregroundStyle(.secondary)

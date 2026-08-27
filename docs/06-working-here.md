@@ -25,8 +25,8 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run ClawdLightTests              # 444 cases, instantaneous
-swift run ClawdLightE2E                # 76 cases, about a minute
+swift run ClawdLightTests              # 449 cases, instantaneous
+swift run ClawdLightE2E                # 78 cases, about a minute
 swift run ClawdLightTests "Subagents"  # filter by suite or by case
 ```
 
@@ -194,7 +194,7 @@ Every time a decision slipped into the shell, it became invisible to the tests.
 ## Style
 
 - **immutability**: produce new values, don't modify existing ones
-- **small files**: 200–400 lines typical, 800 the limit; the longest today is 715
+- **small files**: 200–400 lines typical, 800 the limit; the longest today is 747
 - **no magic values**: everything goes through `AppConfig`
 - **comments explain the why**, not the what
 

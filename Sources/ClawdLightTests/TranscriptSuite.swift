@@ -453,6 +453,32 @@ enum TranscriptTailSuite {
             t.expectEqual(tail.title, "Named", "title")
         },
 
+        // The scanner names terminal rows out of the head of a file, under the
+        // very rule the chat window follows — the column and the window must not
+        // read one transcript two ways.
+        TestCase("The scanner reads the title out of a file's head, last record winning") { t in
+            func line(_ title: String) -> String {
+                "{\"type\":\"ai-title\",\"sessionId\":\"s\",\"aiTitle\":\"\(title)\"}\n"
+            }
+            t.expectEqual(
+                TranscriptTitleScanner.title(in: Data((line("First") + messageA + "\n" + line("Second")).utf8)),
+                "Second", "the last record wins, as in the window"
+            )
+            t.expectEqual(
+                TranscriptTitleScanner.title(in: Data((line("Same") + line("Same") + line("Same")).utf8)),
+                "Same", "repeated identical records yield one title"
+            )
+            t.expectEqual(
+                TranscriptTitleScanner.title(in: Data(("{not json}\n" + line("After")).utf8)),
+                "After", "a malformed line is skipped"
+            )
+            t.expectNil(TranscriptTitleScanner.title(in: Data((messageA + "\n").utf8)), "no title, no name")
+            t.expectNil(
+                TranscriptTitleScanner.title(in: Data(String(line("Cut").dropLast(3)).utf8)),
+                "a record cut by the read limit is not a title"
+            )
+        },
+
         TestCase("A blank line between records changes nothing") { t in
             var tail = TranscriptTail()
             t.expectEqual(

@@ -49,6 +49,15 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// from one without: a reader that opens tabs needs it as much as the click.
     public let entrypoint: String?
 
+    /// `editor` for a session an editor window hosts, `terminal` for one whose
+    /// folder nobody claims and whose place is a terminal tab. A reader that
+    /// raises windows must not look for an editor window of a terminal row.
+    public let origin: String
+
+    /// The conversation's title, once the transcript has one. What names a
+    /// terminal row; informative for the others.
+    public let title: String?
+
     public init(
         id: String,
         status: String,
@@ -64,7 +73,9 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         slot: Int? = nil,
         transcriptPath: String? = nil,
         host: String? = nil,
-        entrypoint: String? = nil
+        entrypoint: String? = nil,
+        origin: String = SessionOrigin.editor.rawValue,
+        title: String? = nil
     ) {
         self.id = id
         self.status = status
@@ -81,6 +92,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.transcriptPath = transcriptPath
         self.host = host
         self.entrypoint = entrypoint
+        self.origin = origin
+        self.title = title
     }
 }
 
@@ -141,7 +154,9 @@ public enum SessionsCodec {
             slot: slot,
             transcriptPath: session.transcriptPath,
             host: session.workspace.host,
-            entrypoint: session.entrypoint
+            entrypoint: session.entrypoint,
+            origin: session.origin.rawValue,
+            title: session.title
         )
     }
 }
