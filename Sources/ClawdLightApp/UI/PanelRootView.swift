@@ -96,8 +96,8 @@ struct PanelRootView: View {
                 // a hint that the menu exists, not a control asking to be
                 // pressed. Outline, not filled — filled read as a white blob.
                 Image(systemName: "gearshape")
-                    .font(.system(size: 8, weight: .regular))
-                    .foregroundStyle(StatusPalette.timeColor.opacity(hoveringGear ? 1 : 0.6))
+                    .font(.system(size: 7, weight: .regular))
+                    .foregroundStyle(StatusPalette.timeColor.opacity(hoveringGear ? 1 : 0.5))
                     .frame(width: 16, height: Layout.footerHeight)
                     .contentShape(Rectangle())
             }
