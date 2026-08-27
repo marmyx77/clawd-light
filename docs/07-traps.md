@@ -640,6 +640,13 @@ synthetic click, and a synthetic click needs to know where the row *is*, not
 where it was. The order that decides where a row is lives in the app, and the
 app already publishes it; ask it, don't photograph it.
 
+
+**Afterwards.** The second mechanism did not survive the week. Once the first
+click was delivered, the user looked at the column that had re-sorted under it
+and asked for it not to: rows now keep the place they were given, and move only
+by their handle (D23). The double-click guard stays — a double-click must never
+do two things — but the row it protects against no longer moves.
+
 ---
 
 ## The drag that moved the panel
