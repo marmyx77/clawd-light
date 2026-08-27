@@ -89,37 +89,48 @@ struct PanelRootView: View {
     private var footer: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
-            Menu {
-                menu
-            } label: {
-                // The same grey as the timestamps, at rest a little fainter:
-                // a hint that the menu exists, not a control asking to be
-                // pressed. Outline, not filled — filled read as a white blob.
+            Button(action: openMenuUnderPointer) {
+                // Drawn exactly like the rows' drag handles — same weight,
+                // same translucency, same column — so it reads as one more
+                // affordance of the panel, not as a control from elsewhere.
                 Image(systemName: "gearshape")
-                    .font(.system(size: 7, weight: .regular))
-                    .foregroundStyle(StatusPalette.timeColor.opacity(hoveringGear ? 1 : 0.5))
-                    .frame(width: 16, height: Layout.footerHeight)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.primary.opacity(hoveringGear ? 0.55 : 0.2))
+                    .frame(width: 14, height: Layout.footerHeight)
                     .contentShape(Rectangle())
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            // Not `fixedSize`: a pop-up button's *ideal* height is that of a
-            // control, twenty points, and centred in a twelve-point strip it
-            // spilled past the window's bottom edge — the gear came out cut.
-            .frame(width: 16, height: Layout.footerHeight)
-            .clipped()
-            // Measured in pixels: centred in the strip, the glyph's lowest row
-            // landed on the window's border. One point up keeps it whole.
-            .offset(y: -3)
+            .buttonStyle(.plain)
             .help("Options and Settings — the same menu as a right-click on the panel's edge")
             .onHover { hoveringGear = $0 }
-            // Centred in compact mode, where there is no "right"; otherwise at
-            // the right, under the drag handles — and inside the corner radius,
-            // where the clip does not cut it.
+            // Centred in compact mode, where there is no "right"; otherwise
+            // under the drag handles, fourteen points from the edge like them.
             if flags.compact { Spacer(minLength: 0) }
         }
-        .padding(.horizontal, flags.compact ? 0 : Layout.cornerRadius)
+        .padding(.horizontal, flags.compact ? 0 : Layout.panelPadding + 6)
+        // Three points more below than above: asked for, and right — the
+        // glyph sits nearer the rows than the edge.
+        .padding(.bottom, 3)
         .frame(height: Layout.footerHeight)
+    }
+
+    /// Opens the panel's context menu where the pointer is.
+    ///
+    /// Not a SwiftUI `Menu`: a pop-up button carries the metrics of a control —
+    /// its own height, its own label offset — and however it was framed the
+    /// gear came out low and cut. The context menu already exists on the root
+    /// view; a synthetic right-click at the pointer is all it takes to open it,
+    /// and the gear stays a plain glyph the size of the handles.
+    private func openMenuUnderPointer() {
+        guard let window = NSApp.windows.first(where: { $0 is FloatingPanel }) else { return }
+        let location = window.mouseLocationOutsideOfEventStream
+        for type in [NSEvent.EventType.rightMouseDown, .rightMouseUp] {
+            guard let event = NSEvent.mouseEvent(
+                with: type, location: location, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+            ) else { return }
+            window.sendEvent(event)
+        }
     }
 
     @ViewBuilder
