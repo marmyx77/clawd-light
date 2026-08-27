@@ -143,7 +143,7 @@ final class ChatShell: ObservableObject {
                 // you go to look at everything, and a list that quietly omits a
                 // project is the opposite of that.
                 onlyWaiting: false,
-                pinned: preferences.pinnedWorkspaces,
+                order: preferences.rowOrder,
                 hidden: []
             )
         )

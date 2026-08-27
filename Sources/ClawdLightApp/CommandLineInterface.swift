@@ -451,19 +451,20 @@ enum CommandLineInterface {
                 guard let slot = session.slot else { continue }
                 if bySlot[slot] == nil { bySlot[slot] = session }
             }
-            let pinned = bySlot.keys.sorted().compactMap { bySlot[$0] }
+            let slotted = bySlot.keys.sorted().compactMap { bySlot[$0] }
 
-            guard !pinned.isEmpty else {
-                print("No slots assigned.")
+            guard !slotted.isEmpty else {
+                print("No slots occupied.")
                 print()
-                print("Right-click a row in the panel → “Pin to top, and bind a slot”.")
-                print("Pinned projects take slots 1, 2, 3… in the order you pin them,")
-                print("and they keep them: that is what makes a bound key reliable.")
+                print("The first nine rows of the panel are slots 1 to 9, in the order you")
+                print("arranged them — drag a row by its handle, or right-click → Move up /")
+                print("Move down. The column never reorders itself: that is what makes a")
+                print("bound key reliable.")
                 return 0
             }
 
-            let nameWidth = max(12, pinned.map(\.workspace.count).max() ?? 12)
-            for session in pinned {
+            let nameWidth = max(12, slotted.map(\.workspace.count).max() ?? 12)
+            for session in slotted {
                 print(
                     "\(session.slot ?? 0)  "
                         + session.workspace.padded(to: nameWidth + 2)

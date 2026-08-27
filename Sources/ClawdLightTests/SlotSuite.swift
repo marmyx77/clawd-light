@@ -2,72 +2,84 @@ import ClawdLightCore
 import Foundation
 import TestKit
 
-/// Keyboard slots: the arrangement, and the property that justifies the feature.
-enum SlotAssignmentSuite {
+/// The order of the column: how a project gets a place, and how it moves.
+enum RowOrderSuite {
 
-    private static let limit = 9
+    static let suite = TestSuite("Row order", [
 
-    static let suite = TestSuite("Slot arrangement", [
-
-        TestCase("Pinning appends to the first free slot") { t in
-            var slots: [String] = []
-            slots = SlotAssignment.toggling("/dev/a", in: slots, limit: limit)
-            slots = SlotAssignment.toggling("/dev/b", in: slots, limit: limit)
-            t.expectEqual(slots, ["/dev/a", "/dev/b"], "order")
-            t.expectEqual(SlotAssignment.slot(of: "/dev/b", in: slots), 2, "slot of b")
+        TestCase("A project seen for the first time is appended, the known ones keep their places") { t in
+            let after = RowOrder.absorbing(["/dev/new", "/dev/b", "/dev/a"], into: ["/dev/b", "/dev/a"])
+            t.expectEqual(after, ["/dev/b", "/dev/a", "/dev/new"], "order")
         },
 
-        // The whole point: a project already bound keeps the key it had.
-        TestCase("Pinning a new project does not move the existing ones") { t in
-            let before = ["/dev/a", "/dev/b"]
-            let after = SlotAssignment.toggling("/dev/c", in: before, limit: limit)
-            t.expectEqual(SlotAssignment.slot(of: "/dev/a", in: after), 1, "a")
-            t.expectEqual(SlotAssignment.slot(of: "/dev/b", in: after), 2, "b")
-            t.expectEqual(SlotAssignment.slot(of: "/dev/c", in: after), 3, "c")
+        // Called on every state change: the same input has to give the same list,
+        // or the column would drift on its own — the very thing this exists to stop.
+        TestCase("Absorbing is deterministic — newcomers by name — and idempotent") { t in
+            let once = RowOrder.absorbing(["/dev/zulu", "/x/alfa", "/dev/mike"], into: [])
+            t.expectEqual(once, ["/x/alfa", "/dev/mike", "/dev/zulu"], "by name")
+            t.expectEqual(RowOrder.absorbing(["/dev/mike", "/dev/zulu"], into: once), once, "idempotent")
         },
 
-        TestCase("Unpinning removes and compacts") { t in
-            let after = SlotAssignment.toggling("/dev/a", in: ["/dev/a", "/dev/b"], limit: limit)
-            t.expectEqual(after, ["/dev/b"], "list")
-            t.expectEqual(SlotAssignment.slot(of: "/dev/b", in: after), 1, "b moved up")
+        TestCase("Placing before a visible neighbour is expressed in the full order") { t in
+            // `/dev/h` is hidden: the user does not see it, so the drop is
+            // relative to a, b and c only — and h keeps its place next to a.
+            let after = RowOrder.placing(
+                "/dev/c", at: 0, among: ["/dev/a", "/dev/b", "/dev/c"],
+                in: ["/dev/a", "/dev/h", "/dev/b", "/dev/c"]
+            )
+            t.expectEqual(after, ["/dev/c", "/dev/a", "/dev/h", "/dev/b"], "order")
         },
 
-        TestCase("A project with no slot has none") { t in
-            t.expectNil(SlotAssignment.slot(of: "/dev/zzz", in: ["/dev/a"]))
+        TestCase("Placing at the bottom goes right after the last visible row") { t in
+            let after = RowOrder.placing(
+                "/dev/a", at: 2, among: ["/dev/a", "/dev/b", "/dev/c"],
+                in: ["/dev/a", "/dev/b", "/dev/c", "/dev/h"]
+            )
+            t.expectEqual(after, ["/dev/b", "/dev/c", "/dev/a", "/dev/h"], "order")
         },
 
-        // Silently dropping the oldest would unbind a key the user is still
-        // pressing — the exact surprise this design exists to avoid.
-        TestCase("Beyond the limit, pinning is ignored rather than evicting") { t in
-            let full = (1...limit).map { "/dev/\($0)" }
-            let after = SlotAssignment.toggling("/dev/extra", in: full, limit: limit)
-            t.expectEqual(after, full, "the list is unchanged")
-            t.expectNil(SlotAssignment.slot(of: "/dev/extra", in: after), "no slot given")
+        TestCase("Placing clamps the index instead of failing") { t in
+            let order = ["/dev/a", "/dev/b", "/dev/c"]
+            t.expectEqual(RowOrder.placing("/dev/a", at: 99, among: order, in: order), ["/dev/b", "/dev/c", "/dev/a"], "too far down")
+            t.expectEqual(RowOrder.placing("/dev/c", at: -3, among: order, in: order), ["/dev/c", "/dev/a", "/dev/b"], "too far up")
         },
 
-        TestCase("Moving swaps with the neighbor") { t in
-            let after = SlotAssignment.moving("/dev/c", by: -1, in: ["/dev/a", "/dev/b", "/dev/c"])
-            t.expectEqual(after, ["/dev/a", "/dev/c", "/dev/b"], "order")
+        // Grouping off draws one row per session: the visible list repeats a path.
+        TestCase("Placing tolerates a visible list with repeated paths") { t in
+            let after = RowOrder.placing(
+                "/dev/b", at: 0, among: ["/dev/a", "/dev/a", "/dev/b", "/dev/b"],
+                in: ["/dev/a", "/dev/b"]
+            )
+            t.expectEqual(after, ["/dev/b", "/dev/a"], "order")
+        },
+
+        TestCase("Moving swaps with the visible neighbour and skips what is not shown") { t in
+            let after = RowOrder.moving(
+                "/dev/a", by: 1, among: ["/dev/a", "/dev/b"], in: ["/dev/a", "/dev/h", "/dev/b"]
+            )
+            t.expectEqual(after, ["/dev/h", "/dev/b", "/dev/a"], "a goes below b; h stays above b")
         },
 
         TestCase("Moving past either edge changes nothing") { t in
-            let list = ["/dev/a", "/dev/b"]
-            t.expectEqual(SlotAssignment.moving("/dev/a", by: -1, in: list), list, "before the first")
-            t.expectEqual(SlotAssignment.moving("/dev/b", by: 1, in: list), list, "past the last")
-            t.expectEqual(SlotAssignment.moving("/dev/zzz", by: 1, in: list), list, "unknown project")
+            let order = ["/dev/a", "/dev/b"]
+            t.expectEqual(RowOrder.moving("/dev/a", by: -1, among: order, in: order), order, "before the first")
+            t.expectEqual(RowOrder.moving("/dev/b", by: 1, among: order, in: order), order, "past the last")
+            t.expectEqual(RowOrder.moving("/dev/zzz", by: 1, among: order, in: order), order, "unknown project")
         },
 
-        TestCase("Normalizing drops duplicates and caps the length") { t in
-            let messy = ["/dev/a", "/dev/b", "/dev/a", "/dev/c"]
+        TestCase("A slot is a position within the limit, and nothing beyond it") { t in
+            let order = (1...12).map { "/dev/\($0)" }
+            t.expectEqual(RowOrder.slot(of: "/dev/1", in: order, limit: 9), 1, "first")
+            t.expectEqual(RowOrder.slot(of: "/dev/9", in: order, limit: 9), 9, "ninth")
+            t.expectNil(RowOrder.slot(of: "/dev/10", in: order, limit: 9), "tenth")
+            t.expectNil(RowOrder.slot(of: "/dev/zzz", in: order, limit: 9), "unknown")
+        },
+
+        TestCase("Normalizing drops duplicates and keeps the first occurrence") { t in
             t.expectEqual(
-                SlotAssignment.normalized(messy, limit: limit),
+                RowOrder.normalized(["/dev/a", "/dev/b", "/dev/a", "/dev/c"]),
                 ["/dev/a", "/dev/b", "/dev/c"],
                 "duplicates"
-            )
-            t.expectEqual(
-                SlotAssignment.normalized(["/dev/a", "/dev/b", "/dev/c"], limit: 2),
-                ["/dev/a", "/dev/b"],
-                "cap"
             )
         },
     ])
@@ -96,118 +108,65 @@ enum ColumnSlotSuite {
 
     static let suite = TestSuite("Slots in the column", [
 
-        TestCase("A pinned row carries its slot, an unpinned one carries none") { t in
+        TestCase("A row's slot is its position in the order") { t in
             let result = ColumnLayout.render(
                 state([
                     session("a", .idle, path: "/dev/alfa"),
                     session("b", .idle, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/beta"])
+                options: ColumnOptions(grouped: true, order: ["/dev/beta", "/dev/alfa"])
             )
             t.expectEqual(result.row(inSlot: 1)?.workspace.name, "beta", "slot 1")
-            t.expectEqual(result.rows.first { $0.workspace.name == "alfa" }?.slot, nil, "alfa")
+            t.expectEqual(result.row(inSlot: 2)?.workspace.name, "alfa", "slot 2")
+            t.expectEqual(result.rows.map(\.workspace.name), ["beta", "alfa"], "drawn in slot order")
         },
 
-        TestCase("Pinned rows sort by slot, not alphabetically") { t in
+        TestCase("Below the ninth place there is no slot, but the row is still drawn") { t in
+            let paths = (1...10).map { "/dev/p\($0)" }
+            let result = ColumnLayout.render(
+                state(paths.enumerated().map { session("s\($0)", .idle, path: $1) }),
+                options: ColumnOptions(grouped: true, order: paths)
+            )
+            t.expectEqual(result.rows.count, 10, "rows")
+            t.expectEqual(result.rows[8].slot, 9, "ninth")
+            t.expectNil(result.rows[9].slot, "tenth")
+        },
+
+        TestCase("A project with no live session leaves its slot empty rather than shifting the others") { t in
             let result = ColumnLayout.render(
                 state([
-                    session("a", .idle, path: "/dev/zulu"),
-                    session("b", .idle, path: "/dev/alfa"),
+                    session("a", .idle, path: "/dev/one"),
+                    session("c", .idle, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/zulu", "/dev/alfa"])
+                options: ColumnOptions(grouped: true, order: ["/dev/one", "/dev/two", "/dev/three"])
             )
-            t.expectEqual(result.rows.map(\.workspace.name), ["zulu", "alfa"], "order")
+            t.expectNil(result.row(inSlot: 2), "slot 2 is empty")
+            t.expectEqual(result.row(inSlot: 3)?.workspace.name, "three", "three keeps slot 3")
         },
 
-        // The property the whole feature rests on. Without it a bound key points
-        // somewhere new every time a session changes state, and a shortcut that
-        // acts on the wrong session is worse than no shortcut.
-        TestCase("A slot does not move when urgency reorders the column") { t in
+        // The property the whole feature rests on. A bound key must point at the
+        // same project whatever the sessions are doing.
+        TestCase("A slot does not move when a session changes state") { t in
+            let order = ["/dev/one", "/dev/two", "/dev/three"]
             let calm = ColumnLayout.render(
                 state([
                     session("a", .idle, path: "/dev/one"),
                     session("b", .idle, path: "/dev/two"),
                     session("c", .idle, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/one", "/dev/two"])
+                options: ColumnOptions(grouped: true, order: order)
             )
-
-            // Now the second pinned project blocks, and an unpinned one goes green.
             let busy = ColumnLayout.render(
                 state([
                     session("a", .idle, path: "/dev/one"),
                     session("b", .awaiting, path: "/dev/two"),
                     session("c", .ready, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/one", "/dev/two"])
+                options: ColumnOptions(grouped: true, order: order)
             )
-
-            t.expectEqual(calm.row(inSlot: 1)?.workspace.name, "one", "slot 1 before")
-            t.expectEqual(busy.row(inSlot: 1)?.workspace.name, "one", "slot 1 after")
-            t.expectEqual(calm.row(inSlot: 2)?.workspace.name, "two", "slot 2 before")
+            t.expectEqual(calm.rows.map(\.workspace.name), busy.rows.map(\.workspace.name), "same rows, same places")
             t.expectEqual(busy.row(inSlot: 2)?.workspace.name, "two", "slot 2 after")
-        },
-
-        // The accepted price, pinned down so nobody "fixes" it by accident.
-        TestCase("A pinned project that starts waiting stays in its slot") { t in
-            let result = ColumnLayout.render(
-                state([
-                    session("a", .idle, path: "/dev/one"),
-                    session("b", .awaiting, path: "/dev/two"),
-                ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/one", "/dev/two"])
-            )
-            // Slot order wins among the pinned: the amber one does not jump above.
-            t.expectEqual(result.rows.map(\.workspace.name), ["one", "two"], "order")
-            // But it is still above everything unpinned.
-            t.expect(result.rows.allSatisfy(\.isPinned), "premise")
-        },
-
-        TestCase("An empty slot returns nothing rather than the neighbor") { t in
-            let result = ColumnLayout.render(
-                state([session("a", .idle, path: "/dev/one")]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/one", "/dev/absent"])
-            )
-            // `/dev/absent` is pinned but has no live session. Opening slot 2 must
-            // not open slot 1: for a key pressed without looking, opening the
-            // wrong project is the worst possible outcome.
-            t.expectNil(result.row(inSlot: 2), "slot 2")
-            t.expectEqual(result.row(inSlot: 1)?.workspace.name, "one", "slot 1 still works")
-        },
-
-        TestCase("An unassigned slot number returns nothing") { t in
-            let result = ColumnLayout.render(
-                state([session("a", .idle, path: "/dev/one")]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/one"])
-            )
-            t.expectNil(result.row(inSlot: 5))
-        },
-
-        // With grouping off a project has several rows, all carrying its slot.
-        // The key still has to open one thing, and the same one a click opens.
-        TestCase("Without grouping the slot opens the most urgent row") { t in
-            let result = ColumnLayout.render(
-                state([
-                    session("calm", .idle, path: "/dev/one"),
-                    session("blocked", .awaiting, path: "/dev/one"),
-                ]),
-                options: ColumnOptions(grouped: false, pinned: ["/dev/one"])
-            )
-            t.expectEqual(result.row(inSlot: 1)?.primary.id, "blocked", "row opened")
-            t.expectEqual(result.occupiedSlots.count, 1, "one entry per slot")
-        },
-
-        TestCase("The filter never hides a slot") { t in
-            let result = ColumnLayout.render(
-                state([
-                    session("a", .idle, path: "/dev/one"),
-                    session("b", .ready, path: "/dev/two"),
-                ]),
-                options: ColumnOptions(grouped: true, onlyWaiting: true, pinned: ["/dev/one"])
-            )
-            // An addressable row that the filter can remove is an address that
-            // sometimes fails for a reason the user forgot they configured.
-            t.expectEqual(result.row(inSlot: 1)?.workspace.name, "one", "slot survives")
+            t.expectEqual(busy.row(inSlot: 3)?.status, .ready, "the green is where it always was")
         },
     ])
 }

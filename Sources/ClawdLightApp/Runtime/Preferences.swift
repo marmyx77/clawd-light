@@ -16,7 +16,10 @@ struct Preferences {
         static let opensSessionTab = "click.opensSessionTab"
         static let groupByWorkspace = "panel.groupByWorkspace"
         static let onlyWaiting = "panel.onlyWaiting"
+        /// Read only, as the seed of `rowOrder` for whoever upgrades from the
+        /// pinned-rows version.
         static let pinnedWorkspaces = "panel.pinnedWorkspaces"
+        static let rowOrder = "panel.rowOrder"
         static let hiddenWorkspaces = "panel.hiddenWorkspaces"
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
@@ -100,28 +103,24 @@ struct Preferences {
         nonmutating set { defaults.set(newValue, forKey: Key.onlyWaiting) }
     }
 
-    /// Projects pinned to the top, by path, **in slot order**.
+    /// The column's order, by project path. Position `i` is drawn `i`-th and is
+    /// slot `i + 1`.
     ///
-    /// Ordered and not a set: position `i` is the slot `i + 1` that a keyboard
-    /// shortcut addresses, so the order is data the user chose and not an
-    /// implementation detail. It survives restarts because `UserDefaults` stores
-    /// the array as written.
-    ///
-    /// Anyone upgrading from the set-based version keeps their pins; they simply
-    /// arrive in the alphabetical order the old code wrote them in, which is as
-    /// good a starting assignment as any.
-    var pinnedWorkspaces: [String] {
+    /// Data the user arranged, not a derived value: it survives restarts as
+    /// written, and `StateStore` gives every newly seen project a place at the
+    /// bottom. Whoever upgrades from the pinned-rows version finds their pins at
+    /// the top, in slot order — the pins *were* the arranged part of the old
+    /// column, and everything else joins below as it is seen.
+    var rowOrder: [String] {
         get {
-            SlotAssignment.normalized(
-                defaults.stringArray(forKey: Key.pinnedWorkspaces) ?? [],
-                limit: AppConfig.maxSlots
+            RowOrder.normalized(
+                defaults.stringArray(forKey: Key.rowOrder)
+                    ?? defaults.stringArray(forKey: Key.pinnedWorkspaces)
+                    ?? []
             )
         }
         nonmutating set {
-            defaults.set(
-                SlotAssignment.normalized(newValue, limit: AppConfig.maxSlots),
-                forKey: Key.pinnedWorkspaces
-            )
+            defaults.set(RowOrder.normalized(newValue), forKey: Key.rowOrder)
         }
     }
 
@@ -203,9 +202,9 @@ struct Preferences {
         set.contains(element) ? set.subtracting([element]) : set.union([element])
     }
 
-    // Slot arrangement lives in `SlotAssignment`, in Core: deciding which project
-    // a key addresses is a domain decision, and decisions that live in the shell
-    // are decisions no test can see.
+    // The arrangement itself lives in `RowOrder`, in Core: deciding where a row
+    // goes — and so which project a key addresses — is a domain decision, and
+    // decisions that live in the shell are decisions no test can see.
 
     private func readSet(_ key: String) -> Set<String> {
         Set(defaults.stringArray(forKey: key) ?? [])

@@ -25,7 +25,7 @@ let suites: [TestSuite] = [
     TrafficLightStateSuite.suite,
     SessionStatusSuite.suite,
     ColumnLayoutSuite.suite,
-    SlotAssignmentSuite.suite,
+    RowOrderSuite.suite,
     ColumnSlotSuite.suite,
     IDEKindSuite.suite,
     AppleScriptEscapeSuite.suite,

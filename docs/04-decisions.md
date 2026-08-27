@@ -251,6 +251,11 @@ at `lsof`, not by re-reading the code that configured it.
 
 ## D13 · A keyboard slot is a pin, not a row number
 
+**Superseded by [D23](#d23--the-column-does-not-reorder-itself).** The premise —
+that the column reorders by urgency and so a row number cannot be an address —
+no longer holds: the column keeps the user's order, and a slot is now simply a
+position in it. Kept as written, for what it teaches about addresses.
+
 **Decided.** Pinning a project binds it to the next free slot, 1 to 9.
 `clawd-light open 3` raises whatever holds slot 3. Pinned rows sit at the top of
 the column **in slot order**.
@@ -689,6 +694,55 @@ that turn's `Stop` is green if nothing else is in flight.
 see from across the room, and it was the colour that lied. Going straight to
 green — the lie D17's ancestor fixed. A blinking blue — blinking is spent on the
 one state that blocks you, and this one does not.
+
+---
+
+## D23 · The column does not reorder itself
+
+**Decided.** Rows keep the place the user gave them. A project seen for the first
+time is appended at the bottom; from then on it moves only when dragged by its
+handle (≡, on the right of the row) or nudged from the menu. A change of state
+lights a row up **where it is**. Slots are positions: the first nine rows are
+keys 1 to 9. This supersedes D13, which no longer has a problem to solve.
+
+**Why.** Reported by use, and true on reflection: a column that re-sorts itself
+has to be re-read every time it changes. A green rising to the top pushes every
+other row down by one; a red sinking pulls them all up; and the eye, which had
+learned that the third row is *that* project, finds something else there. The
+urgency sort was built to answer "which one needs me" — but the colour already
+answers that, and answers it without moving anything. Sorting moved rows to say
+what the colour was saying already.
+
+The second cost is what made it a defect rather than a taste. A row that moves
+under the pointer is how the wrong session gets opened (07-traps, *The click that
+only knocked*): the first click cleared a green, the column re-sorted, the second
+click landed on whatever had moved in. A fixed order removes the mechanism, not
+just the symptom.
+
+**What it cost.** A row asking for attention at the bottom of a twelve-row column
+is a dot at the bottom, not at the top. The notification and the blinking amber
+still cover the case where you are not looking, and "only what's waiting"
+collapses the column to the rows that need you — in your order. Pinning is gone
+as a concept: every row is where you put it, so "pin to top" is a drag. The
+`pinned` field left the `/sessions` contract; nothing outside read it and it had
+no meaning left.
+
+**Discarded:** freezing the order only while the pointer is over the panel. It
+prevents the mis-click and keeps the urgency sort — but the column still shuffles
+the moment you look away, which is the part that was reported as confusing.
+
+**Discarded:** urgency *within* the user's order, e.g. a green rising among its
+neighbours only. Half a fixed order is no order: the eye cannot learn a rule
+with an exception in it.
+
+**Where the order lives.** `preferences.rowOrder`, one list for three readers —
+the panel, the extended window and `/sessions`. `StateStore` gives a newcomer its
+place *before* publishing the state, so headless mode and the CLI agree with the
+panel; the panel rebuilds its view when the options it was built with change. The
+list may name projects with no live session: their slot is empty, and `open n`
+says so rather than opening the neighbour — unchanged from D13, and still the
+worst thing a blind key could do. Whoever upgrades finds their pinned projects at
+the top, in slot order, and everything else below as it is seen.
 
 ---
 

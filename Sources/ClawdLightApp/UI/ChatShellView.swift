@@ -171,14 +171,6 @@ struct ChatSidebarRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(background)
-        .overlay(alignment: .leading) {
-            if row.isPinned {
-                Rectangle()
-                    .fill(StatusPalette.pinMarker)
-                    .frame(width: 2)
-                    .padding(.vertical, 4)
-            }
-        }
         .onHover { hovering = $0 }
     }
 

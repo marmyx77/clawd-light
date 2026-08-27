@@ -329,11 +329,12 @@ enum InstallationSuite {
                 guard let response = app.sessions(), let first = response.sessions.first else {
                     return a.fail("no session to inspect")
                 }
-                // Nothing is pinned in a fresh test home, so the value is nil —
-                // what matters is that the field exists and decodes, because it is
-                // the only way an outside reader can know what a key addresses.
-                a.expectNil(first.slot, "slot")
-                a.expectEqual(first.pinned, false, "pinned agrees with slot")
+                // Every project seen gets a place in the order, and a place in
+                // the first nine is a slot — so in a fresh test home the first
+                // project holds one. The field is the only way an outside reader
+                // can know what a key addresses.
+                guard let slot = first.slot else { return a.fail("the first project seen has no slot") }
+                a.expect((1...AppConfig.maxSlots).contains(slot), "slot \(slot) in range")
             },
         ])
     }

@@ -10,9 +10,10 @@ struct RowActions {
     let open: (ColumnRow) -> Void
     let peek: (ColumnRow) -> Void
     let markUnread: (ColumnRow) -> Void
-    let togglePin: (ColumnRow) -> Void
-    /// Moves a pinned row one slot towards 1 (`-1`) or away from it (`+1`).
-    let moveSlot: (ColumnRow, Int) -> Void
+    /// Moves the row one place up (`-1`) or down (`+1`) among the rows shown.
+    let move: (ColumnRow, Int) -> Void
+    /// Puts the row at a position among the rows shown; what a drag ends with.
+    let place: (ColumnRow, Int) -> Void
     let toggleHidden: (ColumnRow) -> Void
     let toggleMuted: (ColumnRow) -> Void
     let toggleCalmBlink: (ColumnRow) -> Void
@@ -21,10 +22,21 @@ struct RowActions {
     let openChat: (ColumnRow) -> Void
 }
 
-/// State of the preferences that concern one row.
+/// What the column tells a row about the drag in progress.
 ///
-/// Pinning is deliberately absent: the row already carries its `slot`, and two
-/// sources for the same fact is how they end up disagreeing.
+/// The drag is the column's business — it is the column that knows how many
+/// rows there are and which one the pointer is over — so the row only draws
+/// where it is told to and reports the handle's movement back.
+struct RowDragState {
+    /// Vertical displacement to draw the row at, in points.
+    let offset: CGFloat
+    /// `true` for the row under the pointer.
+    let isDragged: Bool
+    let onChanged: (CGFloat) -> Void
+    let onEnded: () -> Void
+}
+
+/// State of the preferences that concern one row.
 struct RowFlags {
     let isHidden: Bool
     let isMuted: Bool
@@ -41,8 +53,12 @@ struct TrafficLightRow: View {
     let now: Date
     let flags: RowFlags
     let actions: RowActions
+    /// `nil` in compact mode, where there is no room for a handle.
+    var drag: RowDragState? = nil
 
     @State private var hovering = false
+
+    private var isDragged: Bool { drag?.isDragged ?? false }
 
     var body: some View {
         HStack(spacing: 7) {
@@ -92,6 +108,10 @@ struct TrafficLightRow: View {
                     // timestamp has priority, it's the information read in passing.
                     .layoutPriority(1)
                     .monospacedDigit()
+
+                if let drag {
+                    handle(drag)
+                }
             }
         }
         .padding(.horizontal, 6)
@@ -99,24 +119,37 @@ struct TrafficLightRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.white.opacity(hovering ? 0.12 : 0))
+                .fill(Color.white.opacity(isDragged ? 0.18 : hovering ? 0.12 : 0))
         )
-        .overlay(alignment: .leading) {
-            // A discreet mark for pinned projects: without it, "pin to top" just
-            // moves a row, and among ten rows there's no telling why that one is
-            // sitting there.
-            if row.isPinned {
-                Rectangle()
-                    .fill(StatusPalette.pinMarker)
-                    .frame(width: 2)
-                    .padding(.vertical, 3)
-            }
-        }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
         .contextMenu { menu }
         .help(tooltip)
+        // The row follows the pointer while it is the one being dragged, and steps
+        // aside — animated — when another row is dragged past it.
+        .offset(y: drag?.offset ?? 0)
+        .zIndex(isDragged ? 1 : 0)
+        .shadow(color: .black.opacity(isDragged ? 0.35 : 0), radius: isDragged ? 6 : 0, y: 2)
+        .animation(isDragged ? nil : .easeOut(duration: 0.12), value: drag?.offset ?? 0)
+    }
+
+    /// The three lines on the right: where you grab the row to move it.
+    ///
+    /// Always drawn, dimly: a handle you have to hover to discover is a handle
+    /// nobody discovers. The grab area underneath is an AppKit view (`DragHandle`)
+    /// — a SwiftUI gesture here moved the panel instead of the row — and it also
+    /// swallows a plain click, which is not a click on the row and must not open
+    /// anything.
+    private func handle(_ drag: RowDragState) -> some View {
+        ZStack {
+            DragHandle(onChanged: drag.onChanged, onEnded: drag.onEnded)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.primary.opacity(hovering || drag.isDragged ? 0.6 : 0.3))
+                .allowsHitTesting(false)
+        }
+        .frame(width: 14, height: Layout.rowHeight)
     }
 
     // MARK: - Interaction
@@ -158,18 +191,10 @@ struct TrafficLightRow: View {
 
         Divider()
 
-        if let slot = row.slot {
-            Button("✓ Pinned to slot \(slot)", action: { actions.togglePin(row) })
-            // Arranging the slots by hand is what keeps unpinning from being the
-            // only way to change an assignment — and unpinning shifts everything
-            // below it.
-            if slot > 1 {
-                Button("Move to slot \(slot - 1)", action: { actions.moveSlot(row, -1) })
-            }
-            Button("Move to slot \(slot + 1)", action: { actions.moveSlot(row, 1) })
-        } else {
-            Button("Pin to top, and bind a slot", action: { actions.togglePin(row) })
-        }
+        // The drag with words, for whoever prefers a menu to a handle. Same
+        // arrangement, same persistence.
+        Button("Move up", action: { actions.move(row, -1) })
+        Button("Move down", action: { actions.move(row, 1) })
 
         Button(flags.isHidden ? "✓ Hide" : "Hide",
                action: { actions.toggleHidden(row) })
@@ -272,6 +297,7 @@ struct TrafficLightRow: View {
         if flags.isMuted { lines.append("Notifications muted for this project.") }
 
         lines.append("Click to open. ⌘+click for the conversations. Alt+click to keep the green.")
+        if drag != nil { lines.append("Drag ≡ to reorder; the order is yours and does not change on its own.") }
         return lines.joined(separator: "\n")
     }
 }

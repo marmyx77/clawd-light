@@ -89,7 +89,7 @@ Right-click **on a row**:
 | Open | same as the click |
 | Open without marking as read | same as alt+click |
 | Mark as unread | remedies one click too many |
-| Pin to top | the row stays on top and survives the filter |
+| Move up / Move down | the drag, in words |
 | Hide | the row is collected into the summary |
 | Don't blink | stops the movement, **not** the color |
 | Don't alert me for this project | silences the notifications, **not** the color |
@@ -98,7 +98,7 @@ Right-click **on a row**:
 One click is enough, even when you are working in another window: the panel
 makes itself key before the click is dispatched, so the first click is delivered
 rather than spent on focus. A double-click counts as one — the second click is
-dropped, because by then the row you hit may have moved.
+dropped.
 
 Right-click **on the panel's margins** for the general menu: compact mode,
 grouping, the "only what's waiting" filter, notifications, presence, hooks, launch
@@ -163,21 +163,21 @@ combination, the interface tells you straight away whether it is already taken,
 and when it doesn't work **you can see it**. The same goes for Raycast, Alfred or
 Karabiner, if you already use them.
 
+#### The order is yours
+
+The column **never reorders itself**. A project seen for the first time is
+appended at the bottom, and from then on it moves only when you move it: drag a
+row by its handle (≡, on the right), or right-click → **Move up / Move down**. A
+row that needs you lights up where it is. The eye learns the column once, and a
+row never slides under the pointer between two clicks.
+
 #### Slots — one key, always the same project
 
-Right-click a row → **“Pin to top, and bind a slot”**. The project takes the next
-free slot, 1 to 9, the number appears next to its name, and `clawd-light open 3`
-raises it from then on.
-
-The point is that the slot **doesn't move**. The column reorders by urgency
-constantly — that is its job — so a key bound to "the third row" would point at a
-different project every few minutes, and a shortcut you press without looking has
-to be right every time. Pinned rows therefore sit at the top **in slot order** and
-stay there.
-
-The price, stated plainly: a pinned project that starts waiting for you does not
-jump above the other pinned ones. It lights up, and it is still above everything
-unpinned, but its position is yours to decide — “Move to slot 2” in the same menu.
+The first nine rows are slots 1 to 9: the number appears next to the name, and
+`clawd-light open 3` raises whatever sits third. Because the column keeps your
+order, the third row is the same project tomorrow — and a shortcut you press
+without looking has to be right every time. A project with no live session keeps
+its place; its slot is simply empty until it has one.
 
 `clawd-light open <n>` answers in three distinct ways, because a key pressed
 blind has to tell them apart:
@@ -601,8 +601,8 @@ curl -H "X-Clawd-Token: $(cat ~/.clawd-light/token)" \
 
 It returns state, project, path, timestamps, subagent counter and **keyboard
 slot** for every session, with the dates in ISO 8601. The slot is in the contract
-because no outside reader could work it out: the column's order is urgency, and
-the slot deliberately isn't. The token lives in `~/.clawd-light/token`
+because no outside reader could work it out: the column's order is the one you
+arranged, and it lives in the preferences. The token lives in `~/.clawd-light/token`
 with mode `0600`; if the app finds the permissions any wider it **regenerates** the
 token instead of narrowing them: a secret that has been readable by others must be
 considered burned.
@@ -671,7 +671,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 434 domain tests, instantaneous
+swift run ClawdLightTests              # 433 domain tests, instantaneous
 swift run ClawdLightE2E                # 75 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

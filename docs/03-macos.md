@@ -179,6 +179,12 @@ sendEvent(_:) // makes the panel key before a mouse-down is dispatched
 traffic light would activate clawd-light and take the focus away from the editor
 an instant before giving it back, with a flicker on every click.
 
+`mouseDownCanMoveWindow` is what decides whether a drag moves the panel or a
+row. The panel is movable by its background, and a SwiftUI subtree says yes to
+that question — so the reorder handle's grab area is an `NSView` (`DragHandle`)
+that says no and takes the mouse itself (see 07-traps, "The drag that moved the
+panel").
+
 `sendEvent` is what makes the *first* click count. AppKit spends the first
 click in a non-key window on making it key, and delivers it only if the view
 under the pointer says `acceptsFirstMouse` — and that view is SwiftUI's own

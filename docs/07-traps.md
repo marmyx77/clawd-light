@@ -36,6 +36,9 @@ severity.
     twice, slowly" was not a habit; it was the shape of a swallowed first click —
     and the accidents it caused were the shape of a column that reorders under
     the pointer.
+11. **In a hosted SwiftUI view, the window runs the first round.** Moving by
+    background, the first click in a non-key window, a drag on a handle: AppKit
+    settles them by asking the hit view, and a SwiftUI gesture cannot answer.
 
 ---
 
@@ -636,6 +639,34 @@ instead and both stay.
 synthetic click, and a synthetic click needs to know where the row *is*, not
 where it was. The order that decides where a row is lives in the app, and the
 app already publishes it; ask it, don't photograph it.
+
+---
+
+## The drag that moved the panel
+
+**Symptom.** The first drag on the new reorder handle moved the whole panel
+ninety-six points down — exactly the distance dragged — and reordered nothing.
+The preferences were untouched; the window's origin had changed.
+
+**Cause.** The panel is `isMovableByWindowBackground`, which is how you put it
+where you want it. Before any SwiftUI gesture gets a look at a mouse-down, the
+window asks the view under the pointer `mouseDownCanMoveWindow`; for a SwiftUI
+subtree the answer is yes, and the window takes the drag for itself. A
+`DragGesture` with `minimumDistance: 2` never had a chance: the decision is made
+at mouse-down, before any distance exists.
+
+**Correction.** The grab area is an `NSView` (`DragHandle`) that answers **no**
+to that question, handles `mouseDown` / `mouseDragged` / `mouseUp` itself and
+reports the vertical travel to SwiftUI, which moves the rows. The three lines are
+still SwiftUI, drawn on top with hit-testing off. Measured with synthetic mouse
+events: the same drag now changes the order in the preferences and leaves the
+window where it was, both upward and downward.
+
+**Lesson.** In a SwiftUI view hosted by AppKit, the window still runs the first
+round. Anything that competes with a window behaviour — moving by background,
+resizing, the first click in a non-key window — is settled by AppKit's questions
+to the hit view, and a SwiftUI gesture cannot answer them. When a gesture loses
+to the window, the fix is a view that can speak AppKit, not a bigger gesture.
 
 ---
 

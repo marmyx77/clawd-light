@@ -21,12 +21,13 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let failureReason: String?
     public let lastMessage: String?
     public let muted: Bool
-    public let pinned: Bool
 
-    /// The keyboard slot this project is bound to, 1-based, or `nil`.
+    /// The keyboard slot this project is bound to — its position in the user's
+    /// order, 1-based, for the first nine — or `nil`.
     ///
     /// Part of the read contract because it answers a question no consumer can
-    /// work out on its own: the column's order is urgency, and the slot is not.
+    /// work out on its own: the order lives in the preferences, not in anything
+    /// Claude Code reports.
     public let slot: Int?
 
     /// Absolute path of the session's JSONL transcript, when one is known.
@@ -48,7 +49,6 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         failureReason: String? = nil,
         lastMessage: String? = nil,
         muted: Bool = false,
-        pinned: Bool = false,
         slot: Int? = nil,
         transcriptPath: String? = nil
     ) {
@@ -63,7 +63,6 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.failureReason = failureReason
         self.lastMessage = lastMessage
         self.muted = muted
-        self.pinned = pinned
         self.slot = slot
         self.transcriptPath = transcriptPath
     }
@@ -104,9 +103,8 @@ public enum SessionsCodec {
 
     /// Builds the snapshot of a session.
     ///
-    /// - Parameter slot: the keyboard slot of the session's project. Passing it
-    ///   also settles `pinned`, because having a slot is what being pinned means —
-    ///   two parameters that can disagree is two parameters too many.
+    /// - Parameter slot: the keyboard slot of the session's project, if it holds
+    ///   one of the first nine places in the column.
     public static func snapshot(
         of session: SessionState,
         muted: Bool = false,
@@ -124,7 +122,6 @@ public enum SessionsCodec {
             failureReason: session.failureReason?.rawValue,
             lastMessage: session.lastMessage,
             muted: muted,
-            pinned: slot != nil,
             slot: slot,
             transcriptPath: session.transcriptPath
         )

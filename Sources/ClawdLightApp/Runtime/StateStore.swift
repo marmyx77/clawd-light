@@ -299,8 +299,23 @@ final class StateStore: ObservableObject {
     private func apply(_ action: ReducerAction, now: Date) {
         let next = StateReducer.reduce(state, action: action, now: now)
         guard next != state else { return }
+        givePlaces(to: next)
         state = next
         publishSnapshot()
+    }
+
+    /// Every project in the state gets a place in the column's order, **before**
+    /// the state is published: the first render that shows a project already
+    /// knows where it goes, and a known project never moves (D23).
+    ///
+    /// Here and not in the panel, because the panel is one reader of the order
+    /// among three — the extended window and `/sessions` are the others — and
+    /// headless mode has no panel at all. An order that only the panel maintains
+    /// is an order the CLI disagrees with.
+    private func givePlaces(to next: TrafficLightState) {
+        let order = preferences.rowOrder
+        let merged = RowOrder.absorbing(next.sessions.values.map(\.workspace.path), into: order)
+        if merged != order { preferences.rowOrder = merged }
     }
 
     /// Deposits the version readable by the HTTP server into the box.
@@ -311,14 +326,14 @@ final class StateStore: ObservableObject {
     /// state has no business holding them.
     private func publishSnapshot() {
         guard let snapshots else { return }
-        let pinned = preferences.pinnedWorkspaces
+        let order = preferences.rowOrder
         let muted = preferences.mutedWorkspaces
 
         snapshots.replace(with: state.ordered.map { session in
             SessionsCodec.snapshot(
                 of: session,
                 muted: muted.contains(session.workspace.path),
-                slot: SlotAssignment.slot(of: session.workspace.path, in: pinned)
+                slot: RowOrder.slot(of: session.workspace.path, in: order, limit: AppConfig.maxSlots)
             )
         })
     }

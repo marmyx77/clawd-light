@@ -1,18 +1,18 @@
 # Code map
 
-~18,800 lines of Swift across five targets. For each file: what it contains, why
+~19,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   4,648 lines · 39 files   pure logic, zero AppKit
-  ClawdLightApp/    7,134 lines · 39 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,270 lines · 29 files   434 cases, instantaneous
-  ClawdLightE2E/    1,682 lines ·  9 files   75 cases, the real binary
+  ClawdLightCore/   4,672 lines · 39 files   pure logic, zero AppKit
+  ClawdLightApp/    7,312 lines · 40 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,247 lines · 29 files   433 cases, instantaneous
+  ClawdLightE2E/    1,683 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 612 lines. The limit the project sets itself is 800.
+No file exceeds 613 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -60,18 +60,22 @@ From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
 most urgent state.
 
-`ColumnRow.slot` is the second one. Pinned rows sort by slot and **not** by
-urgency, which is what makes `open 3` worth binding to a key — see
-[D13](04-decisions.md#d13--a-keyboard-slot-is-a-pin-not-a-row-number).
+`sorted` is the second one. Rows come out in the **user's order and nothing
+else**: no state moves a row, which is what makes `open 3` worth binding to a key
+and what keeps a row from sliding under the pointer — see
+[D23](04-decisions.md#d23--the-column-does-not-reorder-itself). Urgency still
+decides which session is a group's face and which one a click opens.
 
 > **Touching the ordering**, remember two things: the row `id` has to stay stable
 > across two computations, or SwiftUI rebuilds the rows and the panel flickers;
-> and sorting the pinned rows by urgency would silently break every bound key.
+> and letting any state into `sorted` would silently break every bound key.
 
-### `SlotAssignment.swift`
-The only two operations that change which project a key addresses: append/remove,
-and move by one. It lives in Core because deciding an address is a decision, and
-decisions in the shell are decisions no test can see.
+### `RowOrder.swift`
+The column's order as data: give newcomers a place (`absorbing`), move a row to
+where the user dropped it (`placing`, `moving`) — translated from what is visible
+into the full list — and read a slot off a position. It lives in Core because
+deciding where a row goes is a decision, and decisions in the shell are decisions
+no test can see.
 
 ### `TrafficLightState.swift`
 The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
@@ -315,7 +319,7 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 612
+### `CommandLineInterface.swift` · 613
 Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -389,8 +393,9 @@ installations in the same second used to fail.
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 568 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 277 | one row: dot, name, badge, timestamp, menu |
-| `TrafficLightColumn.swift` | 187 | the column, the hidden summary, the filter note |
+| `TrafficLightRow.swift` | 303 | one row: dot, slot, name, badge, timestamp, handle, menu |
+| `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
+| `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
 | `PanelRootView.swift` | 175 | the general menu |
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
@@ -414,7 +419,7 @@ installations in the same second used to fail.
 
 # The tests
 
-## `ClawdLightTests/` — 434 cases
+## `ClawdLightTests/` — 433 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -424,8 +429,8 @@ script, before it was split. The most important ones:
 |---|---|
 | `StateReducerSuite` · `ReducerFixesSuite` | the state machine, including the four semantic corrections |
 | `SubagentSuite` | counter and derived state |
-| `ColumnLayoutSuite` | grouping, filtering, pinning, summary |
-| `SlotAssignmentSuite` · `ColumnSlotSuite` | the arrangement, and that a slot survives an urgency reorder |
+| `ColumnLayoutSuite` | grouping, the user's order, filtering, summary |
+| `RowOrderSuite` · `ColumnSlotSuite` | absorbing, placing and moving; that a slot is a position and survives any change of state |
 | `MailboxSuite` · `MailboxPermissionSuite` | hostile session ids, message limits, owner-only permissions |
 | `MailboxDirectorySafetySuite` | a symlink where the mailbox should be is refused |
 | `RewakeScriptSuite` · `RewakeRegistrationSuite` | the script's promises, and the second `Stop` hook |

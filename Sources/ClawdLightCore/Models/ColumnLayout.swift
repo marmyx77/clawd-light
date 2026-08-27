@@ -15,21 +15,14 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// The row's sessions, most urgent first.
     public let sessions: [SessionState]
 
-    /// The row's keyboard slot, 1-based, or `nil` when it has none.
+    /// The row's keyboard slot: its position in the user's order, 1-based, for
+    /// the first `AppConfig.maxSlots` positions; `nil` below them.
     ///
     /// A slot is what makes a row **addressable**: bind a key to slot 3 and it
-    /// keeps meaning the same project tomorrow. That is the whole difficulty —
-    /// the column reorders by urgency continuously, so a key bound to "the third
-    /// row" would point somewhere new every minute, and a shortcut that acts on
-    /// the wrong session is worse than no shortcut.
-    ///
-    /// Slots therefore come from pinning, which the user chooses and which does
-    /// not move on its own. Pinned means two things at once, coherently: keep it
-    /// on top, and give it a key.
+    /// keeps meaning the same project tomorrow. The column does not reorder
+    /// itself (D23), so the position *is* the address — the same list decides
+    /// where the row is drawn and what the key opens, and the two cannot disagree.
     public let slot: Int?
-
-    /// `true` when the project is pinned to the top. Equivalent to having a slot.
-    public var isPinned: Bool { slot != nil }
 
     public init(id: String, workspace: Workspace, sessions: [SessionState], slot: Int? = nil) {
         self.id = id
@@ -83,24 +76,25 @@ public struct ColumnOptions: Sendable, Equatable {
     public let grouped: Bool
     public let onlyWaiting: Bool
 
-    /// Pinned project paths, **in slot order**. Position `i` is slot `i + 1`.
+    /// Project paths in the user's order. Position `i` is drawn `i`-th and is
+    /// slot `i + 1`.
     ///
     /// An ordered list and not a set, because the order is the feature: it is
-    /// what a bound key addresses. A `Set` would have made slot numbers depend
-    /// on hashing, which is the definition of an address you cannot rely on.
-    public let pinned: [String]
+    /// where the rows are and what a bound key addresses. A `Set` would have made
+    /// both depend on hashing, which is the definition of a place you cannot rely on.
+    public let order: [String]
 
     public let hidden: Set<String>
 
     public init(
         grouped: Bool = true,
         onlyWaiting: Bool = false,
-        pinned: [String] = [],
+        order: [String] = [],
         hidden: Set<String> = []
     ) {
         self.grouped = grouped
         self.onlyWaiting = onlyWaiting
-        self.pinned = pinned
+        self.order = order
         self.hidden = hidden
     }
 
@@ -108,7 +102,12 @@ public struct ColumnOptions: Sendable, Equatable {
 
     /// The slot a project holds, 1-based, or `nil`.
     func slot(for path: String) -> Int? {
-        SlotAssignment.slot(of: path, in: pinned)
+        RowOrder.slot(of: path, in: order, limit: AppConfig.maxSlots)
+    }
+
+    /// Where a project sorts; unknown ones after every known one.
+    func position(for path: String) -> Int {
+        RowOrder.position(of: path, in: order)
     }
 }
 
@@ -144,10 +143,10 @@ public struct ColumnRendering: Sendable, Equatable {
 
     /// The row a bound key should open, or `nil` when that slot is empty.
     ///
-    /// Empty is a normal outcome, not an error: a project can be pinned and have
-    /// no live session right now. The caller has to say "slot 3 is empty" rather
-    /// than open something else — opening the neighbor would be the worst
-    /// possible behavior for a key you press without looking.
+    /// Empty is a normal outcome, not an error: a project can hold a place in the
+    /// order and have no live session right now. The caller has to say "slot 3 is
+    /// empty" rather than open something else — opening the neighbor would be the
+    /// worst possible behavior for a key you press without looking.
     ///
     /// With grouping off several rows share a slot; the most urgent wins, which
     /// is what `sorted` already put first and what a click on the group does.
@@ -189,16 +188,14 @@ public enum ColumnLayout {
             ? group(visible, options: options)
             : ungrouped(visible, options: options)
 
-        // The filter leaves pinned projects alone: pinning one means wanting to
-        // see it always, and a filter that hides it drains pinning of its meaning.
         let filtered = options.onlyWaiting
-            ? grouped.filter { $0.isPinned || $0.status.clearsOnFocus }
+            ? grouped.filter { $0.status.clearsOnFocus }
             : grouped
 
         let removed = grouped.filter { row in !filtered.contains { $0.id == row.id } }
 
         return ColumnRendering(
-            rows: sorted(filtered),
+            rows: sorted(filtered, options: options),
             hidden: summary(of: putAside),
             filteredOut: removed.reduce(0) { $0 + $1.count }
         )
@@ -242,38 +239,33 @@ public enum ColumnLayout {
 
     // MARK: - Ordering
 
-    /// Pinned first **in slot order**, then urgency, then the longest wait.
+    /// The user's order, and nothing else moves a row.
     ///
-    /// Slot order, and not urgency, among the pinned rows: a key bound to slot 3
-    /// has to find the same project there tomorrow. Sorting them by urgency would
-    /// make the top of the column shuffle exactly like the rest, and an address
-    /// that moves is not an address.
+    /// Urgency stays out of this on purpose (D23). A column that re-sorts itself
+    /// has to be re-read every time it changes, a green that jumps to the top
+    /// pushes every other row down by one, and a row that moves under the pointer
+    /// is how the wrong session gets opened. A row that needs you still lights up
+    /// — where it always is.
     ///
-    /// The price is visible and accepted: a pinned project that starts asking for
-    /// attention does **not** rise above the other pinned ones. It still lights
-    /// up, and it is still above everything unpinned.
-    ///
-    /// The name stays as the final tie-break: without it, two equivalent rows
-    /// could swap places between updates, and in peripheral vision movement is
-    /// the worst defect there is.
-    private static func sorted(_ rows: [ColumnRow]) -> [ColumnRow] {
+    /// A project not yet in the order — possible for one render, before the store
+    /// gives it a place — sorts after every known one, by name. With grouping
+    /// off a project has several rows at the same position; among them the most
+    /// urgent comes first, so the click and the key agree about which one they
+    /// mean, then the longest wait, then the id, so nothing jitters between updates.
+    private static func sorted(_ rows: [ColumnRow], options: ColumnOptions) -> [ColumnRow] {
         rows.sorted { lhs, rhs in
-            switch (lhs.slot, rhs.slot) {
-            case let (left?, right?) where left != right: return left < right
-            case (.some, .none): return true
-            case (.none, .some): return false
-            // Equal slots — which happens with grouping off, where a project has
-            // several rows — and both unpinned fall through to the usual order.
-            default: break
+            let left = options.position(for: lhs.workspace.path)
+            let right = options.position(for: rhs.workspace.path)
+            if left != right { return left < right }
+            if lhs.workspace.path != rhs.workspace.path {
+                let byName = lhs.workspace.name.localizedStandardCompare(rhs.workspace.name)
+                if byName != .orderedSame { return byName == .orderedAscending }
+                return lhs.workspace.path < rhs.workspace.path
             }
             if lhs.status.urgencyRank != rhs.status.urgencyRank {
                 return lhs.status.urgencyRank < rhs.status.urgencyRank
             }
             if lhs.statusSince != rhs.statusSince { return lhs.statusSince < rhs.statusSince }
-            if lhs.workspace.name != rhs.workspace.name {
-                return lhs.workspace.name.localizedStandardCompare(rhs.workspace.name)
-                    == .orderedAscending
-            }
             return lhs.id < rhs.id
         }
     }

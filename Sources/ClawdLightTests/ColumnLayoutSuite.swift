@@ -2,7 +2,7 @@ import ClawdLightCore
 import Foundation
 import TestKit
 
-/// Computing the rows: grouping, filtering, pinning, summary.
+/// Computing the rows: grouping, ordering, filtering, summary.
 enum ColumnLayoutSuite {
 
     private static let t0 = Date(timeIntervalSince1970: 1_760_000_000)
@@ -105,7 +105,9 @@ enum ColumnLayoutSuite {
 
         // MARK: Ordering
 
-        TestCase("The rows come out sorted by urgency") { t in
+        // D23: the column does not sort itself. A row that needs you lights up
+        // where it always is; nothing jumps to the top and nothing sinks.
+        TestCase("The rows come out in the user's order, whatever their state") { t in
             let result = ColumnLayout.render(
                 state([
                     session("a", .idle, path: "/dev/one"),
@@ -113,36 +115,48 @@ enum ColumnLayoutSuite {
                     session("c", .awaiting, path: "/dev/three"),
                     session("d", .working, path: "/dev/four"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions(grouped: true, order: ["/dev/one", "/dev/two", "/dev/three", "/dev/four"])
             )
-            t.expectEqual(
-                result.rows.map(\.status),
-                [.awaiting, .ready, .working, .idle],
-                "order"
-            )
+            t.expectEqual(result.rows.map(\.workspace.name), ["one", "two", "three", "four"], "order")
+            t.expectEqual(result.rows.map(\.status), [.idle, .ready, .awaiting, .working], "states, where they are")
         },
 
-        TestCase("For equal states whoever waited longest comes first") { t in
+        TestCase("A red row does not drop below a green one") { t in
             let result = ColumnLayout.render(
                 state([
-                    session("recent", .ready, path: "/dev/one", since: 600),
-                    session("old", .ready, path: "/dev/two", since: 0),
+                    session("a", .idle, path: "/dev/alfa"),
+                    session("b", .ready, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions(grouped: true, order: ["/dev/alfa", "/dev/beta"])
             )
-            t.expectEqual(result.rows.first?.workspace.name, "two", "first row")
+            t.expectEqual(result.rows.map(\.workspace.name), ["alfa", "beta"], "order")
         },
 
-        TestCase("Pinned projects stay on top even when idle") { t in
+        // Possible for one render, before the store gives the newcomer a place.
+        TestCase("Projects not yet in the order follow the known ones, by name") { t in
             let result = ColumnLayout.render(
                 state([
-                    session("urgent", .awaiting, path: "/dev/alfa"),
-                    session("pinned", .idle, path: "/dev/beta"),
+                    session("a", .idle, path: "/dev/zulu"),
+                    session("b", .idle, path: "/dev/alfa"),
+                    session("c", .idle, path: "/dev/mike"),
                 ]),
-                options: ColumnOptions(grouped: true, pinned: ["/dev/beta"])
+                options: ColumnOptions(grouped: true, order: ["/dev/zulu"])
             )
-            t.expectEqual(result.rows.first?.workspace.name, "beta", "first row")
-            t.expectEqual(result.rows.first?.isPinned, true, "pinned")
+            t.expectEqual(result.rows.map(\.workspace.name), ["zulu", "alfa", "mike"], "order")
+        },
+
+        // A project's rows share its place; among them the most urgent comes
+        // first, so the click, the key and the group agree about which one they mean.
+        TestCase("With grouping off a project's rows sit together, most urgent first") { t in
+            let result = ColumnLayout.render(
+                state([
+                    session("a1", .idle, path: "/dev/one"),
+                    session("a2", .ready, path: "/dev/one"),
+                    session("b", .awaiting, path: "/dev/two"),
+                ]),
+                options: ColumnOptions(grouped: false, order: ["/dev/one", "/dev/two"])
+            )
+            t.expectEqual(result.rows.map(\.id), ["a2", "a1", "b"], "order")
         },
 
         // MARK: Filter
@@ -178,12 +192,16 @@ enum ColumnLayoutSuite {
             t.expectEqual(result.filteredOut, 2, "sessions filtered out")
         },
 
-        TestCase("The filter does not hide pinned projects") { t in
+        TestCase("The filter keeps the user's order") { t in
             let result = ColumnLayout.render(
-                state([session("a", .idle, path: "/dev/alfa")]),
-                options: ColumnOptions(grouped: true, onlyWaiting: true, pinned: ["/dev/alfa"])
+                state([
+                    session("a", .ready, path: "/dev/alfa"),
+                    session("b", .idle, path: "/dev/beta"),
+                    session("c", .awaiting, path: "/dev/gamma"),
+                ]),
+                options: ColumnOptions(grouped: true, onlyWaiting: true, order: ["/dev/alfa", "/dev/beta", "/dev/gamma"])
             )
-            t.expectEqual(result.rows.count, 1, "rows")
+            t.expectEqual(result.rows.map(\.workspace.name), ["alfa", "gamma"], "order")
         },
 
         // MARK: Hidden

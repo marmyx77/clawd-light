@@ -24,6 +24,22 @@ struct TrafficLightColumn: View {
     /// minute of the day rolling over.
     private let tick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
+    /// The drag in progress: which row, and how far the handle has travelled.
+    ///
+    /// Only the id is kept, not the row's index. Rows can appear or leave while
+    /// the pointer is down — a session ends, a project is seen for the first time
+    /// — and an index remembered at mouse-down would then point at the wrong row.
+    /// The index is looked up on every render instead.
+    @State private var drag: ColumnDrag?
+
+    private struct ColumnDrag: Equatable {
+        let rowId: String
+        var translation: CGFloat
+    }
+
+    /// The distance between two rows' baselines.
+    private static let pitch = Layout.rowHeight + Layout.rowSpacing
+
     private var rendering: ColumnRendering {
         ColumnLayout.render(store.state, options: options)
     }
@@ -48,13 +64,14 @@ struct TrafficLightColumn: View {
     private func content(_ rendering: ColumnRendering) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: Layout.rowSpacing) {
-                ForEach(rendering.rows) { row in
+                ForEach(Array(rendering.rows.enumerated()), id: \.element.id) { index, row in
                     TrafficLightRow(
                         row: row,
                         compact: compact,
                         now: now,
                         flags: flags(for: row),
-                        actions: actions
+                        actions: actions,
+                        drag: compact ? nil : dragState(for: row, at: index, in: rendering.rows)
                     )
                 }
 
@@ -72,6 +89,54 @@ struct TrafficLightColumn: View {
             }
         }
         .scrollDisabled(rendering.rows.count <= AppConfig.maxVisibleRows)
+    }
+
+    // MARK: - Reordering
+
+    /// Where the dragged row would land if released now.
+    private func target(of drag: ColumnDrag, in rows: [ColumnRow]) -> (start: Int, end: Int)? {
+        guard let start = rows.firstIndex(where: { $0.id == drag.rowId }) else { return nil }
+        let steps = Int((drag.translation / Self.pitch).rounded())
+        return (start, min(max(start + steps, 0), rows.count - 1))
+    }
+
+    /// What this row draws during a drag, and how it reports one of its own.
+    ///
+    /// The dragged row follows the pointer, clamped to the column. Every row
+    /// between its origin and its destination steps one pitch aside, so the gap
+    /// travels with the pointer and the drop lands where the eye expects.
+    private func dragState(for row: ColumnRow, at index: Int, in rows: [ColumnRow]) -> RowDragState {
+        var offset: CGFloat = 0
+        var dragged = false
+        if let drag, let (start, end) = target(of: drag, in: rows) {
+            if drag.rowId == row.id {
+                dragged = true
+                let lowest = -CGFloat(start) * Self.pitch
+                let highest = CGFloat(rows.count - 1 - start) * Self.pitch
+                offset = min(max(drag.translation, lowest), highest)
+            } else if start < end, index > start, index <= end {
+                offset = -Self.pitch
+            } else if start > end, index >= end, index < start {
+                offset = Self.pitch
+            }
+        }
+        return RowDragState(
+            offset: offset,
+            isDragged: dragged,
+            onChanged: { translation in
+                if drag == nil {
+                    drag = ColumnDrag(rowId: row.id, translation: translation)
+                } else if drag?.rowId == row.id {
+                    drag?.translation = translation
+                }
+            },
+            onEnded: {
+                guard let current = drag, current.rowId == row.id else { return }
+                drag = nil
+                guard let (start, end) = target(of: current, in: rows), start != end else { return }
+                actions.place(row, end)
+            }
+        )
     }
 
     private func flags(for row: ColumnRow) -> RowFlags {

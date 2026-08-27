@@ -117,7 +117,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-434 cases, instantaneous. They verify Core.
+433 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
@@ -132,7 +132,8 @@ function: they were in the **seams** between a function and the world. See
 
 ## The state machine
 
-Six states, ordered by urgency — the order in which they appear in the column:
+Six states, ordered by urgency — what decides which session a project's row
+shows, and which one a click opens; the rows themselves keep the user's order (D23):
 
 | # | State | Meaning | Color |
 |---|---|---|---|
@@ -145,7 +146,7 @@ Six states, ordered by urgency — the order in which they appear in the column:
 
 Three properties govern the behavior, and they live on `SessionStatus`:
 
-- **`urgencyRank`** — the column's ordering
+- **`urgencyRank`** — which session is a row's face, and what a hidden summary shows
 - **`clearsOnFocus`** — whether a click clears it (`awaiting`, `ready`, `failed`)
 - **`blocksDowngrade`** — whether it resists a late signal (`awaiting`, `ready`)
 
@@ -189,8 +190,9 @@ along the way.
 what gets drawn. It does four things at once, because they are interdependent:
 
 1. **groups** by project (on by default: 22 sessions across 12 windows)
-2. **filters** "only what's waiting", if asked — but **never** the pinned projects
-3. **sorts**: pinned, then urgency, then the longest wait, then name
+2. **filters** "only what's waiting", if asked
+3. **orders** by the user's arrangement — never by state (D23); a project not yet
+   placed follows the known ones, by name
 4. **sets aside** the hidden ones into a summary that **lights up** if one of them
    asks for attention
 

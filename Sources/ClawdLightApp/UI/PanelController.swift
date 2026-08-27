@@ -110,7 +110,18 @@ final class PanelController {
     private func observeStore() {
         store.$state
             .receive(on: RunLoop.main)
-            .sink { [weak self] state in self?.resizeToFit(state) }
+            .sink { [weak self] state in
+                guard let self else { return }
+                // A project seen for the first time has just been given a place
+                // (`StateStore.givePlaces`). The view holds its options by value,
+                // so it has to be rebuilt to learn about it; every other change
+                // is a resize.
+                if self.columnOptions != self.renderedOptions {
+                    self.rebuildContent()
+                } else {
+                    self.resizeToFit(state)
+                }
+            }
             .store(in: &cancellables)
     }
 
@@ -129,10 +140,13 @@ final class PanelController {
         ColumnOptions(
             grouped: preferences.groupsByWorkspace,
             onlyWaiting: preferences.showsOnlyWaiting,
-            pinned: preferences.pinnedWorkspaces,
+            order: preferences.rowOrder,
             hidden: preferences.hiddenWorkspaces
         )
     }
+
+    /// The options the current content was built with.
+    private var renderedOptions: ColumnOptions?
 
     private func rebuildContent() {
         let root = PanelRootView(
@@ -145,6 +159,7 @@ final class PanelController {
             rowActions: makeRowActions()
         )
         panel.contentView = NSHostingView(rootView: root)
+        renderedOptions = columnOptions
         resizeToFit(store.state)
     }
 
@@ -195,19 +210,17 @@ final class PanelController {
             open: { [weak self] row in self?.activate(row, markSeen: true) },
             peek: { [weak self] row in self?.activate(row, markSeen: false) },
             markUnread: { [weak self] row in self?.markUnread(row) },
-            togglePin: { [weak self] row in
+            move: { [weak self] row, offset in
                 guard let self else { return }
-                preferences.pinnedWorkspaces = SlotAssignment.toggling(
-                    row.workspace.path,
-                    in: preferences.pinnedWorkspaces,
-                    limit: AppConfig.maxSlots
+                preferences.rowOrder = RowOrder.moving(
+                    row.workspace.path, by: offset, among: visiblePaths(), in: preferences.rowOrder
                 )
                 rebuildContent()
             },
-            moveSlot: { [weak self] row, offset in
+            place: { [weak self] row, index in
                 guard let self else { return }
-                preferences.pinnedWorkspaces = SlotAssignment.moving(
-                    row.workspace.path, by: offset, in: preferences.pinnedWorkspaces
+                preferences.rowOrder = RowOrder.placing(
+                    row.workspace.path, at: index, among: visiblePaths(), in: preferences.rowOrder
                 )
                 rebuildContent()
             },
@@ -235,6 +248,13 @@ final class PanelController {
             newConversation: { [weak self] row in self?.newConversation(in: row) },
             openChat: { [weak self] row in self?.openChat(in: row) }
         )
+    }
+
+    /// The projects drawn right now, top to bottom: what a drag or a "move" is
+    /// relative to. The full order also holds hidden, filtered and sessionless
+    /// projects, which the user cannot see and therefore cannot mean.
+    private func visiblePaths() -> [String] {
+        ColumnLayout.render(store.state, options: columnOptions).rows.map(\.workspace.path)
     }
 
     /// Opens the row's conversation in a window of its own.
