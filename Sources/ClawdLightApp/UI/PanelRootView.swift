@@ -103,7 +103,14 @@ struct PanelRootView: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
-            .fixedSize()
+            // Not `fixedSize`: a pop-up button's *ideal* height is that of a
+            // control, twenty points, and centred in a twelve-point strip it
+            // spilled past the window's bottom edge — the gear came out cut.
+            .frame(width: 16, height: Layout.footerHeight)
+            .clipped()
+            // Measured in pixels: centred in the strip, the glyph's lowest row
+            // landed on the window's border. One point up keeps it whole.
+            .offset(y: -3)
             .help("Options and Settings — the same menu as a right-click on the panel's edge")
             .onHover { hoveringGear = $0 }
             // Centred in compact mode, where there is no "right"; otherwise at
@@ -113,7 +120,6 @@ struct PanelRootView: View {
         }
         .padding(.horizontal, flags.compact ? 0 : Layout.cornerRadius)
         .frame(height: Layout.footerHeight)
-        .padding(.top, -2)
     }
 
     @ViewBuilder
