@@ -1,13 +1,13 @@
 # Code map
 
-~23,000 lines of Swift across five targets. For each file: what it contains, why
+~23,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,901 lines · 50 files   pure logic, zero AppKit
-  ClawdLightApp/    9,416 lines · 51 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,868 lines · 31 files   470 cases, instantaneous
+  ClawdLightCore/   5,942 lines · 51 files   pure logic, zero AppKit
+  ClawdLightApp/    9,471 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,892 lines · 31 files   472 cases, instantaneous
   ClawdLightE2E/    1,844 lines ·  9 files   79 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 249
+### `AppConfig.swift` · 285
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -199,6 +199,11 @@ away from the `FileHandle`, precisely so it can be tested.
 ### `TranscriptTitleScanner.swift`
 The conversation title out of a file's head, under `TranscriptTail`'s rule —
 one rule for the chat window and the terminal rows.
+
+### `TranscriptWindow.swift`
+Where a window opening on a long transcript starts reading: a few megabytes
+before the end, on a whole line. A transcript can be half a gigabyte and the
+window shows three hundred entries; reading it all was the beachball on ⌘+click.
 
 ### `TranscriptLocator.swift`
 Where a transcript **would** be, for sessions adopted from the filesystem with no
@@ -382,6 +387,11 @@ Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
+### `SelfTest.swift` · 172
+`clawd-light selftest`: the whole chain, link by link — the port opens, a signal
+crosses HTTP, decodes, resolves to a workspace, the Accessibility permission is
+there, the hooks are registered — and it names the link that broke.
+
 ## `Runtime/`
 
 | File | Lines | What |
@@ -392,7 +402,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
 | `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
-| `TranscriptReader.swift` | 89 | follows one transcript by byte offset; resets when the file shrinks |
+| `TranscriptReader.swift` | 112 | follows one transcript by byte offset; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
@@ -481,7 +491,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 205 | the two columns, and one row of the list |
-| `ChatSession.swift` | 213 | one conversation: transcript on disk + status from the hooks + the composer's state |
+| `ChatSession.swift` | 245 | one conversation: transcript on disk + status from the hooks + the composer's state |
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
@@ -498,7 +508,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 470 cases
+## `ClawdLightTests/` — 472 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -532,6 +542,14 @@ script, before it was split. The most important ones:
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
+
+## `TestKit/` — the assertions
+
+Three files: `TestSuite` (a name and its cases), `TestRunner` (runs them, filters
+by name, prints the ✓/✗ lines and the final count) and `Assertions` (`expect`,
+`expectEqual`, `expectNil`, `expectNotNil`, `expectThrows`, `expectNoThrow`,
+`fail`). It exists because the Command Line Tools without Xcode ship neither
+XCTest nor a complete swift-testing (D11).
 
 ## `ClawdLightE2E/` — 79 cases
 

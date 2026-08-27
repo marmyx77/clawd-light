@@ -115,6 +115,14 @@ public enum AppConfig {
     /// through — and the file stays the record of the rest.
     public static let chatHistoryLimit = 300
 
+    /// How much of a transcript's tail a chat window reads when it opens.
+    ///
+    /// Enough for `chatHistoryLimit` entries several times over — a record with
+    /// a big tool result runs to a hundred kilobytes — and small enough that a
+    /// half-gigabyte transcript opens in the time a small one does. The head is
+    /// read separately for the title.
+    public static let transcriptInitialWindow = 8 * 1024 * 1024
+
     /// The app's support directory (panel position, preferences).
     public static var supportDirectory: URL {
         homeDirectory

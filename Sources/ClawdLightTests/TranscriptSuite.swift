@@ -479,6 +479,30 @@ enum TranscriptTailSuite {
             )
         },
 
+        // Lines are split on the byte, and a multibyte character in the middle
+        // of a record must come out whole — the old character-wise split was
+        // correct and slow; this one has to be correct and fast.
+        TestCase("Splitting by byte keeps multibyte text whole and finds every line") { t in
+            var tail = TranscriptTail()
+            let titled = "{\"type\":\"ai-title\",\"sessionId\":\"s\",\"aiTitle\":\"✳ Wire it — naïve façade\"}\n"
+            let entries = tail.consume(titled + messageA + "\n" + messageB + "\n")
+            t.expectEqual(tail.title, "✳ Wire it — naïve façade", "the title survives intact")
+            t.expectEqual(entries.count, 2, "both records")
+            t.expectEqual(tail.carry, "", "ended on a boundary")
+
+            let big = String(repeating: messageA + "\n", count: 2_000)
+            var fresh = TranscriptTail()
+            t.expectEqual(fresh.consume(big).count, 2_000, "two thousand lines in one chunk")
+        },
+
+        TestCase("A window on a long file starts near the end, on a whole line") { t in
+            t.expectEqual(TranscriptWindow.initialOffset(fileSize: 100, window: 1_000), 0, "a file that fits starts at the top")
+            t.expectEqual(TranscriptWindow.initialOffset(fileSize: 5_000, window: 1_000), 4_000, "otherwise a window before the end")
+            let data = Data("tail of a record}\n{\"whole\":1}\n".utf8)
+            t.expectEqual(String(decoding: TranscriptWindow.trimmedToLineStart(data), as: UTF8.self), "{\"whole\":1}\n", "the cut line goes")
+            t.expect(TranscriptWindow.trimmedToLineStart(Data("no newline at all".utf8)).isEmpty, "nothing whole, nothing kept")
+        },
+
         TestCase("A blank line between records changes nothing") { t in
             var tail = TranscriptTail()
             t.expectEqual(

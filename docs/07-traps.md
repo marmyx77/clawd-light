@@ -1111,6 +1111,38 @@ appeared.
 
 ---
 
+## The window that read the whole file
+
+**Symptom.** ⌘+click on a row — or `clawd-light chat n` — showed the beachball
+for ten to thirty seconds before the extended view opened. It had been
+instantaneous; the defect had been there for two days, and nobody had changed
+the chat code in those two days.
+
+**Cause.** Two, stacked. `TranscriptReader.readAll` read the transcript **from
+the beginning** into memory and handed it to `TranscriptTail.consume`, which
+split it into lines with `String.split(separator: "\n")` — a *Character* split,
+which walks the text grapheme by grapheme deciding at every step whether two
+scalars form one character. All of it on the main actor. Nothing had changed in
+the code: the transcripts had grown. The sessions in daily use had reached 61,
+155 and 466 megabytes, and a window that shows the last three hundred entries
+was parsing half a gigabyte to find them.
+
+**Correction.** Three things. The window opens on the file's **tail** — the last
+eight megabytes, from the first whole line (`TranscriptWindow`), with the title
+read from the head as the terminal rows already did — and says so in a note at
+the top when it skipped something. Lines are split on the **byte** `\n`, through
+the UTF-8 view: the same lines, a fraction of the time. And the first read runs
+**off the main actor**, with the one-second poll held back until it is done.
+Measured: 0.5 s on the 61 MB transcript, 0.07 s on the 466 MB one.
+
+**Lesson.** A cost that scales with the file finds you when the file grows, not
+when the code changes — "nothing changed" is the wrong first question for a
+regression, "what got bigger" is the right one. And a `Character` split is the
+right default for text and the wrong one for a format whose separator is a byte
+you can name.
+
+---
+
 ## The permission that belonged to VS Code
 
 **Symptom.** The first click on a terminal row resolved its seat correctly —

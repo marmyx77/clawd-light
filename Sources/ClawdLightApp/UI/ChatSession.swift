@@ -135,28 +135,60 @@ final class ChatSession: ObservableObject {
 
     // MARK: - Reading
 
-    private func loadEverything() {
-        let entries = reader.readAll()
-        conversation = Conversation(
-            sessionId: sessionId, title: reader.title, entries: entries
-        )
-            .trimmed(to: AppConfig.chatHistoryLimit)
+    /// `true` while the first read runs off the main actor: the poll must not
+    /// touch the reader until it is back.
+    private var isLoading = false
 
-        // An empty window has two very different causes — the file wasn't there,
-        // or it was there and nothing in it was recognized — and they look
-        // identical on screen. This is the line that tells them apart.
-        Diagnostics.log("""
-        chat \(sessionId): \(entries.count) entries from \(reader.path) \
-        (\(entries.filter { $0.kind == .human }.count) human, \
-        \(entries.filter { $0.kind == .assistant }.count) assistant) \
-        title=\(reader.title ?? "<none>")
-        """)
-        // Opening a window is reading it: the count starts from now, not from the
-        // beginning of a conversation that may be three days old.
-        markRead()
+    /// The first read, **off the main actor**.
+    ///
+    /// It reads the transcript's tail (`TranscriptReader.readAll`, a few
+    /// megabytes at most) and parses it; even bounded, that is work the window
+    /// should not make the whole app wait for. The reader is handed to the task
+    /// and not touched by the poll until the task hands it back.
+    private func loadEverything() {
+        isLoading = true
+        let reader = self.reader
+        let id = sessionId
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let entries = reader.readAll()
+            let title = reader.title
+            let skipped = reader.skippedBytes
+            await MainActor.run {
+                guard let self else { return }
+                self.isLoading = false
+                var shown = entries
+                if skipped > 0 {
+                    // The window opened on the tail of a long file. Say so where
+                    // the reader would otherwise look for what came before.
+                    let megabytes = Double(skipped) / 1_048_576
+                    shown.insert(TranscriptEntry(
+                        id: "clawd-light.window.\(id)", kind: .note,
+                        text: String(format: "The first %.0f MB of this transcript are not loaded — the window shows its tail.", megabytes),
+                        timestamp: entries.first?.timestamp ?? Date()
+                    ), at: 0)
+                }
+                self.conversation = Conversation(sessionId: id, title: title, entries: shown)
+                    .trimmed(to: AppConfig.chatHistoryLimit)
+
+                // An empty window has two very different causes — the file wasn't
+                // there, or it was there and nothing in it was recognized — and
+                // they look identical on screen. This is the line that tells them
+                // apart.
+                Diagnostics.log("""
+                chat \(id): \(entries.count) entries from \(reader.path) \
+                (\(entries.filter { $0.kind == .human }.count) human, \
+                \(entries.filter { $0.kind == .assistant }.count) assistant) \
+                title=\(title ?? "<none>") skipped=\(skipped) bytes
+                """)
+                // Opening a window is reading it: the count starts from now, not
+                // from the beginning of a conversation that may be three days old.
+                self.markRead()
+            }
+        }
     }
 
     private func refresh() {
+        guard !isLoading else { return }
         // Before the early return below, on purpose. The listener takes the
         // message off disk seconds before the turn produces anything to read, and
         // behind that guard the composer would keep saying "waiting" for a message

@@ -26,20 +26,22 @@ It depends on why you are here.
 
 **[01 · Architecture](01-architecture.md)**
 The complete flow of an event, from Claude Code emitting it to the dot changing
-color. The layers, the boundaries, and why the state has two sources instead of
-one.
+color. The layers, the boundaries, why the state has two sources instead of
+one — and how sessions on other machines and in terminals join the column.
 
 **[02 · Claude Code from the outside](02-claude-code.md)**
-Everything this project worked out by reverse-engineering Claude Code 2.1.220:
+Everything this project worked out by reverse-engineering Claude Code 2.1.220
+(and re-checked against 2.1.247):
 the hook events and the exact shapes of their payloads, the extension's lock
 files, the session files, the VS Code extension's URI handler. Nothing here is
 officially documented. Every claim states **how it was verified**.
 
 **[03 · macOS: permissions, windows, signing](03-macos.md)**
-TCC and its two distinct authorizations, the "responsible process" attribution
-that makes every check run from a terminal a liar, System Events and window
-ordering, code signing and why the ad-hoc kind breaks the permissions on every
-build.
+TCC and its distinct authorizations — one per application a click has to talk
+to — the "responsible process" attribution that makes every check run from a
+terminal a liar, System Events and window ordering, how a click finds a terminal
+tab through the process tree, code signing and why the ad-hoc kind breaks the
+permissions on every build.
 
 **[04 · Decisions](04-decisions.md)**
 Every non-obvious choice with its reason and the alternatives that were

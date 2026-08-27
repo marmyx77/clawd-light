@@ -70,12 +70,35 @@ final class TranscriptReader {
         return tail.consume(String(decoding: data, as: UTF8.self))
     }
 
-    /// Reads the file from the beginning, for a window opening on a conversation
-    /// that was already long.
+    /// Bytes of the file's head this reader never parsed — a window opening on
+    /// a long transcript starts near the end (`TranscriptWindow`). Zero for a
+    /// file that fit.
+    private(set) var skippedBytes: UInt64 = 0
+
+    /// Reads the file for a window opening on a conversation that was already
+    /// long: the last `AppConfig.transcriptInitialWindow` bytes, from the first
+    /// whole line, with the title taken from the head. Whatever arrives after
+    /// this is read incrementally by `readNewEntries`.
     func readAll() -> [TranscriptEntry] {
-        offset = 0
         tail.reset()
-        return readNewEntries()
+        skippedBytes = 0
+        guard let size = fileSize() else { offset = 0; return [] }
+        let start = TranscriptWindow.initialOffset(fileSize: size)
+        guard start > 0 else {
+            offset = 0
+            return readNewEntries()
+        }
+
+        guard let handle = FileHandle(forReadingAtPath: path) else { return [] }
+        defer { try? handle.close() }
+        let headTitle = (try? handle.read(upToCount: TranscriptTitleScanner.headLimit)).flatMap(TranscriptTitleScanner.title)
+        tail = TranscriptTail(carry: "", title: headTitle)
+
+        guard (try? handle.seek(toOffset: start)) != nil, let raw = try? handle.readToEnd() else { return [] }
+        let data = TranscriptWindow.trimmedToLineStart(raw)
+        skippedBytes = start + UInt64(raw.count - data.count)
+        offset = size
+        return tail.consume(String(decoding: data, as: UTF8.self))
     }
 
     // MARK: - Internals

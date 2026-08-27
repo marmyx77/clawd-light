@@ -24,7 +24,8 @@ through all of them.
 | 🔵 soft blue | `waiting` | The turn is over, but something Claude started is still running — a shell, a monitor on a CI run, a subagent — and will wake it. Nothing for you to do yet. |
 | 🔴 dim red | `idle` | The session is at rest. Nothing to read. |
 
-The order of the table is the order the rows take in the column. Green does not
+The table is in order of urgency; the column is not — rows keep the order **you**
+gave them, and a state lights a row up where it is. Green does not
 mean "all good", it means "there is something you haven't seen yet". Clicking the
 traffic light returns the session to dim red: you've seen it.
 
@@ -55,8 +56,8 @@ The time thresholds reason in calendar days: at 00:30 an event from 23:50 is
 every case. The click does not update that timestamp: it records Claude's
 activity, not yours.
 
-For equal states, the one waiting longest sits on top — not the one with the
-alphabetically luckier name.
+With grouping off, the sessions of one project share its place: the most urgent
+comes first, then the one waiting longest — never the alphabetically luckier name.
 
 A badge can appear next to the name: `×3` is the number of **subagents** at work
 in that session, `3` is the number of **sessions** collected into that row. The
@@ -86,6 +87,7 @@ Right-click **on a row**:
 
 | Entry | What it does |
 |---|---|
+| Read here — opens the conversations | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
 | Open | same as the click |
 | Open without marking as read | same as alt+click |
 | Mark as unread | remedies one click too many |
@@ -733,7 +735,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 470 domain tests, instantaneous
+swift run ClawdLightTests              # 472 domain tests, instantaneous
 swift run ClawdLightE2E                # 79 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

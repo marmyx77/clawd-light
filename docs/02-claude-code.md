@@ -1,7 +1,8 @@
 # Claude Code from the outside
 
 Everything here was worked out by observing **Claude Code 2.1.220** and the
-**anthropic.claude-code 2.1.220-darwin-arm64** extension. None of it is official
+**anthropic.claude-code 2.1.220-darwin-arm64** extension, and holds unchanged on
+2.1.247 (`check-contract.sh`, 27 August 2026). None of it is official
 documentation, and none of it is guaranteed stable between releases.
 
 Every claim states **how it was verified**, because the difference between "I

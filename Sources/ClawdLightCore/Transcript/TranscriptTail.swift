@@ -29,9 +29,17 @@ public struct TranscriptTail: Sendable, Equatable {
         // `omittingEmptySubsequences: false` matters: it is what makes a chunk
         // ending exactly on a newline produce a final empty piece, which is how
         // "ended on a boundary" is told apart from "ended mid-line".
-        var lines = (carry + chunk)
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init)
+        //
+        // Split on the **byte** `\n`, not on the `Character`. A transcript is a
+        // JSONL file of tens — this project has seen hundreds — of megabytes, and
+        // `String.split(separator: Character)` walks it grapheme by grapheme,
+        // deciding at every step whether two scalars form one character. The
+        // newline never does; the byte view gives the same lines in a fraction of
+        // the time, and that time was the beachball on ⌘+click (07-traps).
+        let text = carry + chunk
+        var lines = text.utf8
+            .split(separator: 0x0A, omittingEmptySubsequences: false)
+            .map { String(text[$0.startIndex..<$0.endIndex]) }
 
         carry = lines.popLast() ?? ""
 

@@ -8,8 +8,9 @@ repair instead of a rediscovery. `Scripts/check-contract.sh` mechanizes the part
 that can be mechanised; this file carries the part that can't — the *why*, and the
 arrow back into the code.
 
-**Verified against Claude Code 2.1.220 / extension 2.1.220-darwin-arm64, on
-2026-07-31.**
+**First worked out against Claude Code 2.1.220 / extension 2.1.220-darwin-arm64
+on 2026-07-31; last re-verified by `check-contract.sh` against 2.1.247 on
+2026-08-27** (the recorded version is in `required-fields.json`).
 
 How to read a record:
 
