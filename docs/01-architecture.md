@@ -117,7 +117,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-449 cases, instantaneous. They verify Core.
+460 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
@@ -259,7 +259,14 @@ way, and the switch turning off removes them at once (`.forget(origin:)`).
 The row is named by its conversation title, read off the main actor from the
 head of the transcript (`SessionTitleReader` → `TranscriptTitleScanner`, the rule
 `TranscriptTail` already uses) and remembered through `.remember(sessionId:title:)`.
-The click on it is phase C of [the plan](plans/terminal-sessions.md). See
+The click resolves the session's **seat** at click time (`SeatResolver`): the
+pid from the session file, the `procStart` guard against a reused pid, the
+ancestry from the kernel (`ProcessTree`, no `ps`), and a pure classification
+(`SeatClassifier`) into a Terminal.app or iTerm2 tab on a tty, a tmux or zellij
+pane, an editor, or some other application. `TerminalFocuser` then asks the
+terminal's own dictionary to select the tab on that tty — the only string from
+the process table that enters a script, and only after `TTYName` has matched it.
+Editor seats go the way editor rows go. See
 [D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
 ## Concurrency

@@ -11,9 +11,10 @@ enum FocusError: LocalizedError, Equatable {
     /// `AXIsProcessTrusted()` is false: Privacy & Security › Accessibility is missing.
     case accessibilityDenied
 
-    /// System Events refused the Apple Event: Privacy & Security ›
-    /// Automation › clawd-light › System Events is missing.
-    case automationDenied
+    /// The application refused the Apple Event: Privacy & Security ›
+    /// Automation › clawd-light › *that application* is missing. System Events
+    /// for editor windows; a terminal application for its own tabs.
+    case automationDenied(app: String = "System Events")
 
     case vsCodeNotRunning
     case windowNotFound(String)
@@ -43,12 +44,12 @@ enum FocusError: LocalizedError, Equatable {
             If the app is already listed, remove it with “−” and add it back: after \
             every rebuild the signature changes and macOS treats it as a different app.
             """
-        case .automationDenied:
+        case .automationDenied(let app):
             return """
             The Automation permission is missing.
 
             System Settings › Privacy & Security › Automation → \
-            clawd-light → enable “System Events”.
+            clawd-light → enable “\(app)”.
 
             This is a different permission from Accessibility: both are required.
             """
@@ -76,7 +77,7 @@ enum FocusError: LocalizedError, Equatable {
     var shortDescription: String {
         switch self {
         case .accessibilityDenied: return "Accessibility permission missing"
-        case .automationDenied: return "Automation permission missing"
+        case .automationDenied(let app): return "Automation permission for \(app) missing"
         case .vsCodeNotRunning: return "VS Code not running"
         case .windowNotFound(let name): return "no window for “\(name)”"
         case .noWindowsVisible: return "accessibility sees no windows"
@@ -385,8 +386,10 @@ enum VSCodeFocuser {
         }
     }
 
-    private static func runAppleScript(
-        _ source: String
+    /// - Parameter app: the application the script talks to — what a refusal
+    ///   has to name, since the permission is granted per application.
+    static func runAppleScript(
+        _ source: String, app: String = "System Events"
     ) -> Result<NSAppleEventDescriptor, FocusError> {
         var error: NSDictionary?
         guard let script = NSAppleScript(source: source) else {
@@ -402,7 +405,7 @@ enum VSCodeFocuser {
             // -1743: the user has not authorized sending Apple Events.
             // -1744: authorization not requested yet.
             case -1743, -1744:
-                return .failure(.automationDenied)
+                return .failure(.automationDenied(app: app))
             // -25211: the accessibility API is disabled for this process.
             case -25211:
                 return .failure(.accessibilityDenied)

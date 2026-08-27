@@ -35,11 +35,16 @@ public struct LiveSession: Sendable, Equatable {
     /// local window to the front.
     public let host: String?
 
+    /// When the process started, as Claude Code wrote it — clock ticks on Linux,
+    /// a UTC ctime string on macOS (`ProcStart`). The guard against a pid handed
+    /// to another process after this one died.
+    public let procStart: String?
+
     /// Copy with a different activity timestamp.
     public func with(modifiedAt newValue: Date) -> LiveSession {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
-            name: name, kind: kind, modifiedAt: newValue, host: host
+            name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart
         )
     }
 
@@ -51,9 +56,11 @@ public struct LiveSession: Sendable, Equatable {
         name: String?,
         kind: String? = nil,
         modifiedAt: Date,
-        host: String? = nil
+        host: String? = nil,
+        procStart: String? = nil
     ) {
         self.host = host?.trimmed.nilIfEmpty
+        self.procStart = procStart?.trimmed.nilIfEmpty
         self.pid = pid
         self.sessionId = sessionId
         self.cwd = PathNormalizer.normalize(cwd)
@@ -125,7 +132,8 @@ public enum LiveSessionParser {
             entrypoint: (object["entrypoint"] as? String)?.trimmed.nilIfEmpty,
             name: (object["name"] as? String)?.trimmed.nilIfEmpty,
             kind: (object["kind"] as? String)?.trimmed.nilIfEmpty,
-            modifiedAt: modifiedAt
+            modifiedAt: modifiedAt,
+            procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init)
         )
     }
 }

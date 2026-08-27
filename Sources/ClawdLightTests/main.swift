@@ -56,6 +56,7 @@ let suites: [TestSuite] = [
     RewakeScriptSuite.suite,
     RewakeRegistrationSuite.suite,
     HookScriptBuilderSuite.suite,
+    SeatSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

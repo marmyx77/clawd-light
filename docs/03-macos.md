@@ -70,6 +70,18 @@ is also what makes the prompt appear.
 
 ---
 
+### One Automation entry per application
+
+The permission is granted per *target* application: "clawd-light → System
+Events" lets the panel raise editor windows, and says nothing about Terminal.
+Selecting a tab in Terminal.app or iTerm2 sends an Apple Event to that
+application, so the first click on a terminal row shows a second prompt naming
+it, and a refusal is reported as *Automation permission for Terminal missing* —
+not as the System Events one, which is already on. `sdef /Applications/X.app`
+prints what an application exposes without sending it anything: that is how
+`tty` on Terminal's tabs and iTerm2's sessions, and Ghostty's `name` and
+`working directory`, were found.
+
 ## 2. The locked screen
 
 With the screen locked, **two verification tools stop working without saying so**:

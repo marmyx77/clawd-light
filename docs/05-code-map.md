@@ -1,13 +1,13 @@
 # Code map
 
-~21,500 lines of Swift across five targets. For each file: what it contains, why
+~22,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,209 lines · 42 files   pure logic, zero AppKit
-  ClawdLightApp/    8,823 lines · 48 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,536 lines · 29 files   449 cases, instantaneous
+  ClawdLightCore/   5,531 lines · 47 files   pure logic, zero AppKit
+  ClawdLightApp/    9,074 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,693 lines · 30 files   460 cases, instantaneous
   ClawdLightE2E/    1,818 lines ·  9 files   78 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -121,6 +121,35 @@ at 00:30 an event from 23:50 is "yesterday", not "40 minutes ago".
 ### `StringHelpers.swift`
 `trimmed`, `nilIfEmpty`, `padded(to:)`. The last one exists because
 `String(format:)` **ignores** the width on `%@` placeholders.
+
+## `Seat/`
+
+Where a session's process lives — what a click on a terminal row has to bring
+to the front (D25). Pure: the shell reads the process table, this decides.
+
+### `ProcessAncestor.swift`
+One process on the way up, and `TTYName`: tty names come as `ttys003` from the
+kernel and `/dev/ttys003` from dictionaries, and only the normalised form —
+matched against `^/dev/ttys[0-9]+$`, not escaped — may enter a script.
+
+### `Seat.swift`
+`TerminalKind`, a short table like `IDEKind` (Terminal, iTerm2, Ghostty, kitty,
+WezTerm, each with how its tabs are raised), and `Seat`: a terminal tab on a tty,
+a tmux or zellij pane, an editor, some other application, or nothing known.
+
+### `SeatClassifier.swift`
+Chain → seat. Every chain it recognises was measured; `SeatSuite` pins them. The
+two VS Code helpers are told apart by bundle name, not by the word "Helper".
+
+### `TerminalScripts.swift`
+The AppleScript that selects a tab by tty in Terminal.app and iTerm2, erroring
+`-1728` when no tab is on it — the code the editor path already reads as "not
+there".
+
+### `ProcStart.swift`
+The session file's `procStart` in its two forms — Linux ticks, macOS ctime **in
+UTC** — and whether a process that started at a given moment can be the one the
+file names. The guard against a reused pid.
 
 ## `Transcript/`
 
@@ -392,6 +421,15 @@ deliberately not a general-purpose one.
 
 ## `Focus/`
 
+### `ProcessTree.swift` · `SeatResolver.swift` · `TerminalFocuser.swift`
+The click on a terminal row. `ProcessTree` reads parent, tty, start time and
+arguments from the kernel (`sysctl`, `proc_pidpath`; no `ps`). `SeatResolver`
+goes from a session id to its seat at click time — file, pid, `procStart`
+guard, chain, classifier — and caches nothing. `TerminalFocuser` raises the
+seat: by tty through the terminal's dictionary, or activates the application
+and says where it stopped. Automation is per target application, and a refusal
+names the one that refused.
+
 ### `VSCodeFocuser.swift` · 393
 The most delicate file. Two strategies, three explicit outcomes.
 
@@ -445,7 +483,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 449 cases
+## `ClawdLightTests/` — 460 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -473,6 +511,7 @@ script, before it was split. The most important ones:
 | `TranscriptDecoderSuite` | who spoke — including the 579-against-209 case |
 | `TranscriptTailSuite` | the half-written line, split across up to three chunks |
 | `TranscriptLocatorSuite` | the naming rule, accents included |
+| `SeatSuite` | every measured chain classified; tty names matched not escaped; the scripts; `procStart` as UTC and the zone trap |
 | `ConversationSuite` | unread counts answers, and trimming says how much it dropped |
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |

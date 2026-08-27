@@ -1040,9 +1040,14 @@ keep the folder name.
 
 **The click, by origin.** An editor row takes the path it always took — window
 by folder title, no process walk — and the tab deep link only when the session's
-entrypoint is `claude-vscode` (D5). A terminal row's click will go through the
-session's process to the terminal tab hosting it (phase C of
-[the plan](plans/terminal-sessions.md)); until then it says so. Consequence,
+entrypoint is `claude-vscode` (D5). A terminal row's click goes through the
+session's process — pid from the session file, `procStart` against the kernel's
+start time, the chain up to the hosting application (`ProcessTree`,
+`SeatClassifier`) — to that application's own way of selecting a tab: by tty
+through the dictionaries of Terminal.app and iTerm2 (`TerminalScripts`). A tmux
+or zellij pane, Ghostty, kitty and WezTerm are the next phases of
+[the plan](plans/terminal-sessions.md); until then the click activates what it
+can and the menu says where it stopped. Consequence,
 stated: a `claude` started in a Terminal.app tab **inside a folder that is open
 in VS Code** is an editor row and its click raises the VS Code window. The
 alternative — a process walk on every editor click — would show a Terminal

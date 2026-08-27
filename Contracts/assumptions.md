@@ -709,6 +709,25 @@ session started in `~` is a username. The chat window shows the folder too.
 
 ---
 
+## sessions.file.procStart · two formats, and the macOS one is UTC
+
+**We assume** the session file's `procStart` is the process's start time: clock
+ticks since boot on Linux (`"5480393"`), and on macOS a ctime string **in UTC
+with no zone marker** at second resolution — `"Wed Aug 26 17:07:24 2026"` for a
+process `ps -o lstart` shows at `19:07:24` local. Measured on two live sessions.
+
+**Depends at** [ProcStart.swift:22](../Sources/ClawdLightCore/Seat/ProcStart.swift#L22) ·
+[SeatResolver.swift:34](../Sources/ClawdLightApp/Focus/SeatResolver.swift#L34)
+
+**How verified** — `runtime`, against the kernel's `p_starttime` for the same pid.
+
+**Failure mode** — **loud in the wrong direction**: a format change that parses
+as another moment makes every click on a terminal row answer "its pid now
+belongs to another process". A format that stops parsing is quiet — the guard
+is skipped and a reused pid could be raised.
+
+---
+
 ## What this cannot do
 
 It cannot catch what nobody thought to write down here. The list grows the way it

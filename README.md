@@ -333,8 +333,11 @@ those rows away at once.
 
 Two limits, stated. A `claude` in a terminal tab **inside a folder that is open
 in VS Code** is an editor row like any other, and its click raises the VS Code
-window. And clicking a terminal row to select its tab is not built yet — the
-row says so; it is [phase C of the plan](docs/plans/terminal-sessions.md).
+window. And clicking a terminal row selects its tab in **Terminal.app and iTerm2**,
+asking once for the Automation permission for that application; inside tmux or
+zellij, and in Ghostty, kitty or WezTerm, the click activates what it can and
+the menu says where it stopped — those are the [next phases of the
+plan](docs/plans/terminal-sessions.md).
 
 ## Installation
 
@@ -699,7 +702,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 449 domain tests, instantaneous
+swift run ClawdLightTests              # 460 domain tests, instantaneous
 swift run ClawdLightE2E                # 78 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

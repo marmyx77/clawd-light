@@ -298,13 +298,12 @@ final class PanelController {
         let session = row.primary
 
         // A terminal row's place is a terminal tab, found through the session's
-        // process — the seat resolver of phase C of docs/plans/terminal-sessions.md.
-        // Until it exists the click says so rather than raising an editor window
-        // of a folder that has none.
+        // process at click time (D25): its pid from the session file, the chain
+        // up to the hosting application, that application's own way of selecting
+        // a tab. Never an editor window of a folder that has none — and never a
+        // modal: the session may simply have ended since the last poll.
         if session.origin == .terminal {
-            store.reportError(
-                "“\(session.displayName)” runs in a terminal — raising its tab is not built yet."
-            )
+            activateTerminal(session)
             return
         }
 
@@ -348,6 +347,38 @@ final class PanelController {
                 title: "Cannot open “\(session.workspace.name)”",
                 message: error.localizedDescription
             )
+        }
+    }
+
+    /// The click on a terminal row: seat first, then the focuser for that seat.
+    private func activateTerminal(_ session: SessionState) {
+        let name = session.displayName
+        let seat: Seat
+        switch SeatResolver.resolve(sessionId: session.id) {
+        case .failure(let error):
+            store.reportError("“\(name)” cannot be raised — \(error.short).")
+            return
+        case .success(let found):
+            seat = found
+        }
+        Diagnostics.log("seat of \(session.id.prefix(8)): \(seat.label)")
+
+        let result: VSCodeFocuser.FocusResult
+        if case .editor = seat {
+            // An editor's own terminal, in a folder no window claims (an empty
+            // window, say): the editor is the place, raised the way editor rows are.
+            result = VSCodeFocuser.focus(workspace: session.workspace, sessionId: nil)
+        } else {
+            result = TerminalFocuser.focus(seat: seat)
+        }
+
+        switch result {
+        case .raised:
+            store.clearError()
+        case .activatedOnly(let reason):
+            store.reportError("“\(name)”: only \(seat.label) was activated (\(reason.shortDescription)).")
+        case .failed(let error):
+            store.reportError("“\(name)” runs in \(seat.label) — \(error.shortDescription).")
         }
     }
 

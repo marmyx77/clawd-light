@@ -1,7 +1,8 @@
 # Terminal sessions — implementation plan
 
-**Status:** planned, 2026-08-27, revised the same day from an adversarial review
-([terminal-sessions-review.md](terminal-sessions-review.md)). Nothing below is built yet.
+**Status:** in progress. Planned 2026-08-27, revised the same day from an adversarial
+review ([terminal-sessions-review.md](terminal-sessions-review.md)); phases A, B and
+C built and verified the same day — see each phase for what was found on the way.
 **Scope:** a `claude` started in a terminal — Terminal.app, iTerm2, Ghostty, kitty,
 WezTerm, inside tmux or zellij, or in VS Code's integrated terminal — gets a row
 when it runs in a folder no editor window claims, and a click raises the
@@ -293,7 +294,14 @@ terminal row → refused.
 Docs: D25, 01-architecture "Terminal sessions", README section, Contracts
 `hook.cwd.follows.cd`, `sessions.file.procStart` (both formats), `terminal.title`.
 
-**C · The click, Terminal.app and iTerm2** — half a day plus live checks.
+**C · The click, Terminal.app and iTerm2** — **done, 2026-08-27** for
+Terminal.app, verified live: `open 8` on the home-folder row resolved
+`Terminal /dev/ttys000`, the Automation prompt for Terminal appeared once, and
+the tab came to the front (`seat: Terminal /dev/ttys000 raised`, front
+application Terminal). iTerm2 is built on its dictionary and not yet exercised.
+One trap found on the way, recorded in 03-macos: an app launched from a
+terminal inherits that terminal's TCC attribution, and a denial recorded for
+VS Code → Terminal earlier in the day was reported as the panel's own.
 `ProcessTree`, `SeatClassifier`, `TerminalKind`, `TerminalScripts` and validators,
 `ProcStart`, `SeatResolver`, `TerminalFocuser` for the two tty hosts. Tests:
 classifier fixtures for every chain in §0; script builders and every validator's
