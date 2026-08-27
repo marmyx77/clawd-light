@@ -92,10 +92,13 @@ struct PanelRootView: View {
             Menu {
                 menu
             } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.primary.opacity(hoveringGear ? 0.85 : 0.38))
-                    .frame(width: 14, height: Layout.footerHeight)
+                // The same grey as the timestamps, at rest a little fainter:
+                // a hint that the menu exists, not a control asking to be
+                // pressed. Outline, not filled — filled read as a white blob.
+                Image(systemName: "gearshape")
+                    .font(.system(size: 8, weight: .regular))
+                    .foregroundStyle(StatusPalette.timeColor.opacity(hoveringGear ? 1 : 0.6))
+                    .frame(width: 16, height: Layout.footerHeight)
                     .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
@@ -103,13 +106,14 @@ struct PanelRootView: View {
             .fixedSize()
             .help("Options and Settings — the same menu as a right-click on the panel's edge")
             .onHover { hoveringGear = $0 }
-            // Centred in compact mode, where there is no "right"; at the right
-            // edge otherwise, under the drag handles, away from the names.
+            // Centred in compact mode, where there is no "right"; otherwise at
+            // the right, under the drag handles — and inside the corner radius,
+            // where the clip does not cut it.
             if flags.compact { Spacer(minLength: 0) }
         }
-        .padding(.horizontal, flags.compact ? 0 : Layout.panelPadding - 2)
+        .padding(.horizontal, flags.compact ? 0 : Layout.cornerRadius)
         .frame(height: Layout.footerHeight)
-        .padding(.top, -3)
+        .padding(.top, -2)
     }
 
     @ViewBuilder

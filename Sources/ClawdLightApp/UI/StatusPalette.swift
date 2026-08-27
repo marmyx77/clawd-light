@@ -106,7 +106,7 @@ enum Layout {
     /// The strip under the rows that holds the gear — the visible door to the
     /// menu a right-click on the margins also opens. Small on purpose: it is a
     /// hint that the menu exists, not a toolbar.
-    static let footerHeight: CGFloat = 10
+    static let footerHeight: CGFloat = 14
 
     /// Height needed for `count` rows, capped at `maxVisibleRows`, plus the footer.
     static func height(rowCount: Int) -> CGFloat {

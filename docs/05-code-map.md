@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   5,942 lines · 51 files   pure logic, zero AppKit
-  ClawdLightApp/    9,511 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightApp/    9,515 lines · 51 files   shell: AppKit, network, windows
   ClawdLightTests/  5,892 lines · 31 files   472 cases, instantaneous
   ClawdLightE2E/    1,844 lines ·  9 files   79 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
