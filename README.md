@@ -103,7 +103,8 @@ makes itself key before the click is dispatched, so the first click is delivered
 rather than spent on focus. A double-click counts as one — the second click is
 dropped.
 
-Right-click **on the panel's margins** for the general menu: compact mode,
+Click the **gear** under the rows — or right-click **on the panel's margins** —
+for the general menu: compact mode,
 grouping, the "only what's waiting" filter, terminal sessions, notifications,
 presence, hooks, launch at login — and **Settings…**, the window for what does
 not fit a menu: the remote machines and the terminal-sessions switch.

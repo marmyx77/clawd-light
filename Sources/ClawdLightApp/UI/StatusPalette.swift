@@ -103,10 +103,15 @@ enum Layout {
         compact ? compactWidth : expandedWidth
     }
 
-    /// Height needed for `count` rows, capped at `maxVisibleRows`.
+    /// The strip under the rows that holds the gear — the visible door to the
+    /// menu a right-click on the margins also opens. Small on purpose: it is a
+    /// hint that the menu exists, not a toolbar.
+    static let footerHeight: CGFloat = 10
+
+    /// Height needed for `count` rows, capped at `maxVisibleRows`, plus the footer.
     static func height(rowCount: Int) -> CGFloat {
         let visible = min(max(rowCount, 1), AppConfig.maxVisibleRows)
         let rows = CGFloat(visible) * rowHeight + CGFloat(max(visible - 1, 0)) * rowSpacing
-        return rows + panelPadding * 2
+        return rows + panelPadding * 2 + footerHeight
     }
 }

@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   5,942 lines · 51 files   pure logic, zero AppKit
-  ClawdLightApp/    9,471 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightApp/    9,511 lines · 51 files   shell: AppKit, network, windows
   ClawdLightTests/  5,892 lines · 31 files   472 cases, instantaneous
   ClawdLightE2E/    1,844 lines ·  9 files   79 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
@@ -485,7 +485,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightRow.swift` | 322 | one row: dot, slot, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
-| `PanelRootView.swift` | 181 | the general menu |
+| `PanelRootView.swift` | 216 | the general menu, and the gear under the rows that opens it |
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `StatusPalette.swift` | 112 | colors and measurements |

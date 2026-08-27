@@ -53,17 +53,22 @@ struct PanelRootView: View {
     let actions: PanelActions
     let rowActions: RowActions
 
+    @State private var hoveringGear = false
+
     var body: some View {
-        TrafficLightColumn(
-            store: store,
-            compact: flags.compact,
-            options: options,
-            notificationsEnabled: flags.notificationsEnabled,
-            mutedWorkspaces: mutedWorkspaces,
-            calmWorkspaces: calmWorkspaces,
-            actions: rowActions,
-            onRevealHidden: actions.showHiddenAgain
-        )
+        VStack(spacing: 0) {
+            TrafficLightColumn(
+                store: store,
+                compact: flags.compact,
+                options: options,
+                notificationsEnabled: flags.notificationsEnabled,
+                mutedWorkspaces: mutedWorkspaces,
+                calmWorkspaces: calmWorkspaces,
+                actions: rowActions,
+                onRevealHidden: actions.showHiddenAgain
+            )
+            footer
+        }
         .background(PanelBackground())
         .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
         .overlay(
@@ -75,6 +80,36 @@ struct PanelRootView: View {
         // right precedence. The global entries are not duplicated into every row
         // because a fifteen-item menu cannot be read.
         .contextMenu { menu }
+    }
+
+    /// The gear under the rows: the same menu as a right-click on the margins,
+    /// behind a left-click on something you can see. A menu that exists only
+    /// behind a right-click on an empty edge is a menu nobody finds — reported
+    /// by use, after a week of not finding it.
+    private var footer: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            Menu {
+                menu
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.primary.opacity(hoveringGear ? 0.85 : 0.38))
+                    .frame(width: 14, height: Layout.footerHeight)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Options and Settings — the same menu as a right-click on the panel's edge")
+            .onHover { hoveringGear = $0 }
+            // Centred in compact mode, where there is no "right"; at the right
+            // edge otherwise, under the drag handles, away from the names.
+            if flags.compact { Spacer(minLength: 0) }
+        }
+        .padding(.horizontal, flags.compact ? 0 : Layout.panelPadding - 2)
+        .frame(height: Layout.footerHeight)
+        .padding(.top, -3)
     }
 
     @ViewBuilder
