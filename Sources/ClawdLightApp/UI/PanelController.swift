@@ -354,12 +354,14 @@ final class PanelController {
     private func activateTerminal(_ session: SessionState) {
         let name = session.displayName
         let seat: Seat
+        let chain: [ProcessAncestor]
         switch SeatResolver.resolve(sessionId: session.id) {
         case .failure(let error):
             store.reportError("“\(name)” cannot be raised — \(error.short).")
             return
         case .success(let found):
-            seat = found
+            seat = found.seat
+            chain = found.chain
         }
         Diagnostics.log("seat of \(session.id.prefix(8)): \(seat.label)")
 
@@ -369,7 +371,12 @@ final class PanelController {
             // window, say): the editor is the place, raised the way editor rows are.
             result = VSCodeFocuser.focus(workspace: session.workspace, sessionId: nil)
         } else {
-            result = TerminalFocuser.focus(seat: seat)
+            result = TerminalFocuser.focus(
+                seat: seat,
+                context: TerminalFocuser.Context(
+                    cwd: session.workspace.path, title: session.title, pids: Set(chain.map(\.pid))
+                )
+            )
         }
 
         switch result {

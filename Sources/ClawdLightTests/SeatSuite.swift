@@ -206,3 +206,58 @@ enum MultiplexerSuite {
         },
     ])
 }
+
+/// The three hosts without a tty in their dictionary: what their listings say.
+enum TerminalListingSuite {
+    static let suite = TestSuite("Terminal listings: WezTerm, kitty, Ghostty", [
+
+        TestCase("WezTerm panes are keyed by tty, and the cwd is a file URL") { t in
+            let json = Data("""
+            [{"window_id":0,"tab_id":0,"pane_id":3,"title":"zsh","cwd":"file:///private/tmp/probe","tty_name":"/dev/ttys012","is_active":true},
+             {"window_id":0,"tab_id":1,"pane_id":4,"title":"claude","cwd":"file:///Users/dev","tty_name":"/dev/ttys013"}]
+            """.utf8)
+            let panes = WezTermListing.parse(json)
+            t.expectEqual(panes.count, 2, "panes")
+            t.expectEqual(panes[0].cwd, "/private/tmp/probe", "cwd as a path")
+            t.expectEqual(WezTermListing.pane(onTTY: "ttys013", in: panes)?.paneId, 4, "by tty, either shape")
+            t.expectNil(WezTermListing.pane(onTTY: "ttys099", in: panes), "no pane")
+            t.expect(WezTermListing.parse(Data("nope".utf8)).isEmpty, "garbage parses to nothing")
+        },
+
+        TestCase("kitty windows are found by the pid they run or front") { t in
+            let json = Data("""
+            [{"id":1,"tabs":[{"id":1,"title":"zsh","windows":[
+               {"id":7,"pid":500,"cwd":"/tmp/a","title":"zsh","foreground_processes":[{"pid":500,"cwd":"/tmp/a","cmdline":["zsh"]}]},
+               {"id":8,"pid":600,"cwd":"/Users/dev","title":"✳ Wire it","foreground_processes":[{"pid":601,"cwd":"/Users/dev","cmdline":["claude"]}]}
+            ]}]}]
+            """.utf8)
+            let windows = KittyListing.parse(json)
+            t.expectEqual(windows.count, 2, "windows across tabs")
+            t.expectEqual(KittyListing.window(hostingAnyOf: [601], in: windows)?.id, 8, "the claude in the foreground")
+            t.expectEqual(KittyListing.window(hostingAnyOf: [500], in: windows)?.id, 7, "the shell itself")
+            t.expectNil(KittyListing.window(hostingAnyOf: [999], in: windows), "nobody")
+        },
+
+        TestCase("Ghostty terminals are matched by title first, folder second, and never by guess") { t in
+            let terminals = [
+                GhosttyMatcher.Terminal(id: "A", name: "✳ Other", workingDirectory: "/Users/dev"),
+                GhosttyMatcher.Terminal(id: "B", name: "✳ Wire it", workingDirectory: "/Users/dev/other"),
+            ]
+            t.expectEqual(GhosttyMatcher.best(among: terminals, cwd: "/Users/dev", title: "Wire it")?.id, "B", "title wins")
+            t.expectEqual(GhosttyMatcher.best(among: terminals, cwd: "/Users/dev/", title: nil)?.id, "A", "folder, normalised")
+            t.expectNil(GhosttyMatcher.best(among: terminals, cwd: "/elsewhere", title: nil), "two marked terminals say nothing")
+
+            // Measured: as Ghostty's own command, claude reports no working
+            // directory and, before the first exchange, only Claude's mark.
+            let lone = [
+                GhosttyMatcher.Terminal(id: "A", name: "zsh", workingDirectory: "/Users/dev"),
+                GhosttyMatcher.Terminal(id: "C", name: "✳ Claude Code", workingDirectory: ""),
+            ]
+            t.expectEqual(GhosttyMatcher.best(among: lone, cwd: "/tmp/probe", title: nil)?.id, "C", "the only marked one")
+            t.expectNil(GhosttyMatcher.best(among: [lone[0]], cwd: "/tmp/probe", title: nil), "no mark, no match")
+            t.expect(TerminalScripts.ghosttyFocus(terminalId: "surface-12")?.contains("whose id is \"surface-12\"") == true, "focus by id")
+            t.expectNil(TerminalScripts.ghosttyFocus(terminalId: "x\" & \"y"), "a quote is refused")
+            t.expect(TerminalScripts.ghosttyList.contains("repeat with t in terminals"), "the listing walks the application's terminals")
+        },
+    ])
+}

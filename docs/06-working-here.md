@@ -25,7 +25,7 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run ClawdLightTests              # 463 cases, instantaneous
+swift run ClawdLightTests              # 466 cases, instantaneous
 swift run ClawdLightE2E                # 78 cases, about a minute
 swift run ClawdLightTests "Subagents"  # filter by suite or by case
 ```
@@ -111,6 +111,22 @@ curl -H "X-Clawd-Token: $(cat ~/.clawd-light/token)" \
 
 These aren't general principles. Each one comes from a concrete mistake made
 here, and each has a cost worth paying.
+
+### The terminal seats
+
+A click on a terminal row cannot be proven by a test: it needs a GUI and an
+Automation permission. The check that was run for every host, and is worth
+re-running after touching `TerminalFocuser` or a script: start a `claude` inside
+the host in a folder no editor has open — from a shell **without** a Claude Code
+session's environment (`env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION … claude`,
+or a nested `claude` writes no session file and gets no row); turn terminal
+sessions on; from another application run `clawd-light open <slot>`; expect the
+host in front with that tab selected, and in the log `seat of …: <host> …` then
+`seat: … raised`. `open -a Terminal some.command` opens a Terminal tab running
+a script with no permission at all, which is how the tmux check attached a
+client. Launch the panel through LaunchServices (`open dist/ClawdLight.app
+--env CLAWD_LIGHT_DEBUG=1`), never from a shell — see 07-traps, *The
+permission that belonged to VS Code*.
 
 ## 1. Verify with the medium the app actually uses
 

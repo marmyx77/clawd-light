@@ -1048,9 +1048,11 @@ through the dictionaries of Terminal.app and iTerm2 (`TerminalScripts`). A tmux
 pane is selected inside tmux and its attached client's tab raised the same way;
 a zellij pane's client is paired with its server through their Unix sockets
 (`lsof`) and its tab raised likewise, with the tab titled by the session name
-as the fallback. Ghostty, kitty and WezTerm are the next phase of
-[the plan](plans/terminal-sessions.md); until then the click activates the
-application and the menu says where it stopped. Consequence,
+as the fallback. Ghostty has no tty in its dictionary but lists every terminal's title and
+working directory: the match happens in Swift and only the chosen id goes back
+into a script. WezTerm's CLI lists panes by tty; kitty's, over its remote-control
+socket, lists windows by pid — with remote control off the click activates
+kitty and the menu says why it stopped there. Consequence,
 stated: a `claude` started in a Terminal.app tab **inside a folder that is open
 in VS Code** is an editor row and its click raises the VS Code window. The
 alternative — a process walk on every editor click — would show a Terminal

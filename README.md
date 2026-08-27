@@ -336,9 +336,12 @@ in VS Code** is an editor row like any other, and its click raises the VS Code
 window. And clicking a terminal row selects its tab in **Terminal.app and iTerm2**,
 asking once for the Automation permission for that application — through
 **tmux** (the pane is selected, then the attached client's tab) and **zellij**
-(the client's tab; the pane inside it is yours to find) as well. In Ghostty,
-kitty or WezTerm the click activates the application and the menu says where it
-stopped — the [next phase of the plan](docs/plans/terminal-sessions.md).
+(the client's tab; the pane inside it is yours to find) as well. **Ghostty** (by the
+terminal's title, folder, or Claude's own `✳` mark when it is the only one,
+through its dictionary) and **WezTerm** (by tty,
+through `wezterm cli`) work out of the box; **kitty** needs remote control on —
+`allow_remote_control yes` and `listen_on unix:/tmp/kitty` in `kitty.conf` —
+and without it the click activates kitty and the menu says why.
 
 ## Installation
 
@@ -601,6 +604,7 @@ clawd-light uninstall-hooks          remove the registrations (the script stays 
 clawd-light status                   configuration and detected sessions
 clawd-light selftest                 check the whole chain and report what's missing
 clawd-light sessions                 the column as the running app sees it
+clawd-light terminal on|off|status   rows for claude started in a terminal
 clawd-light next                     raise the next waiting session
 clawd-light open <n>                 raise the project bound to slot n
 clawd-light open                     list what the slots address
@@ -703,7 +707,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 463 domain tests, instantaneous
+swift run ClawdLightTests              # 466 domain tests, instantaneous
 swift run ClawdLightE2E                # 78 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

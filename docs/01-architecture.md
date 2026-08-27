@@ -117,7 +117,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-463 cases, instantaneous. They verify Core.
+466 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
@@ -269,7 +269,9 @@ the process table that enters a script, and only after `TTYName` has matched it.
 A tmux seat is two hops — the pane on that tty selected inside tmux, then the
 attached client's own chain; a zellij seat pairs the client with its server
 through their Unix sockets and follows the client's chain, falling back to the
-tab titled by the session name. Editor seats go the way editor rows go. See
+tab titled by the session name. Ghostty is matched in Swift on what its dictionary lists (title, working
+directory), WezTerm by tty through its CLI, kitty by pid over its socket
+(`TerminalListings`). Editor seats go the way editor rows go. See
 [D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
 ## Concurrency

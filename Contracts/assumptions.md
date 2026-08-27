@@ -696,7 +696,8 @@ are immune either way: a subfolder still resolves to the window's folder.
 that the first one sits within the file's head (measured: ≤ 119 KB across four
 hundred transcripts), and that later ones repeat or replace it — so the last one
 seen is the title. Claude Code writes the same text into the terminal's title bar,
-prefixed `✳`.
+prefixed `✳` — and `✳ Claude Code` before any title exists. That mark is what
+tells a Ghostty terminal running `claude` from one running a shell.
 
 **Depends at** [TranscriptTitleScanner.swift:15](../Sources/ClawdLightCore/Transcript/TranscriptTitleScanner.swift#L15) ·
 [TranscriptTail.swift:38](../Sources/ClawdLightCore/Transcript/TranscriptTail.swift#L38)
@@ -725,6 +726,44 @@ process `ps -o lstart` shows at `19:07:24` local. Measured on two live sessions.
 as another moment makes every click on a terminal row answer "its pid now
 belongs to another process". A format that stops parsing is quiet — the guard
 is skipped and a reused pid could be raised.
+
+---
+
+## terminal.sdef · what the terminals' dictionaries expose
+
+**We assume** Terminal.app exposes `tty` on every tab and iTerm2 on every
+session (both read-only, both as `/dev/ttysNNN`); that Ghostty's `terminal`
+has `id`, `name` and `working directory` and a `focus` command, and no tty;
+that kitty and WezTerm have no dictionary and answer through `kitten @` (over
+a socket, remote control permitting) and `wezterm cli` (panes with `tty_name`,
+no pid). Read with `sdef <app>` and the CLIs' `--help`, then exercised live.
+
+**Depends at** [TerminalScripts.swift:15](../Sources/ClawdLightCore/Seat/TerminalScripts.swift#L15) ·
+[TerminalListings.swift:9](../Sources/ClawdLightCore/Seat/TerminalListings.swift#L9) ·
+[TerminalFocuser.swift:30](../Sources/ClawdLightApp/Focus/TerminalFocuser.swift#L30)
+
+**How verified** — `runtime`, one click per host on a real `claude` inside it.
+
+**Failure mode** — a property renamed makes the script error and the click
+report *AppleScript failed* for that host; a CLI field renamed makes the pane
+or window "not found". Both name the host; neither raises a wrong tab.
+
+---
+
+## zellij.socket · the server's socket is named after the session
+
+**We assume** the zellij server runs as `zellij --server <dir>/<session>`, with
+the session name as the socket's last path component, and that `lsof -nP -U`
+prints a socket's own kernel address in `DEVICE` and its peer as `->0x…` in
+`NAME` — which pairs a client with its server. zellij 0.45, macOS 26.
+
+**Depends at** [SeatClassifier.swift:62](../Sources/ClawdLightCore/Seat/SeatClassifier.swift#L62) ·
+[MultiplexerListings.swift:24](../Sources/ClawdLightCore/Seat/MultiplexerListings.swift#L24)
+
+**How verified** — `runtime`, on the zellij session in daily use.
+
+**Failure mode** — quiet: the pairing fails and the click falls back to the tab
+whose title carries the session name, which zellij writes there.
 
 ---
 

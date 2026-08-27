@@ -701,3 +701,31 @@ of work I shipped without watching it work.
 | Build | clean, no warnings |
 | Longest file | 407 lines (limit the project sets itself: 800) |
 | Off-plan defects found and fixed | 9, two of them introduced that day and found by the review |
+
+## 27 August — sessions in a terminal
+
+The day's question was whether the panel could show the `claude` sessions
+started by hand in a terminal, and take you to their tab. Measured first: the
+hooks already arrived and were dropped for want of an editor window; the hook's
+`cwd` follows every `cd` Claude makes while the session file's does not; every
+process chain from a `claude` up to its terminal, on this machine; what each
+terminal's dictionary or CLI exposes (`sdef`, `--help`, then a real click).
+
+A plan was written, then put through an adversarial review — three lenses and
+a refuter per finding; nineteen findings confirmed, among them the anchoring on
+the session file's folder, the row carrying its own origin, and `procStart`
+being a UTC ctime string on macOS — and rewritten from it. Then six phases in a
+day, each green and documented before the next: the deep link only for sessions
+the extension hosts (A); the row, born only when a live session file names the
+session (B, D25); the click by tty in Terminal.app and iTerm2 through the
+process tree (C); through tmux and zellij (D — `lsof` does pair a zellij client
+with its server, from the column the plan had first misread); Ghostty, WezTerm
+and kitty (E). Every host was clicked live with a real `claude` inside it.
+
+Three things found on the way and written into 07-traps: an app relaunched
+from a Claude Code shell inherits VS Code's Automation denials; a `claude`
+started from such a shell writes no session file; a `claude` that is Ghostty's
+own command reports no working directory, so the matcher learned Claude's `✳`
+mark. Deferred, and said so in D25: the reconcile that ignores an empty live
+list, because the end-to-end harness leans on it.
+

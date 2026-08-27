@@ -1111,6 +1111,55 @@ appeared.
 
 ---
 
+## The permission that belonged to VS Code
+
+**Symptom.** The first click on a terminal row resolved its seat correctly —
+`Terminal /dev/ttys000` — and the log said *Automation permission for Terminal
+missing*. No prompt had appeared, and none would.
+
+**Cause.** The panel had been relaunched from the shell of this very session:
+`nohup dist/ClawdLight.app/Contents/MacOS/clawd-light &`. macOS attributes
+Automation to the **responsible process**, and for a binary started from a
+terminal that is the terminal's owner — here VS Code. Earlier in the day an
+`osascript` from the same shell had been denied Terminal, and that denial was
+recorded for VS Code → Terminal. The panel inherited it.
+
+**Correction.** Launch through LaunchServices — `open dist/ClawdLight.app`, with
+`--env` for the debug variable — so the bundle is responsible for itself. The
+prompt then appeared, and the tab came to the front.
+
+**Lesson.** 03-macos already said that every permission check run from a
+terminal lies. It lies in both directions: a denial recorded for the terminal's
+owner is a denial for everything that owner launches, including the app whose
+permission you think you are testing.
+
+---
+
+## The session that left no file
+
+**Symptom.** A `claude` started inside kitty and WezTerm for the live checks
+ran, its `SessionStart` hook reached the panel — and the log said *no live
+session file names the session*. No row.
+
+**Cause.** The terminals had been launched from a shell that a Claude Code
+session had opened, and inherited its environment: `CLAUDECODE`,
+`CLAUDE_CODE_CHILD_SESSION`, the messaging socket. A nested `claude` treats
+itself as a child session and writes no `~/.claude/sessions/<pid>.json`. D25
+requires that file — deliberately, it is what keeps forged and foreign signals
+out — so the rule did exactly what it says, to a session that looked ordinary
+from the outside.
+
+**Correction.** None in the code: `env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION
+… claude` for the checks, and the drop line now says which condition failed
+(*no live session file names the session* against *terminal sessions are off*),
+which is what turned twenty minutes of guessing into one line.
+
+**Lesson.** A guard that refuses silently is a guard you will one day argue
+with. Every refusal in `StateStore.handle` names its reason in the log; the
+reason was read, and the "bug" was the environment.
+
+---
+
 ## `grep -q` under `pipefail`
 
 **Symptom.** "✗ The signature doesn't appear to be issued by…" on a perfectly

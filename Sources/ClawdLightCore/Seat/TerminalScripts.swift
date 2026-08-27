@@ -54,6 +54,30 @@ public enum TerminalScripts {
         }
     }
 
+    /// Ghostty: every terminal's id, title and working directory, for the match
+    /// that happens in Swift. `terminal` is an element of the application.
+    public static let ghosttyList = """
+    tell application "Ghostty"
+        set out to {}
+        repeat with t in terminals
+            set end of out to {id of t, name of t, working directory of t}
+        end repeat
+        return out
+    end tell
+    """
+
+    /// Ghostty: focus one terminal by the id the listing gave — validated by
+    /// `GhosttyMatcher.isUsable` before it is quoted.
+    public static func ghosttyFocus(terminalId: String) -> String? {
+        guard GhosttyMatcher.isUsable(id: terminalId) else { return nil }
+        return """
+        tell application "Ghostty"
+            focus (first terminal whose id is "\(AppleScriptString.escaped(terminalId))")
+            activate
+        end tell
+        """
+    }
+
     /// Terminal.app and iTerm2: the tab whose title contains a fragment — the
     /// zellij session name, which zellij writes into the tab's title. The
     /// fallback when the client cannot be paired with its server.

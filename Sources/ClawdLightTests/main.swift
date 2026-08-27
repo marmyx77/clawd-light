@@ -58,6 +58,7 @@ let suites: [TestSuite] = [
     HookScriptBuilderSuite.suite,
     SeatSuite.suite,
     MultiplexerSuite.suite,
+    TerminalListingSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

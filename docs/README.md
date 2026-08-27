@@ -66,7 +66,11 @@ of work you won't have to repeat.
 | [Contracts/assumptions.md](../Contracts/assumptions.md) | every undocumented thing we depend on, where the code leans on it, and what breaks when it goes |
 | [PLAN.md](../PLAN.md) | the development plan with the outcome table |
 | [WORKLOG.md](../WORKLOG.md) | the chronicle of the execution, in chronological order |
-| [plans/](plans/) | plans for work not started yet, one file each; a plan is deleted once its decision has landed in [04](04-decisions.md) |
+
+A plan for work not started yet goes in `docs/plans/`, one file each, with the
+review it went through; it leaves when its decision has landed in
+[04](04-decisions.md) and its chronicle in `WORKLOG.md` — the terminal-sessions
+plan of 27 August 2026 was the first to.
 
 `PLAN.md` and `WORKLOG.md` describe **how we got here**; this folder describes
 **where it arrived**. If the two contradict each other, the code is right: report

@@ -396,3 +396,48 @@ security find-identity -p codesigning
 # is there a system dialog waiting?
 pgrep -x SecurityAgent
 ```
+
+## Terminal seats: where a session's process lives
+
+A terminal row's click has nothing to match a window title against — the row
+is a folder, and a folder is not a window. What it has is the session's **pid**
+(the session file), and from the pid the kernel gives the chain up to the
+hosting application: `sysctl(KERN_PROC_PID)` for the parent, the controlling
+tty and the start time, `proc_pidpath` for the executable, `KERN_PROCARGS2` for
+the arguments (the zellij server names its session there). No `ps`, no shell.
+The chains measured on a real machine, which `SeatSuite` pins:
+
+| Started from | Chain from `claude` upwards | tty of `claude` |
+|---|---|---|
+| Terminal.app tab | `claude → -zsh → login → Terminal` | the tab's |
+| zellij pane in a Terminal tab | `claude → zsh → zellij --server …/<session>` (ppid 1) | the server's pty, not the tab's |
+| tmux pane | `claude → zsh → tmux` (ppid 1) | the pane's pty |
+| VS Code, Claude panel | `claude → Code Helper (Plugin) → Code` | none |
+| VS Code, integrated terminal | `claude → zsh → Code Helper → Code` | the tab's pty |
+
+The two VS Code helpers are told apart by bundle name — the pty host lives in
+`Code Helper.app`, the extension host in `Code Helper (Plugin).app` — and both
+are editor seats. tty names come as `ttys003` from the kernel and
+`/dev/ttys003` from dictionaries and tmux; `TTYName` normalises them, and it is
+the only string from the process table that may enter a script, matched
+against `^/dev/ttys[0-9]+$` rather than escaped.
+
+**Each host, its own way.** Terminal.app and iTerm2 expose the tty on their
+tabs and sessions, so the tab is selected by tty. Ghostty has no tty but lists
+every terminal's title and working directory: the match happens in Swift —
+title, then folder, then Claude's own `✳` mark when only one terminal carries
+it — and only the chosen id goes back into a script. WezTerm's CLI lists panes
+by `tty_name`; kitty's answers over its remote-control socket with the pid of
+each window's process. A tmux pane is selected inside tmux and the attached
+client's tab raised by its own chain; a zellij client is paired with its server
+through their Unix sockets (`lsof`: own address in `DEVICE`, peer in `NAME`),
+with the tab titled by the session name as the fallback. One Automation entry
+per application, and a `claude` started from a Claude Code shell writes no
+session file at all — both in [07-traps](07-traps.md).
+
+**The pid guard.** Hours can pass between a signal and a click, and a pid can
+be handed to another process in between. The session file's `procStart` is
+compared with the kernel's start time — a ctime string **in UTC** on macOS,
+ticks on Linux (`ProcStart`); parsed as local time it rejects every live
+session, which is the kind of mistake that has a fixture from the machine.
+

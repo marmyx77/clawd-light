@@ -8,10 +8,19 @@ import Foundation
 /// gives: raised exactly, only activated, or nothing at all — each deserves a
 /// different reaction, and flattening them has already produced two bugs.
 enum TerminalFocuser {
-    static func focus(seat: Seat) -> VSCodeFocuser.FocusResult {
+    /// What the session knows about itself, for the hosts whose dictionary or
+    /// CLI has no tty to match: its folder, its conversation title, the pids
+    /// on its chain.
+    struct Context {
+        let cwd: String
+        let title: String?
+        let pids: Set<Int32>
+    }
+
+    static func focus(seat: Seat, context: Context = Context(cwd: "", title: nil, pids: [])) -> VSCodeFocuser.FocusResult {
         switch seat {
         case .terminal(let kind, let tty):
-            return raise(kind: kind, tty: tty)
+            return raise(kind: kind, tty: tty, context: context)
 
         case .application(let bundlePath):
             // A place we cannot select a tab in. The application can still come
@@ -36,7 +45,9 @@ enum TerminalFocuser {
 
     // MARK: - By tty
 
-    private static func raise(kind: TerminalKind, tty: String) -> VSCodeFocuser.FocusResult {
+    private static func raise(
+        kind: TerminalKind, tty: String, context: Context = Context(cwd: "", title: nil, pids: [])
+    ) -> VSCodeFocuser.FocusResult {
         guard isRunning(kind) else { return .failed(.scriptFailed("\(kind.applicationName) is not running")) }
         switch kind.raising {
         case .appleScriptTTY:
@@ -54,11 +65,101 @@ enum TerminalFocuser {
                 }
                 return .failed(error)
             }
-        case .appleScriptTitle, .kitty, .wezterm:
-            // Phase E of docs/plans/terminal-sessions.md.
-            if let error = activate(bundleIdentifier: kind.bundleIdentifier) { return .failed(error) }
-            return .activatedOnly(reason: .scriptFailed("tab selection in \(kind.applicationName) is not built yet"))
+        case .appleScriptTitle:
+            return raiseGhostty(context: context)
+        case .wezterm:
+            return raiseWezTerm(tty: tty)
+        case .kitty:
+            return raiseKitty(context: context)
         }
+    }
+
+    // MARK: - Ghostty, by title or folder
+
+    /// The listing comes back as a list of `{id, name, working directory}`
+    /// triples; the match happens in Swift and only the chosen id goes back.
+    private static func raiseGhostty(context: Context) -> VSCodeFocuser.FocusResult {
+        let app = TerminalKind.ghostty.applicationName
+        let listing: NSAppleEventDescriptor
+        switch VSCodeFocuser.runAppleScript(TerminalScripts.ghosttyList, app: app) {
+        case .failure(let error):
+            Diagnostics.log("seat: Ghostty listing failed — \(error.shortDescription)")
+            return .failed(error)
+        case .success(let found): listing = found
+        }
+        var terminals: [GhosttyMatcher.Terminal] = []
+        if listing.numberOfItems > 0 {
+            for index in 1...listing.numberOfItems {
+                guard let triple = listing.atIndex(index), triple.numberOfItems >= 3,
+                      let id = triple.atIndex(1)?.stringValue else { continue }
+                terminals.append(GhosttyMatcher.Terminal(
+                    id: id, name: triple.atIndex(2)?.stringValue ?? "",
+                    workingDirectory: triple.atIndex(3)?.stringValue ?? ""
+                ))
+            }
+        }
+        for terminal in terminals {
+            Diagnostics.log("seat: Ghostty terminal \(terminal.id): name “\(terminal.name)”, cwd \(terminal.workingDirectory)")
+        }
+        guard let chosen = GhosttyMatcher.best(among: terminals, cwd: context.cwd, title: context.title),
+              let script = TerminalScripts.ghosttyFocus(terminalId: chosen.id)
+        else {
+            Diagnostics.log("seat: Ghostty lists \(terminals.count) terminals, none in \(context.cwd) or titled \(context.title ?? "-")")
+            if let error = activate(bundleIdentifier: TerminalKind.ghostty.bundleIdentifier) { return .failed(error) }
+            return .activatedOnly(reason: .windowNotFound("a Ghostty terminal in \(context.cwd)"))
+        }
+        switch VSCodeFocuser.runAppleScript(script, app: app) {
+        case .success:
+            Diagnostics.log("seat: Ghostty terminal \(chosen.id) (\(chosen.name)) raised")
+            return .raised
+        case .failure(let error):
+            Diagnostics.log("seat: Ghostty terminal \(chosen.id) not raised — \(error.shortDescription)")
+            return .failed(error)
+        }
+    }
+
+    // MARK: - WezTerm, by tty
+
+    private static func raiseWezTerm(tty: String) -> VSCodeFocuser.FocusResult {
+        let wezterm = "/Applications/WezTerm.app/Contents/MacOS/wezterm"
+        guard FileManager.default.isExecutableFile(atPath: wezterm) else {
+            return .failed(.scriptFailed("wezterm CLI not found in the application bundle"))
+        }
+        let panes = WezTermListing.parse(Data(output(of: wezterm, ["cli", "list", "--format", "json"]).utf8))
+        guard let pane = WezTermListing.pane(onTTY: tty, in: panes) else {
+            return .failed(.windowNotFound("a WezTerm pane on \(tty)"))
+        }
+        _ = output(of: wezterm, ["cli", "activate-pane", "--pane-id", String(pane.paneId)])
+        if let error = activate(bundleIdentifier: TerminalKind.wezterm.bundleIdentifier) { return .failed(error) }
+        Diagnostics.log("seat: WezTerm pane \(pane.paneId) on \(tty) raised")
+        return .raised
+    }
+
+    // MARK: - kitty, by pid, over its socket
+
+    /// Remote control has to be on (`allow_remote_control`, `listen_on`); the
+    /// socket is `/tmp/kitty` or `/tmp/kitty-<pid>` depending on how it was
+    /// configured, so every kitty pid is tried. Without a socket the
+    /// application is activated and the menu says why it stopped there.
+    private static func raiseKitty(context: Context) -> VSCodeFocuser.FocusResult {
+        let kitten = "/Applications/kitty.app/Contents/MacOS/kitten"
+        guard FileManager.default.isExecutableFile(atPath: kitten) else {
+            return .failed(.scriptFailed("kitten CLI not found in the application bundle"))
+        }
+        let candidates = ["/tmp/kitty"] + ProcessTree.pids(named: "kitty").map { "/tmp/kitty-\($0)" }
+        for socket in candidates where FileManager.default.fileExists(atPath: socket) {
+            let to = "unix:\(socket)"
+            let windows = KittyListing.parse(Data(output(of: kitten, ["@", "--to", to, "ls"]).utf8))
+            guard let window = KittyListing.window(hostingAnyOf: context.pids, in: windows) else { continue }
+            _ = output(of: kitten, ["@", "--to", to, "focus-window", "--match", "id:\(window.id)"])
+            if let error = activate(bundleIdentifier: TerminalKind.kitty.bundleIdentifier) { return .failed(error) }
+            Diagnostics.log("seat: kitty window \(window.id) raised through \(socket)")
+            return .raised
+        }
+        if let error = activate(bundleIdentifier: TerminalKind.kitty.bundleIdentifier) { return .failed(error) }
+        return .activatedOnly(reason: .scriptFailed(
+            "kitty's remote control is off or its window was not found — allow_remote_control and listen_on unix:/tmp/kitty in kitty.conf"
+        ))
     }
 
     // MARK: - Through tmux
