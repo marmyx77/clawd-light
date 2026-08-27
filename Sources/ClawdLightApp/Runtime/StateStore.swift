@@ -352,7 +352,8 @@ final class StateStore: ObservableObject {
                         status: .idle,
                         workspace: workspace,
                         updatedAt: session.modifiedAt,
-                        statusSince: session.modifiedAt
+                        statusSince: session.modifiedAt,
+                        entrypoint: session.entrypoint
                     )
                 ),
                 now: now

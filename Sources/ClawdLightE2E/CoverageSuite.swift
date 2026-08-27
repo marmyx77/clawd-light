@@ -31,6 +31,9 @@ enum CoverageSuite {
                     app.waitUntil { app.status(of: id) == "working" },
                     "status: \(app.status(of: id))"
                 )
+                // The endpoint says how the session was started: it is what tells
+                // a click not to send the tab deep link to a session with no tab.
+                a.expectEqual(app.session(id: id)?.entrypoint, "cli", "entrypoint published")
             },
 
             TestCase("a terminal session outside every workspace stays excluded") { a in

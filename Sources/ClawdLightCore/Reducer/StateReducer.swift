@@ -70,27 +70,31 @@ public enum StateReducer {
 
         case .signal(let signal, let workspace):
             let next = apply(signal: signal, workspace: workspace, to: state, now: now)
-            return remembering(transcriptOf: signal, in: next)
+            return remembering(factsOf: signal, in: next)
         }
     }
 
-    /// Records where the session's transcript lives, whatever else the signal did.
+    /// Records the facts a signal carries about the session — where its
+    /// transcript lives, how it was started — whatever else the signal did.
     ///
     /// It sits here, once, rather than on each of the seven paths through `apply`:
-    /// the path is orthogonal to the traffic light — it does not depend on the
-    /// event, the state or the ordering — and threading it through every branch
-    /// would mean seven chances to forget it and no test that notices six.
+    /// these facts are orthogonal to the traffic light — they do not depend on the
+    /// event, the state or the ordering — and threading them through every branch
+    /// would mean seven chances to forget one and no test that notices six. This
+    /// is the **only** place they are written from a signal.
     ///
     /// A session `apply` removed or refused is simply not there, and this does
     /// nothing. That is the correct outcome, not a special case.
     private static func remembering(
-        transcriptOf signal: HookSignal,
+        factsOf signal: HookSignal,
         in state: TrafficLightState
     ) -> TrafficLightState {
-        guard let path = signal.transcriptPath,
-              let session = state.sessions[signal.sessionId]
-        else { return state }
-        return state.upserting(session.with(transcriptPath: path))
+        guard let session = state.sessions[signal.sessionId] else { return state }
+        return state.upserting(
+            session
+                .with(transcriptPath: signal.transcriptPath)
+                .with(entrypoint: signal.entrypoint)
+        )
     }
 
     // MARK: - Applying a signal

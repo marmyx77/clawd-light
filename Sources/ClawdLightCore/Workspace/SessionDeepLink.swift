@@ -53,3 +53,23 @@ public enum SessionDeepLink {
         return components.url
     }
 }
+
+/// Whether a click may follow the window with the tab deep link.
+///
+/// The extension resolves the link in the focused window and reuses a tab only
+/// if it already has a panel for that session; otherwise it **creates one**. It
+/// has a panel for the sessions it started — entrypoint `claude-vscode` — and for
+/// nothing else: `claude` typed in the integrated terminal sits in the same
+/// window with no panel, and the link would open a second tab for it on every
+/// click. The rule is therefore an allow-list of one, with the unknown case
+/// permitted: a session adopted from the filesystem before its first hook has
+/// no entrypoint yet, and today's behaviour is to open.
+public enum DeepLinkPolicy {
+    /// The entrypoint of the sessions the extension hosts.
+    public static let hostedEntrypoint = "claude-vscode"
+
+    public static func opensTab(entrypoint: String?) -> Bool {
+        guard let entrypoint else { return true }
+        return entrypoint == hostedEntrypoint
+    }
+}

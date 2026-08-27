@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,014 lines · 40 files   pure logic, zero AppKit
-  ClawdLightApp/    8,602 lines · 47 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,398 lines · 29 files   442 cases, instantaneous
-  ClawdLightE2E/    1,728 lines ·  9 files   76 cases, the real binary
+  ClawdLightCore/   5,070 lines · 40 files   pure logic, zero AppKit
+  ClawdLightApp/    8,607 lines · 47 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,427 lines · 29 files   444 cases, instantaneous
+  ClawdLightE2E/    1,735 lines ·  9 files   76 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
@@ -43,7 +43,7 @@ The six states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 243
+### `SessionState.swift` · 264
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -230,7 +230,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 392
+### `StateReducer.swift` · 396
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -250,7 +250,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 132
+### `SessionsPayload.swift` · 147
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -302,7 +302,9 @@ The table of recognized editors: declared name, bundle, process name.
 The two parsers for the on-disk files.
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
-The extension's URI and the escaping of titles inside a script.
+The extension's URI, the policy that sends it only to sessions the extension
+hosts (`DeepLinkPolicy`: entrypoint `claude-vscode`, or unknown), and the
+escaping of titles inside a script.
 
 ---
 
@@ -331,7 +333,7 @@ the same name. `focus --dry-run` diagnoses without moving any windows.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 412 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 413 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 258 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -404,7 +406,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 568 | holds everything together; row and panel actions |
+| `PanelController.swift` | 602 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 303 | one row: dot, slot, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
@@ -433,7 +435,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 442 cases
+## `ClawdLightTests/` — 444 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

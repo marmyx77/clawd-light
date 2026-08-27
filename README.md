@@ -506,7 +506,10 @@ Two cautions, because it is an extension's **internal** contract and not a publi
 API. First: the deep link fires **only once the right window is already in front**,
 never as a fallback — the extension opens it in whichever window has the focus,
 and if that were the wrong one, not finding the session there, it would open a new
-tab for it. Second: there is a switch in the context menu, so if a future version
+tab for it. For the same reason it is never sent for a session the extension did
+not start — `claude` typed in the integrated terminal has no tab to find, and the
+link would open one on every click; the entrypoint the hook reports decides.
+Second: there is a switch in the context menu, so if a future version
 changes the contract there is no need to recompile. It is **off by default**,
 because VS Code asks for confirmation on every invocation. If it stops working,
 the click still takes you to the right window.
@@ -680,7 +683,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 442 domain tests, instantaneous
+swift run ClawdLightTests              # 444 domain tests, instantaneous
 swift run ClawdLightE2E                # 76 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

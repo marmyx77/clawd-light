@@ -299,11 +299,15 @@ final class PanelController {
         // A remote session's window, if it has one here, is the Remote-SSH window
         // of its folder; the focuser knows how to find it. The tab deep link is
         // off for it — the link goes to the local extension host, and this
-        // session's is on the other machine.
+        // session's is on the other machine. Off as well for a session the
+        // extension did not start (`claude` in a terminal): the link would find
+        // no tab for it and open a new one, which is the mess the widget exists
+        // to avoid.
         let remoteHost = session.workspace.host
+        let hasTab = remoteHost == nil && DeepLinkPolicy.opensTab(entrypoint: session.entrypoint)
         switch VSCodeFocuser.focus(
             workspace: session.workspace,
-            sessionId: opensTab && remoteHost == nil ? session.id : nil
+            sessionId: opensTab && hasTab ? session.id : nil
         ) {
         case .raised:
             store.clearError()

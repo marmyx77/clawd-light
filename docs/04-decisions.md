@@ -110,7 +110,10 @@ properly:
    confirmation is no longer a click.
 2. The extension reuses the tab only if it already has a panel for that
    `sessionId`; otherwise it **creates a new one**. That always happens for
-   integrated-terminal sessions, which have no Claude panel at all.
+   integrated-terminal sessions, which have no Claude panel at all — so even
+   with the switch on, the link is sent only for sessions whose entrypoint is
+   `claude-vscode` (`DeepLinkPolicy`); a `cli` session gets the window and
+   nothing more.
 
 The click keeps its promise anyway, because taking you to the right window is
 done by accessibility, not by the link.

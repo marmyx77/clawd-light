@@ -257,10 +257,12 @@ App:
 Each phase ends green (`Scripts/test.sh`, `check-docs.sh`, `check-contract.sh`),
 documented, committed. Tests first.
 
-**A · The click that opened two tabs** — about an hour.
-`SessionState.entrypoint` through `remembering`; `DeepLinkPolicy`; `PanelController`
-uses it. Tests: the policy table including `nil`; the fact survives transitions;
-E2E `/sessions` carries `entrypoint`. Docs: README, `SessionsPayloadSuite`.
+**A · The click that opened two tabs** — **done, 2026-08-27.**
+`SessionState.entrypoint` through `remembering(factsOf:)`; `DeepLinkPolicy`;
+`PanelController` uses it; adoption from the session file carries it. Tests: the
+policy table including `nil` and empty; the fact survives a signal without it;
+`/sessions` carries `entrypoint` (payload suite, two E2E cases). Docs: README,
+D5, code map.
 
 **B · The row** — one day.
 Origin, title, `displayName`, `.remember`; preference, menu, Settings section, CLI,

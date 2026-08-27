@@ -24,6 +24,19 @@ enum SessionDeepLinkSuite {
             t.expectEqual(url?.absoluteString, "vscode://Anthropic.claude-code/open?session=abc-123")
         },
 
+        // The link is resolved by the extension in the focused window; for a
+        // session it does not host — `claude` started in a terminal — it finds
+        // no tab and opens a new one. So the link goes only to sessions the
+        // extension started. Unknown stays permitted: it is today's behaviour,
+        // and a session adopted before its first hook has no entrypoint yet.
+        TestCase("The tab is opened only for sessions the extension hosts") { t in
+            t.expect(DeepLinkPolicy.opensTab(entrypoint: "claude-vscode"), "claude-vscode")
+            t.expect(DeepLinkPolicy.opensTab(entrypoint: nil), "unknown")
+            t.expect(!DeepLinkPolicy.opensTab(entrypoint: "cli"), "cli")
+            t.expect(!DeepLinkPolicy.opensTab(entrypoint: "sdk-cli"), "sdk-cli")
+            t.expect(!DeepLinkPolicy.opensTab(entrypoint: ""), "empty is not unknown, it is not the extension")
+        },
+
         // An empty session id would open a NEW tab instead of the right one:
         // with no parameter the extension calls primaryEditor.open(undefined).
         TestCase("An empty identifier produces no URL") { t in

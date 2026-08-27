@@ -21,7 +21,8 @@ enum SessionsPayloadSuite {
             lastMessage: "Working on it.",
             updatedAt: t0,
             statusSince: t0.addingTimeInterval(-60),
-            activeSubagents: 2
+            activeSubagents: 2,
+            entrypoint: "claude-vscode"
         )
     }
 
@@ -35,6 +36,7 @@ enum SessionsPayloadSuite {
             t.expectEqual(snapshot.path, "/dev/project-alpha", "path")
             t.expectEqual(snapshot.activeSubagents, 2, "subagents")
             t.expectEqual(snapshot.lastMessage, "Working on it.", "preview")
+            t.expectEqual(snapshot.entrypoint, "claude-vscode", "entrypoint")
         },
 
         TestCase("The exposed status is the displayed one, not the declared one") { t in

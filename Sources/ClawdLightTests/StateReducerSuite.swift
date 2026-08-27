@@ -58,6 +58,20 @@ enum StateReducerSuite {
             t.expectEqual(state.sessions[sessionId]?.workspace, workspace, "workspace")
         },
 
+        // The entrypoint decides whether a click may follow with the tab deep
+        // link: the extension hosts `claude-vscode` sessions, nobody hosts a
+        // `cli` one. It is a fact about the session, not about the event, so it
+        // is remembered once and never cleared by a signal that lacks it.
+        TestCase("The entrypoint is remembered and survives a signal without one") { t in
+            let state = apply([
+                signal(.sessionStart, entrypoint: "cli"),
+                signal(.userPromptSubmit, entrypoint: nil),
+                signal(.stop, entrypoint: nil),
+            ])
+            t.expectEqual(state.sessions[sessionId]?.entrypoint, "cli", "entrypoint")
+            t.expectEqual(status(state), .ready, "the transitions were not disturbed")
+        },
+
         TestCase("UserPromptSubmit goes to yellow") { t in
             t.expectEqual(status(apply([signal(.sessionStart), signal(.userPromptSubmit)])), .working)
         },

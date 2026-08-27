@@ -55,6 +55,16 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// cannot open is a better outcome than one that opens the wrong file.
     public let transcriptPath: String?
 
+    /// How Claude Code was started for this session — `claude-vscode` by the
+    /// extension, `cli` by hand in a terminal — read from the hook's header or
+    /// the session file. `nil` until something has said.
+    ///
+    /// It is what tells the click whether a tab exists to open: the extension
+    /// resolves the deep link in the focused window and, for a session it does
+    /// not host, opens a new tab instead of finding one. A fact about the
+    /// session, so it is set once and never cleared by a signal that lacks it.
+    public let entrypoint: String?
+
     public init(
         id: String,
         status: SessionStatus,
@@ -65,9 +75,11 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         failureReason: StopFailureReason? = nil,
         activeSubagents: Int = 0,
         transcriptPath: String? = nil,
-        waitingOn: [String] = []
+        waitingOn: [String] = [],
+        entrypoint: String? = nil
     ) {
         self.waitingOn = waitingOn
+        self.entrypoint = entrypoint?.trimmed.nilIfEmpty
         self.id = id
         self.baseStatus = status
         self.workspace = workspace
@@ -176,6 +188,13 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         return replacing(transcriptPath: .some(newPath))
     }
 
+    /// Copy that remembers how the session was started. Same rule as the
+    /// transcript path: `nil` leaves the known value alone.
+    public func with(entrypoint newValue: String?) -> SessionState {
+        guard let newValue = newValue?.trimmed.nilIfEmpty, newValue != entrypoint else { return self }
+        return replacing(entrypoint: .some(newValue))
+    }
+
     /// Copy with the subagent counter shifted by `delta`, never below zero.
     ///
     /// The floor at zero is not pedantry: `SubagentStop` can arrive without its
@@ -225,7 +244,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         failureReason: StopFailureReason?? = nil,
         activeSubagents: Int? = nil,
         transcriptPath: String?? = nil,
-        waitingOn: [String]? = nil
+        waitingOn: [String]? = nil,
+        entrypoint: String?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -237,7 +257,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             failureReason: failureReason ?? self.failureReason,
             activeSubagents: activeSubagents ?? self.activeSubagents,
             transcriptPath: transcriptPath ?? self.transcriptPath,
-            waitingOn: waitingOn ?? self.waitingOn
+            waitingOn: waitingOn ?? self.waitingOn,
+            entrypoint: entrypoint ?? self.entrypoint
         )
     }
 }

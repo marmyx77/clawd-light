@@ -323,6 +323,10 @@ enum InstallationSuite {
                     session.transcriptPath, "/tmp/\(id).jsonl",
                     "transcriptPath — the hook sent it, the endpoint has to publish it"
                 )
+                a.expectEqual(
+                    session.entrypoint, "claude-vscode",
+                    "entrypoint — the script read it from the environment and sent it as a header"
+                )
             },
 
             TestCase("the sessions contract carries the slot field") { a in

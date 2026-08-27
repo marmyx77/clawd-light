@@ -41,6 +41,14 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// this one. A reader that raises windows needs it: there is nothing local to raise.
     public let host: String?
 
+    /// How the session was started, as Claude Code reports it: `claude-vscode`
+    /// for one the extension hosts, `cli` for `claude` typed in a terminal.
+    /// `nil` when nothing has said yet.
+    ///
+    /// Published because it is the fact that separates a session with a tab
+    /// from one without: a reader that opens tabs needs it as much as the click.
+    public let entrypoint: String?
+
     public init(
         id: String,
         status: String,
@@ -55,7 +63,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         muted: Bool = false,
         slot: Int? = nil,
         transcriptPath: String? = nil,
-        host: String? = nil
+        host: String? = nil,
+        entrypoint: String? = nil
     ) {
         self.id = id
         self.status = status
@@ -71,6 +80,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.slot = slot
         self.transcriptPath = transcriptPath
         self.host = host
+        self.entrypoint = entrypoint
     }
 }
 
@@ -130,7 +140,8 @@ public enum SessionsCodec {
             muted: muted,
             slot: slot,
             transcriptPath: session.transcriptPath,
-            host: session.workspace.host
+            host: session.workspace.host,
+            entrypoint: session.entrypoint
         )
     }
 }
