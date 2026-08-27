@@ -197,6 +197,12 @@ without looking, opening the wrong project is the worst thing it could do.
 
 ## The extended view
 
+It opens on the **tail** of the conversation — the last three hundred entries,
+read from the last few megabytes of a transcript that can be half a gigabyte —
+and a note at the top says when the beginning was left on disk. Opening it takes
+well under a second whatever the file's size (07-traps, *The window that read the
+whole file*).
+
 The panel is the resting state: a column of traffic lights that never takes focus.
 When you want to read and answer, open the **extended window** — conversations on
 the left, the selected one on the right. Close it and you are back to the lights.

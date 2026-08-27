@@ -402,7 +402,7 @@ there, the hooks are registered — and it names the link that broke.
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
 | `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
-| `TranscriptReader.swift` | 112 | follows one transcript by byte offset; resets when the file shrinks |
+| `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
