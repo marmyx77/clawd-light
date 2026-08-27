@@ -509,13 +509,20 @@ enum CommandLineInterface {
             // The padding is explicit because `String(format:)` ignores the width
             // on `%@` placeholders: the columns came out jammed together, and a
             // ten-row list that doesn't line up cannot be read.
-            let nameWidth = max(12, response.sessions.map(\.workspace.count).max() ?? 12)
+            // A terminal row is named the way the panel names it — by its
+            // conversation — and says what it is, since its click leads to a
+            // tab and not to an editor window.
+            func name(of session: SessionSnapshot) -> String {
+                guard session.origin == SessionOrigin.terminal.rawValue else { return session.workspace }
+                return "\(session.title ?? session.workspace) [terminal]"
+            }
+            let nameWidth = max(12, response.sessions.map { name(of: $0).count }.max() ?? 12)
 
             for session in response.sessions {
                 let subagents = session.activeSubagents > 0 ? "  ×\(session.activeSubagents)" : ""
                 print(
                     session.status.padded(to: 9)
-                        + session.workspace.padded(to: nameWidth + 2)
+                        + name(of: session).padded(to: nameWidth + 2)
                         + formatter.string(from: session.updatedAt)
                         + subagents
                 )

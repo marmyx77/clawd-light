@@ -6,13 +6,13 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   5,209 lines · 42 files   pure logic, zero AppKit
-  ClawdLightApp/    8,816 lines · 48 files   shell: AppKit, network, windows
+  ClawdLightApp/    8,823 lines · 48 files   shell: AppKit, network, windows
   ClawdLightTests/  5,536 lines · 29 files   449 cases, instantaneous
   ClawdLightE2E/    1,818 lines ·  9 files   78 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 747 lines. The limit the project sets itself is 800.
+No file exceeds 754 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -333,7 +333,7 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 747
+### `CommandLineInterface.swift` · 754
 Ten commands. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.

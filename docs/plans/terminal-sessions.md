@@ -268,7 +268,9 @@ D5, code map.
 the `LiveSessionReader` nil/empty fix is deferred (D25 says why — the E2E
 harness leans on the current leniency), and a click on a terminal row says
 "not built yet" until phase C, rather than raising an editor window of a
-folder that has none. Originally estimated at one day.
+folder that has none. Originally estimated at one day. Verified live: with the switch on, the two
+`cli` sessions running in `~` became one grouped row (glyph, badge `2`) within
+five seconds, both with their titles in `/sessions`; off took the row away.
 Origin, title, `displayName`, `.remember`; preference, menu, Settings section, CLI,
 `status`; `StateStore.handle` and `poll()` rules with the session-file condition;
 toggle-off removal; `LiveSessionReader` nil/empty and the reconcile fix;
