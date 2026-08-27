@@ -172,11 +172,23 @@ level = .floating
 collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
 canBecomeKey  = true    // needed so the clicks reach SwiftUI
 canBecomeMain = false   // the user's work is elsewhere
+sendEvent(_:) // makes the panel key before a mouse-down is dispatched
 ```
 
 `nonactivatingPanel` is what makes the widget usable: without it, clicking a
 traffic light would activate clawd-light and take the focus away from the editor
 an instant before giving it back, with a flicker on every click.
+
+`sendEvent` is what makes the *first* click count. AppKit spends the first
+click in a non-key window on making it key, and delivers it only if the view
+under the pointer says `acceptsFirstMouse` — and that view is SwiftUI's own
+scroll view, which says no; overriding the answer on the hosting view changes
+nothing, because nobody asks the hosting view. Every return from the editor
+leaves the panel non-key, so every visit began with a click that only knocked
+(see 07-traps, "The click that only knocked"). Making the panel key *before*
+`super.sendEvent` turns the first click into an ordinary one. The panel logs
+`became key` / `resigned key` so that the per-signal log can tell a delivered
+first click from a second one.
 
 `occlusionState` is **not reliable**: it reports `occluded` even with the window
 in plain sight. Using it as a switch would suppress legitimate alerts; here it is

@@ -95,6 +95,11 @@ Right-click **on a row**:
 | Don't alert me for this project | silences the notifications, **not** the color |
 | New conversation here | opens a new Claude tab in the project |
 
+One click is enough, even when you are working in another window: the panel
+makes itself key before the click is dispatched, so the first click is delivered
+rather than spent on focus. A double-click counts as one — the second click is
+dropped, because by then the row you hit may have moved.
+
 Right-click **on the panel's margins** for the general menu: compact mode,
 grouping, the "only what's waiting" filter, notifications, presence, hooks, launch
 at login.

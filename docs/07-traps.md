@@ -32,6 +32,10 @@ severity.
 9. **A correct model proves nothing about the screen.** The reducer was right and
    under test; the defect lived in the one layer no test touches, and it showed
    up in a state the model says cannot blink.
+10. **A workaround the user learned is a defect you have not found yet.** "Click
+    twice, slowly" was not a habit; it was the shape of a swallowed first click —
+    and the accidents it caused were the shape of a column that reorders under
+    the pointer.
 
 ---
 
@@ -559,6 +563,79 @@ keeps blinking after I answered"* — and were fixed in the reducer, where the l
 showed a genuinely stuck `awaiting`. That was a real cause, and not the only one.
 Two defects wore one symptom; fixing the first hid the second until the next
 amber went through cleanly, and the survivor showed up in red.
+
+---
+
+## The click that only knocked
+
+**Symptom.** Reported by use: *"if I'm working in another window and click a
+traffic light, the first click does nothing — maybe it just focuses the panel —
+and the second opens. But two quick clicks risk opening the session **after**
+the green one: the first marks it read, it drops down the list, and the second
+lands on whatever moved up. So I click twice, spaced out."*
+
+**Cause.** AppKit's manners for a window that is not key: a mouse-down is spent
+on making the window key, and is delivered to the view only if the view under
+the pointer answers `acceptsFirstMouse`. The panel is `nonactivatingPanel`, so
+it never activates the app — which is right — but it does become key on a
+click, and resigns key every time the user goes back to the editor. So every
+visit began with a click that only knocked.
+
+The second half of the symptom is not a defect of the click at all. The first
+click *worked*: it marked the green as seen, the row's urgency fell, the column
+re-sorted under the pointer, and the second click landed on the row that had
+moved into that place. Two mechanisms, one habit.
+
+**Measure.** The panel now logs `became key` / `resigned key`. A synthetic click
+posted with the panel non-key gave:
+
+```
+05:51:39  panel became key
+          (nothing else)
+```
+
+The click made the panel key and reached no row. That was with the first
+attempted fix already in place — `acceptsFirstMouse` overridden on the
+`NSHostingView`. Nobody asked the hosting view: the rows sit inside SwiftUI's
+own scroll view, and *that* is the view under the pointer.
+
+**Correction.** In the window, not the view. `FloatingPanel.sendEvent` makes the
+panel key *before* handing a mouse-down to `super`: by then it is a click in a
+key window and is dispatched like any other. Same panel, same non-activation.
+With that build, the same synthetic click gave:
+
+```
+05:54:23  panel became key
+05:54:24  window chosen out of 10: “… — awevents — …”
+```
+
+And the double-click: `sendEvent` drops the second click of a double-click, both
+halves, so the tap gesture never sees a mouse-up without its mouse-down. Nothing
+in the panel is bound to a double-click, and the row under the pointer is
+exactly the one you did not mean. A synthetic double-click (`clickState` 2 on
+the second — AppKit reads `clickCount` from the event, it does not recompute it)
+opened one window and logged `second click of a double-click dropped`.
+
+**What the verification itself showed.** The first delivered click opened
+**awevents**, not the row photographed fifty seconds earlier: in between, the
+node had answered and three remote rows had joined, and a session had changed
+state; the column re-sorted, and the click went to whatever was at that height.
+The instrument reproduced the user's accident without meaning to. The panel's
+row order is therefore now read from `/sessions` at the instant of the click,
+and the target is refused unless it falls inside the panel's bounds — after one
+click that landed 21 px below the panel because the window list had returned a
+tooltip (249 × 61, also ours) instead of the panel.
+
+**Lesson.** A user who has found a workaround has found a defect and is
+describing it in the only vocabulary they have — a habit. *Click twice, slowly*
+decoded into two facts: the first click is swallowed (fix: the window), and the
+column moves under the pointer (fix: a double-click is one click). Fix the habit
+instead and both stay.
+
+**And on instruments.** Three of this entry's four measurements needed a
+synthetic click, and a synthetic click needs to know where the row *is*, not
+where it was. The order that decides where a row is lives in the app, and the
+app already publishes it; ask it, don't photograph it.
 
 ---
 

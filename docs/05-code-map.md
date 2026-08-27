@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   4,648 lines · 39 files   pure logic, zero AppKit
-  ClawdLightApp/    7,082 lines · 39 files   shell: AppKit, network, windows
+  ClawdLightApp/    7,134 lines · 39 files   shell: AppKit, network, windows
   ClawdLightTests/  5,270 lines · 29 files   434 cases, instantaneous
   ClawdLightE2E/    1,682 lines ·  9 files   75 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
@@ -395,7 +395,7 @@ installations in the same second used to fail.
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `StatusPalette.swift` | 112 | colors and measurements |
-| `FloatingPanel.swift` | 45 | non-activating `NSPanel` |
+| `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 205 | the two columns, and one row of the list |
