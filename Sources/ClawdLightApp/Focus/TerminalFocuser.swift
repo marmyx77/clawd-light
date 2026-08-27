@@ -193,6 +193,15 @@ enum TerminalFocuser {
     /// zellij writes it there — is the fallback.
     private static func raiseZellij(serverPid: Int32, sessionName: String) -> VSCodeFocuser.FocusResult {
         let clients = ProcessTree.pids(named: "zellij").filter { $0 != serverPid && ProcessTree.info(of: $0)?.tty != nil }
+        // A server with no client is a session whose tab was closed: the
+        // `claude` inside is alive and detached, and no window shows it. Seen
+        // in use — a row that looked dead and was not. Say what to run.
+        guard !clients.isEmpty else {
+            Diagnostics.log("seat: zellij session \(sessionName) has no client attached")
+            return .failed(.windowNotFound(
+                "a terminal attached to zellij session \(sessionName) — it is detached; run `zellij attach \(sessionName)`"
+            ))
+        }
         var chosen: pid_t?
         if clients.count == 1 {
             chosen = clients[0]
@@ -233,6 +242,7 @@ enum TerminalFocuser {
                 return .failed(error)
             }
         }
+        Diagnostics.log("seat: no tab titled \(fragment) in any running tty host")
         return .failed(.windowNotFound("a tab titled \(fragment)"))
     }
 
