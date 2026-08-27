@@ -53,4 +53,54 @@ public enum TerminalScripts {
             return nil
         }
     }
+
+    /// Terminal.app and iTerm2: the tab whose title contains a fragment — the
+    /// zellij session name, which zellij writes into the tab's title. The
+    /// fallback when the client cannot be paired with its server.
+    ///
+    /// The fragment is validated against the same pattern a zellij session name
+    /// has to match (`SeatClassifier.zellijSessionName`): letters, digits, dot,
+    /// underscore, dash. Nothing else enters the source.
+    public static func selectTab(titleContaining raw: String, in kind: TerminalKind) -> String? {
+        let fragment = raw.trimmed
+        guard fragment.range(of: "^[A-Za-z0-9._-]{1,128}$", options: .regularExpression) != nil else { return nil }
+        switch kind {
+        case .terminal:
+            return """
+            tell application "Terminal"
+                repeat with w in windows
+                    repeat with t in tabs of w
+                        if name of t contains "\(fragment)" then
+                            set selected tab of w to t
+                            set index of w to 1
+                            activate
+                            return "raised"
+                        end if
+                    end repeat
+                end repeat
+            end tell
+            error "no tab titled \(fragment)" number -1728
+            """
+        case .iTerm:
+            return """
+            tell application "iTerm2"
+                repeat with w in windows
+                    repeat with t in tabs of w
+                        repeat with s in sessions of t
+                            if name of s contains "\(fragment)" then
+                                select t
+                                select s
+                                activate
+                                return "raised"
+                            end if
+                        end repeat
+                    end repeat
+                end repeat
+            end tell
+            error "no session titled \(fragment)" number -1728
+            """
+        default:
+            return nil
+        }
+    }
 }

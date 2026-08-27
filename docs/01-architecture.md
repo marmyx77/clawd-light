@@ -117,7 +117,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-460 cases, instantaneous. They verify Core.
+463 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 
@@ -266,7 +266,10 @@ ancestry from the kernel (`ProcessTree`, no `ps`), and a pure classification
 pane, an editor, or some other application. `TerminalFocuser` then asks the
 terminal's own dictionary to select the tab on that tty — the only string from
 the process table that enters a script, and only after `TTYName` has matched it.
-Editor seats go the way editor rows go. See
+A tmux seat is two hops — the pane on that tty selected inside tmux, then the
+attached client's own chain; a zellij seat pairs the client with its server
+through their Unix sockets and follows the client's chain, falling back to the
+tab titled by the session name. Editor seats go the way editor rows go. See
 [D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
 ## Concurrency

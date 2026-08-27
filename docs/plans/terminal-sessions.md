@@ -309,7 +309,14 @@ reject list; `ProcStart` on both formats and the zone trap; tty normalisation.
 Live protocol in §4. Docs: 03-macos (one Automation entry per terminal app; `sdef`
 is how to know what an app exposes), traps as found.
 
-**D · Multiplexers** — three hours.
+**D · Multiplexers** — **done, 2026-08-27.** zellij verified live on the session
+in daily use: one client, `seat: zellij session … has client …`, then
+`Terminal /dev/ttys007 raised`, the zellij tab in front. tmux verified live on a
+real `claude` started in `tmux new -d -s probe` attached from a Terminal tab
+(`open -a Terminal attach.command` opens a tab without any permission): `seat
+of …: tmux server …, pane on /dev/ttys012` → `tmux pane probe:0.0 selected;
+client … on /dev/ttys015` → `Terminal /dev/ttys015 raised`, the attached tab
+in front. Originally estimated at three hours.
 tmux hop; zellij hop by `lsof` pairing with the title fallback. Tests: listing
 parsers, `LsofUnixSockets`, socket name, title matcher. Live: a tmux session
 inside a Terminal tab; the zellij session already running.

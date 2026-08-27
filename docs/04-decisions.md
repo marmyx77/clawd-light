@@ -1045,9 +1045,12 @@ session's process — pid from the session file, `procStart` against the kernel'
 start time, the chain up to the hosting application (`ProcessTree`,
 `SeatClassifier`) — to that application's own way of selecting a tab: by tty
 through the dictionaries of Terminal.app and iTerm2 (`TerminalScripts`). A tmux
-or zellij pane, Ghostty, kitty and WezTerm are the next phases of
-[the plan](plans/terminal-sessions.md); until then the click activates what it
-can and the menu says where it stopped. Consequence,
+pane is selected inside tmux and its attached client's tab raised the same way;
+a zellij pane's client is paired with its server through their Unix sockets
+(`lsof`) and its tab raised likewise, with the tab titled by the session name
+as the fallback. Ghostty, kitty and WezTerm are the next phase of
+[the plan](plans/terminal-sessions.md); until then the click activates the
+application and the menu says where it stopped. Consequence,
 stated: a `claude` started in a Terminal.app tab **inside a folder that is open
 in VS Code** is an editor row and its click raises the VS Code window. The
 alternative — a process walk on every editor click — would show a Terminal

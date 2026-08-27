@@ -72,6 +72,25 @@ enum ProcessTree {
         return arguments
     }
 
+    /// Every process whose command name is `name`, as the kernel abbreviates it
+    /// (`p_comm`, sixteen characters). The zellij clients, for a server.
+    static func pids(named name: String) -> [pid_t] {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        var size = 0
+        guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return [] }
+        let count = size / MemoryLayout<kinfo_proc>.stride + 16
+        var buffer = [kinfo_proc](repeating: kinfo_proc(), count: count)
+        var actual = count * MemoryLayout<kinfo_proc>.stride
+        guard sysctl(&mib, UInt32(mib.count), &buffer, &actual, nil, 0) == 0 else { return [] }
+        let found = actual / MemoryLayout<kinfo_proc>.stride
+        return buffer.prefix(found).compactMap { proc in
+            let text = withUnsafeBytes(of: proc.kp_proc.p_comm) { raw in
+                String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+            }
+            return text == name ? proc.kp_proc.p_pid : nil
+        }
+    }
+
     /// The chain from `pid` upwards, `pid` first, stopping at launchd or at a
     /// process the kernel will not describe.
     static func ancestry(of pid: pid_t) -> [ProcessAncestor] {

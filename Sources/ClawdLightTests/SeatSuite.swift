@@ -154,3 +154,55 @@ enum SeatSuite {
         },
     ])
 }
+
+/// The two hops through a multiplexer: what tmux and `lsof` say, parsed.
+enum MultiplexerSuite {
+    static let suite = TestSuite("Multiplexers: tmux and zellij listings", [
+
+        // Measured on a zellij server and its client: DEVICE is the socket's own
+        // address, NAME its peer — the pairing is client peer ∈ server address.
+        TestCase("A zellij client is paired with its server through lsof") { t in
+            let server = LsofUnixSockets.parse("""
+            COMMAND  PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+            zellij  2574 dev    5u  unix 0xf6a0224dbdf3c999      0t0      /var/folders/x/T/zellij-501/contract_version_1/quiet-owl
+            zellij  2574 dev    6u  unix 0x5e075b05655b64e1      0t0      /var/folders/x/T/zellij-501/contract_version_1/quiet-owl
+            zellij  2574 dev    9u  unix 0xb94472fcc137a960      0t0      ->0xc55945fff274cabe
+            """)
+            let clients = LsofUnixSockets.parse("""
+            COMMAND  PID USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+            zellij  2571 dev    5u  unix 0x57b40d36d36df282      0t0      ->0x5e075b05655b64e1
+            zellij  2571 dev    6u  unix 0x57b40d36d36df283      0t0      ->0x5e075b05655b64e1
+            zellij  3000 dev    5u  unix 0x1111111111111111      0t0      ->0x2222222222222222
+            """)
+            t.expectEqual(server.count, 3, "server sockets")
+            t.expectEqual(server[0].path, "/var/folders/x/T/zellij-501/contract_version_1/quiet-owl", "the bound path")
+            t.expectEqual(server[2].peer, "0xc55945fff274cabe", "a peer")
+            t.expectEqual(LsofUnixSockets.clientPids(of: server, among: clients), [2571], "one client, once")
+            t.expect(LsofUnixSockets.parse("garbage\n\n").isEmpty, "nothing parses to nothing")
+        },
+
+        TestCase("tmux panes and clients are read with the formats we ask for") { t in
+            let panes = TmuxListing.panes("/dev/ttys011\t901\tprobe:0.0\n/dev/ttys012\t902\tprobe:1.0\nbad line\n")
+            t.expectEqual(panes.count, 2, "panes")
+            t.expectEqual(panes[0].tty, "/dev/ttys011")
+            t.expectEqual(panes[0].shellPid, 901)
+            t.expectEqual(panes[1].target, "probe:1.0")
+            t.expectEqual(panes[1].session, "probe")
+            t.expectEqual(panes[1].window, "probe:1")
+
+            let clients = TmuxListing.clients("/dev/ttys003\t500\tprobe\nttys004\t501\t-evil\n")
+            t.expectEqual(clients.count, 1, "a name starting with a dash is refused")
+            t.expectEqual(clients[0].pid, 500)
+            t.expectEqual(clients[0].session, "probe")
+            t.expect(TmuxListing.paneFormat.contains("#{pane_tty}"), "the format names the tty")
+        },
+
+        TestCase("The title fallback script takes only a validated fragment") { t in
+            let script = TerminalScripts.selectTab(titleContaining: "quiet-owl", in: .terminal)
+            t.expect(script?.contains("if name of t contains \"quiet-owl\"") == true, "Terminal")
+            t.expect(TerminalScripts.selectTab(titleContaining: "quiet-owl", in: .iTerm)?.contains("sessions of t") == true, "iTerm2")
+            t.expectNil(TerminalScripts.selectTab(titleContaining: "owl\" & \"x", in: .terminal), "a quote is refused")
+            t.expectNil(TerminalScripts.selectTab(titleContaining: "quiet-owl", in: .ghostty), "no dictionary route")
+        },
+    ])
+}

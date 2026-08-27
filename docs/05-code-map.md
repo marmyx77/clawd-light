@@ -1,13 +1,13 @@
 # Code map
 
-~22,300 lines of Swift across five targets. For each file: what it contains, why
+~22,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,531 lines · 47 files   pure logic, zero AppKit
-  ClawdLightApp/    9,074 lines · 51 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,693 lines · 30 files   460 cases, instantaneous
+  ClawdLightCore/   5,689 lines · 48 files   pure logic, zero AppKit
+  ClawdLightApp/    9,197 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,746 lines · 30 files   463 cases, instantaneous
   ClawdLightE2E/    1,818 lines ·  9 files   78 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -145,6 +145,11 @@ two VS Code helpers are told apart by bundle name, not by the word "Helper".
 The AppleScript that selects a tab by tty in Terminal.app and iTerm2, erroring
 `-1728` when no tab is on it — the code the editor path already reads as "not
 there".
+
+### `MultiplexerListings.swift`
+What `lsof` and tmux print, parsed: a Unix socket's own address and peer (the
+client–server pairing for zellij) and tmux's panes and clients in the formats
+this app asks for. Names that go back to tmux as arguments are validated first.
 
 ### `ProcStart.swift`
 The session file's `procStart` in its two forms — Linux ticks, macOS ctime **in
@@ -483,7 +488,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 460 cases
+## `ClawdLightTests/` — 463 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -511,7 +516,7 @@ script, before it was split. The most important ones:
 | `TranscriptDecoderSuite` | who spoke — including the 579-against-209 case |
 | `TranscriptTailSuite` | the half-written line, split across up to three chunks |
 | `TranscriptLocatorSuite` | the naming rule, accents included |
-| `SeatSuite` | every measured chain classified; tty names matched not escaped; the scripts; `procStart` as UTC and the zone trap |
+| `SeatSuite` · `MultiplexerSuite` | every measured chain classified; tty names matched not escaped; the scripts; `procStart` as UTC and the zone trap; the `lsof` pairing and tmux listings |
 | `ConversationSuite` | unread counts answers, and trimming says how much it dropped |
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
