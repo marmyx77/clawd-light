@@ -90,6 +90,7 @@ Right-click **on a row**:
 | Open without marking as read | same as alt+click |
 | Mark as unread | remedies one click too many |
 | Move up / Move down | the drag, in words |
+| Rename… | the name you want to read; the session, its window and its folder keep theirs — leave it empty to go back |
 | Hide | the row is collected into the summary |
 | Don't blink | stops the movement, **not** the color |
 | Don't alert me for this project | silences the notifications, **not** the color |
@@ -707,8 +708,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 466 domain tests, instantaneous
-swift run ClawdLightE2E                # 78 end-to-end tests, ~1 minute
+swift run ClawdLightTests              # 470 domain tests, instantaneous
+swift run ClawdLightE2E                # 79 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

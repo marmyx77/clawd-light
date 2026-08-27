@@ -59,6 +59,7 @@ let suites: [TestSuite] = [
     SeatSuite.suite,
     MultiplexerSuite.suite,
     TerminalListingSuite.suite,
+    RowNamesSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

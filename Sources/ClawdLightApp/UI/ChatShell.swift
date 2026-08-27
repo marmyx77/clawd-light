@@ -144,7 +144,8 @@ final class ChatShell: ObservableObject {
                 // project is the opposite of that.
                 onlyWaiting: false,
                 order: preferences.rowOrder,
-                hidden: []
+                hidden: [],
+                names: preferences.rowNames
             )
         )
         rows = rendering.rows

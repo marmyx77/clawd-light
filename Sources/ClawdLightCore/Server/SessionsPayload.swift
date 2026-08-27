@@ -58,6 +58,11 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// terminal row; informative for the others.
     public let title: String?
 
+    /// What the panel calls the session's row: the name the user gave the
+    /// folder, or the conversation title for a lone terminal row, or the
+    /// folder. `workspace` stays the folder — the key everything is found by.
+    public let label: String
+
     public init(
         id: String,
         status: String,
@@ -75,7 +80,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         host: String? = nil,
         entrypoint: String? = nil,
         origin: String = SessionOrigin.editor.rawValue,
-        title: String? = nil
+        title: String? = nil,
+        label: String? = nil
     ) {
         self.id = id
         self.status = status
@@ -94,6 +100,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.entrypoint = entrypoint
         self.origin = origin
         self.title = title
+        self.label = label?.trimmed.nilIfEmpty ?? workspace
     }
 }
 
@@ -134,10 +141,12 @@ public enum SessionsCodec {
     ///
     /// - Parameter slot: the keyboard slot of the session's project, if it holds
     ///   one of the first nine places in the column.
+    /// - Parameter alias: the name the user gave the session's folder, if any.
     public static func snapshot(
         of session: SessionState,
         muted: Bool = false,
-        slot: Int? = nil
+        slot: Int? = nil,
+        alias: String? = nil
     ) -> SessionSnapshot {
         SessionSnapshot(
             id: session.id,
@@ -156,7 +165,8 @@ public enum SessionsCodec {
             host: session.workspace.host,
             entrypoint: session.entrypoint,
             origin: session.origin.rawValue,
-            title: session.title
+            title: session.title,
+            label: alias ?? session.displayName
         )
     }
 }

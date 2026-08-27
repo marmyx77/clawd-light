@@ -28,6 +28,7 @@ struct Preferences {
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
         static let terminalSessions = "terminal.sessions"
+        static let rowNames = "panel.rowNames"
         static let calmBlinkWorkspaces = "panel.calmBlink"
     }
 
@@ -151,6 +152,12 @@ struct Preferences {
                 forKey: Key.remoteHosts
             )
         }
+    }
+
+    /// The names the user gave to rows, by folder (`RowNames`).
+    var rowNames: [String: String] {
+        get { (defaults.dictionary(forKey: Key.rowNames) as? [String: String]) ?? [:] }
+        nonmutating set { defaults.set(newValue, forKey: Key.rowNames) }
     }
 
     /// Projects collected into the summary row, by path.

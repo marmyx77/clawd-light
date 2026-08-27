@@ -24,11 +24,15 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// where the row is drawn and what the key opens, and the two cannot disagree.
     public let slot: Int?
 
-    public init(id: String, workspace: Workspace, sessions: [SessionState], slot: Int? = nil) {
+    /// The name the user gave this row, if any (`RowNames`).
+    public let alias: String?
+
+    public init(id: String, workspace: Workspace, sessions: [SessionState], slot: Int? = nil, alias: String? = nil) {
         self.id = id
         self.workspace = workspace
         self.sessions = sessions
         self.slot = slot
+        self.alias = alias?.trimmed.nilIfEmpty
     }
 
     /// The state the dot shows: the most urgent one in the group.
@@ -54,11 +58,12 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
 
     /// What a person reads on the row.
     ///
-    /// A row holding one session is named the way that session is (its title,
-    /// for a terminal one); a row holding several is the folder — one name for
-    /// three conversations would be a lie about two of them.
+    /// The name the user gave it wins. Otherwise a row holding one session is
+    /// named the way that session is (its title, for a terminal one); a row
+    /// holding several is the folder — one name for three conversations would
+    /// be a lie about two of them.
     public var displayName: String {
-        sessions.count == 1 ? primary.displayName : workspace.name
+        alias ?? (sessions.count == 1 ? primary.displayName : workspace.name)
     }
 
     /// `displayName`, plus where it is when that is another machine.
@@ -104,16 +109,26 @@ public struct ColumnOptions: Sendable, Equatable {
 
     public let hidden: Set<String>
 
+    /// The names the user gave to folders (`RowNames`).
+    public let names: [String: String]
+
     public init(
         grouped: Bool = true,
         onlyWaiting: Bool = false,
         order: [String] = [],
-        hidden: Set<String> = []
+        hidden: Set<String> = [],
+        names: [String: String] = [:]
     ) {
         self.grouped = grouped
         self.onlyWaiting = onlyWaiting
         self.order = order
         self.hidden = hidden
+        self.names = names
+    }
+
+    /// The name given to a folder, if any.
+    func name(for path: String) -> String? {
+        RowNames.name(of: path, in: names)
     }
 
     public static let plain = ColumnOptions(grouped: false)
@@ -214,7 +229,7 @@ public enum ColumnLayout {
 
         return ColumnRendering(
             rows: sorted(filtered, options: options),
-            hidden: summary(of: putAside),
+            hidden: summary(of: putAside, options: options),
             filteredOut: removed.reduce(0) { $0 + $1.count }
         )
     }
@@ -234,7 +249,8 @@ public enum ColumnLayout {
                 id: path,
                 workspace: members[0].workspace,
                 sessions: members,
-                slot: options.slot(for: path)
+                slot: options.slot(for: path),
+                alias: options.name(for: path)
             )
         }
     }
@@ -250,7 +266,8 @@ public enum ColumnLayout {
                 id: session.id,
                 workspace: session.workspace,
                 sessions: [session],
-                slot: options.slot(for: session.workspace.path)
+                slot: options.slot(for: session.workspace.path),
+                alias: options.name(for: session.workspace.path)
             )
         }
     }
@@ -290,14 +307,14 @@ public enum ColumnLayout {
 
     // MARK: - Summary of what's hidden
 
-    private static func summary(of sessions: [SessionState]) -> HiddenSummary? {
+    private static func summary(of sessions: [SessionState], options: ColumnOptions) -> HiddenSummary? {
         guard !sessions.isEmpty else { return nil }
 
         let mostUrgent = sessions
             .map(\.status)
             .min { $0.urgencyRank < $1.urgencyRank } ?? .idle
 
-        let names = Set(sessions.map(\.displayName)).sorted {
+        let names = Set(sessions.map { options.name(for: $0.workspace.path) ?? $0.displayName }).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
 

@@ -94,6 +94,32 @@ enum CoverageSuite {
                 a.expect(app.waitUntil { app.status(of: id) == "absent" }, "off takes its rows with it")
             },
 
+            // MARK: - 1.3 row names
+
+            // The name the user gives a row is what the panel and its readers
+            // show; the folder underneath does not move, and neither does the
+            // session's own name.
+            TestCase("a renamed row keeps its folder and publishes the name") { a in
+                let id = "e2e-renamed"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: secondWorkspace), entrypoint: "claude-vscode")
+                a.expect(app.waitUntil { app.status(of: id) == "working" }, "status: \(app.status(of: id))")
+
+                a.expectEqual(app.runCommand(["rename", secondWorkspace, "Second", "act"]).status, 0, "renamed")
+                defer { app.runCommand(["rename", secondWorkspace]) }
+                a.expect(
+                    app.waitUntil { app.session(id: id)?.label == "Second act" },
+                    "label: \(app.session(id: id)?.label ?? "nil")"
+                )
+                a.expectEqual(app.session(id: id)?.workspace, (secondWorkspace as NSString).lastPathComponent, "the folder underneath")
+
+                a.expectEqual(app.runCommand(["rename", secondWorkspace]).status, 0, "restored")
+                a.expect(
+                    app.waitUntil { app.session(id: id)?.label == (secondWorkspace as NSString).lastPathComponent },
+                    "back to the folder: \(app.session(id: id)?.label ?? "nil")"
+                )
+                a.expectEqual(app.runCommand(["rename", "relative/path", "x"]).status, 2, "a relative folder is refused")
+            },
+
             TestCase("a terminal signal with no live file behind it is still nothing") { a in
                 a.expectEqual(app.runCommand(["terminal", "on"]).status, 0, "switch on")
                 defer { app.runCommand(["terminal", "off"]) }

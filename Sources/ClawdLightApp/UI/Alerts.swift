@@ -27,6 +27,26 @@ enum Alerts {
         ) == .alertFirstButtonReturn
     }
 
+    /// A one-line question. Returns the text, trimmed, or `nil` on cancel.
+    static func ask(
+        title: String, message: String, initialValue: String, placeholder: String, confirmTitle: String
+    ) -> String? {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: confirmTitle)
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        field.stringValue = initialValue
+        field.placeholderString = placeholder
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        return field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     @discardableResult
     private static func present(
         title: String,

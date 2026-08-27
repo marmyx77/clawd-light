@@ -20,6 +20,8 @@ struct RowActions {
     let newConversation: (ColumnRow) -> Void
     /// Opens the conversation in a window of its own, without touching VS Code.
     let openChat: (ColumnRow) -> Void
+    /// Gives the row the name the user wants to read, by folder.
+    let rename: (ColumnRow) -> Void
 }
 
 /// What the column tells a row about the drag in progress.
@@ -208,6 +210,8 @@ struct TrafficLightRow: View {
         // arrangement, same persistence.
         Button("Move up", action: { actions.move(row, -1) })
         Button("Move down", action: { actions.move(row, 1) })
+        Button(row.alias == nil ? "Rename…" : "Rename… (“\(row.workspace.name)” underneath)",
+               action: { actions.rename(row) })
 
         Button(flags.isHidden ? "✓ Hide" : "Hide",
                action: { actions.toggleHidden(row) })

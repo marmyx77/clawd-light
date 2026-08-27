@@ -25,6 +25,8 @@ enum CommandLineInterface {
         case remote(verb: String, host: String?)
         /// The "Show terminal sessions" switch (D25): `on`, `off`, or `status`.
         case terminal(verb: String)
+        /// The name a row shows, by folder; an empty name restores the original.
+        case rename(path: String?, name: String?)
         case help
     }
 
@@ -74,6 +76,11 @@ enum CommandLineInterface {
             )
         case "terminal":
             return .terminal(verb: args.count > 1 ? args[1] : "status")
+        case "rename":
+            return .rename(
+                path: args.count > 1 ? args[1] : nil,
+                name: args.count > 2 ? args[2...].joined(separator: " ") : nil
+            )
         case "help", "--help", "-h":
             return .help
         case .some(let unknown) where unknown.hasPrefix("-") == false:
@@ -136,6 +143,8 @@ enum CommandLineInterface {
             return runRemote(verb: verb, host: host)
         case .terminal(let verb):
             return runTerminal(verb: verb)
+        case .rename(let path, let name):
+            return runRename(path: path, name: name)
 
         case .help:
             print(helpText)
@@ -481,11 +490,11 @@ enum CommandLineInterface {
                 return 0
             }
 
-            let nameWidth = max(12, slotted.map(\.workspace.count).max() ?? 12)
+            let nameWidth = max(12, slotted.map(\.label.count).max() ?? 12)
             for session in slotted {
                 print(
                     "\(session.slot ?? 0)  "
-                        + session.workspace.padded(to: nameWidth + 2)
+                        + session.label.padded(to: nameWidth + 2)
                         + session.status
                 )
             }
@@ -513,8 +522,7 @@ enum CommandLineInterface {
             // conversation — and says what it is, since its click leads to a
             // tab and not to an editor window.
             func name(of session: SessionSnapshot) -> String {
-                guard session.origin == SessionOrigin.terminal.rawValue else { return session.workspace }
-                return "\(session.title ?? session.workspace) [terminal]"
+                session.origin == SessionOrigin.terminal.rawValue ? "\(session.label) [terminal]" : session.label
             }
             let nameWidth = max(12, response.sessions.map { name(of: $0).count }.max() ?? 12)
 
@@ -593,6 +601,11 @@ enum CommandLineInterface {
           in folders no editor window has open, named by their conversation. Off by
           default; `off` takes those rows away at once.
 
+        NAMES
+          Right-click a row → Rename… gives it the name you want to read; the session,
+          its window and its folder keep theirs. `clawd-light rename <folder> [name]`
+          does the same from here; no name restores the original.
+
         STATES
           red        the session is at rest
           yellow     Claude is working
@@ -611,6 +624,25 @@ enum CommandLineInterface {
     }
 
     // MARK: - Remote machines
+
+    /// `clawd-light rename <folder> [name]`: the panel's word for a row.
+    ///
+    /// Writes the preferences; the running panel picks it up within one poll.
+    /// No name, or an empty one, restores the original.
+    private static func runRename(path: String?, name: String?) -> Int32 {
+        guard let path, path.hasPrefix("/") else {
+            print("Usage: clawd-light rename </absolute/folder> [name]   (no name restores the original)")
+            return 2
+        }
+        let preferences = Preferences()
+        preferences.rowNames = RowNames.renaming(path, to: name, in: preferences.rowNames)
+        if let given = RowNames.name(of: path, in: preferences.rowNames) {
+            print("“\(given)” is now the panel's word for \(path).")
+        } else {
+            print("\(path) shows its own name again.")
+        }
+        return 0
+    }
 
     /// `clawd-light terminal on|off|status`: the "Show terminal sessions" switch.
     ///

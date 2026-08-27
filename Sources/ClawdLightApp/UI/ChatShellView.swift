@@ -134,7 +134,7 @@ struct ChatSidebarRow: View {
                             .foregroundStyle(StatusPalette.timeColor)
                             .monospacedDigit()
                     }
-                    Text(row.workspace.name)
+                    Text(row.displayName)
                         .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)

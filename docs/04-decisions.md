@@ -1078,6 +1078,31 @@ that rewrite is its own change.
 
 ---
 
+## D26 · A row can be renamed, and the name is only a name
+
+**Decided.** Right-click → *Rename…* (or `clawd-light rename <folder> [name]`)
+gives a row the name the user wants to read. It changes what the panel, its
+tooltip, the notification, `open n`, `next` and `/sessions.label` **show** —
+nothing else. The window is still found by its title, the transcript by its
+path, the folder is still the folder, and `/sessions.workspace` still says it.
+A blank name restores the original.
+
+**Why keyed by folder, not by session.** A session id is born and dies with a
+process; a name that vanished at every restart would be a name you gave twice a
+day. The folder is the row's identity (D4, D23) — the name follows the row, and
+with grouping off every session of that folder shows it. That is the cost
+accepted: the request said "sessions", the durable thing is the place.
+
+**What it does not touch.** The order, the slots, hide, mute, calm: all keyed by
+folder already, and a rename moves none of them. The conversation title of a
+lone terminal row yields to the given name, as does the folder.
+
+**Discarded:** a name per session id, for the reason above. **Discarded:**
+renaming the workspace itself — the name is the key every window is found by
+(D6), and a key you can edit is a key you will one day break.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

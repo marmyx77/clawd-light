@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,842 lines · 49 files   pure logic, zero AppKit
-  ClawdLightApp/    9,313 lines · 51 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,802 lines · 30 files   466 cases, instantaneous
-  ClawdLightE2E/    1,818 lines ·  9 files   78 cases, the real binary
+  ClawdLightCore/   5,901 lines · 50 files   pure logic, zero AppKit
+  ClawdLightApp/    9,416 lines · 51 files   shell: AppKit, network, windows
+  ClawdLightTests/  5,868 lines · 31 files   470 cases, instantaneous
+  ClawdLightE2E/    1,844 lines ·  9 files   79 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
-No file exceeds 754 lines. The limit the project sets itself is 800.
+No file exceeds 786 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -69,6 +69,11 @@ decides which session is a group's face and which one a click opens.
 > **Touching the ordering**, remember two things: the row `id` has to stay stable
 > across two computations, or SwiftUI rebuilds the rows and the panel flickers;
 > and letting any state into `sorted` would silently break every bound key.
+
+### `RowNames.swift`
+The names the user gave to rows, by folder: read, renamed, bounded. A name is
+what the panel shows and nothing that finds a window or a file ever believes it
+(D26).
 
 ### `RowOrder.swift`
 The column's order as data: give newcomers a place (`absorbing`), move a row to
@@ -298,7 +303,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 147
+### `SessionsPayload.swift` · 172
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -464,7 +469,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 602 | holds everything together; row and panel actions |
+| `PanelController.swift` | 693 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 303 | one row: dot, slot, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
@@ -493,7 +498,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 466 cases
+## `ClawdLightTests/` — 470 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -504,6 +509,7 @@ script, before it was split. The most important ones:
 | `StateReducerSuite` · `ReducerFixesSuite` | the state machine, including the four semantic corrections |
 | `SubagentSuite` | counter and derived state |
 | `ColumnLayoutSuite` | grouping, the user's order, filtering, summary |
+| `RowNamesSuite` | a name shown over folder and title, stored by folder, blank restores; the label in the payload |
 | `RowOrderSuite` · `ColumnSlotSuite` | absorbing, placing and moving; that a slot is a position and survives any change of state |
 | `MailboxSuite` · `MailboxPermissionSuite` | hostile session ids, message limits, owner-only permissions |
 | `MailboxDirectorySafetySuite` | a symlink where the mailbox should be is refused |
@@ -527,7 +533,7 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 
-## `ClawdLightE2E/` — 78 cases
+## `ClawdLightE2E/` — 79 cases
 
 | Suite | Covers |
 |---|---|

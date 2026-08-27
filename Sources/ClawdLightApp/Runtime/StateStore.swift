@@ -324,6 +324,17 @@ final class StateStore: ObservableObject {
         pollTimer?.invalidate()
         poll()
 
+        // What the snapshot says about a session — its slot, its name, whether it
+        // is muted — comes from the preferences, and a preference can change with
+        // the state standing still: a rename, a drag, `clawd-light rename` from
+        // another process. Republish on every change of the defaults, and on
+        // every poll as a floor, so no reader is ever more than one poll behind.
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.republish() }
+        }
+
         let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.poll() }
         }
@@ -451,6 +462,12 @@ final class StateStore: ObservableObject {
         // be bounded by the twelve-hour prune like every other mistake, or a
         // session killed without a `SessionEnd` stays in the column forever.
         apply(.prune(alive: confirmed), now: now)
+        republish()
+    }
+
+    /// Publishes the snapshot again with the preferences as they are now.
+    func republish() {
+        publishSnapshot()
     }
 
     // MARK: - Internal
@@ -487,12 +504,14 @@ final class StateStore: ObservableObject {
         guard let snapshots else { return }
         let order = preferences.rowOrder
         let muted = preferences.mutedWorkspaces
+        let names = preferences.rowNames
 
         snapshots.replace(with: state.ordered.map { session in
             SessionsCodec.snapshot(
                 of: session,
                 muted: muted.contains(session.workspace.path),
-                slot: RowOrder.slot(of: session.workspace.path, in: order, limit: AppConfig.maxSlots)
+                slot: RowOrder.slot(of: session.workspace.path, in: order, limit: AppConfig.maxSlots),
+                alias: RowNames.name(of: session.workspace.path, in: names)
             )
         })
     }

@@ -153,7 +153,7 @@ final class SessionNotifier {
         guard Bundle.main.bundleIdentifier != nil else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = session.displayName
+        content.title = RowNames.name(of: session.workspace.path, in: preferences.rowNames) ?? session.displayName
         content.body = session.lastMessage.map { "Waiting for an answer — \($0)" }
             ?? "Waiting for your answer."
         content.sound = .default

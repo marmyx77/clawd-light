@@ -144,7 +144,8 @@ final class PanelController {
             grouped: preferences.groupsByWorkspace,
             onlyWaiting: preferences.showsOnlyWaiting,
             order: preferences.rowOrder,
-            hidden: preferences.hiddenWorkspaces
+            hidden: preferences.hiddenWorkspaces,
+            names: preferences.rowNames
         )
     }
 
@@ -250,7 +251,8 @@ final class PanelController {
                 rebuildContent()
             },
             newConversation: { [weak self] row in self?.newConversation(in: row) },
-            openChat: { [weak self] row in self?.openChat(in: row) }
+            openChat: { [weak self] row in self?.openChat(in: row) },
+            rename: { [weak self] row in self?.rename(row) }
         )
     }
 
@@ -387,6 +389,24 @@ final class PanelController {
         case .failed(let error):
             store.reportError("“\(name)” runs in \(seat.label) — \(error.shortDescription).")
         }
+    }
+
+    /// "Rename…": the name the row shows, by folder, and nothing else changes.
+    ///
+    /// A blank answer puts the original back — the field is prefilled with the
+    /// current name, so clearing it is the gesture for "undo".
+    private func rename(_ row: ColumnRow) {
+        guard let answer = Alerts.ask(
+            title: "Rename “\(row.displayName)”",
+            message: "Only what the panel shows changes. The session, its window and its "
+                + "folder (\(row.workspace.path)) keep their names. Leave it empty to go back to the original.",
+            initialValue: row.alias ?? "",
+            placeholder: row.workspace.name,
+            confirmTitle: "Rename"
+        ) else { return }
+        preferences.rowNames = RowNames.renaming(row.workspace.path, to: answer, in: preferences.rowNames)
+        store.republish()
+        rebuildContent()
     }
 
     /// Restores every cleared session in the row to "unread".
