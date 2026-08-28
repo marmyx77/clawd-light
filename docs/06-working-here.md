@@ -15,6 +15,7 @@ macOS 14 or later. Swift 6, language mode 5.
 swift build                    # compile
 ./Scripts/test.sh              # both suites, then the documentation checks
 ./Scripts/build-app.sh         # bundle into dist/
+./Scripts/release.sh           # only to hand it to somebody else
 pkill -x clawd-light; sleep 1; open dist/ClawdLight.app
 ```
 

@@ -12,7 +12,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION="${1:-release}"
 APP_NAME="ClawdLight"
 BUNDLE_ID="com.clawdlight.app"
-VERSION="0.1.0"
+# The version comes from the release script when there is one, so a disk
+# image cannot carry a number no tag ever had.
+VERSION="${CLAWD_LIGHT_VERSION:-0.1.0}"
 
 BUILD_DIR="$ROOT/.build/$CONFIGURATION"
 APP_DIR="$ROOT/dist/$APP_NAME.app"

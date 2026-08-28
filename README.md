@@ -428,6 +428,41 @@ leave an orphaned record in Settings on every build.
 
 `clawd-light status` shows the state of the two permissions separately.
 
+### Giving it to somebody else
+
+```bash
+./Scripts/release.sh            # dist/ClawdLight-<version>.dmg
+```
+
+The version comes from the git tag, so a disk image cannot carry a number no
+commit has. The script has three outcomes and tells you which one you got,
+asking Gatekeeper here before the file leaves:
+
+| What is in the keychain | What comes out |
+|---|---|
+| the local certificate only | a disk image **macOS refuses** on any other Mac. A tester gets in with right-click on the app › Open, knowingly |
+| a Developer ID certificate | a signed disk image, **still refused** the first time on a Mac that has never seen it: signing is not what lifts that |
+| Developer ID + a notarization profile | signed, notarized, stapled — it opens with a double click |
+
+The last one needs the Apple Developer Program, and two things from you once:
+the **Developer ID Application** certificate, and a notarization profile in the
+keychain, built from an app-specific password made at appleid.apple.com.
+
+```bash
+xcrun notarytool store-credentials clawd-light \
+    --apple-id you@example.com --team-id TEAMID --password <app-specific>
+
+export CLAWD_LIGHT_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'
+export CLAWD_LIGHT_NOTARY_PROFILE='clawd-light'
+```
+
+Neither belongs in this repository, so the script reads both from the
+environment; with a single Developer ID in the keychain it finds it on its own.
+Notarization is what forces the **hardened runtime**, which by default takes
+away exactly the two things this app does for a living — Apple Events and the
+microphone — so the script signs it with the two entitlements that give them
+back, and nothing else.
+
 > If the click stops working, the first thing to check isn't the permission: it is
 > **how long the app has been running**. A new bundle does not replace the process
 > already running, and a build that is an hour old is indistinguishable from a
@@ -760,6 +795,7 @@ swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
 ./Scripts/build-app.sh                 # bundle into dist/
+./Scripts/release.sh                   # signed disk image into dist/
 ```
 
 The Command Line Tools without Xcode provide neither XCTest nor the complete

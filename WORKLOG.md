@@ -729,3 +729,26 @@ own command reports no working directory, so the matcher learned Claude's `✳`
 mark. Deferred, and said so in D25: the reconcile that ignores an empty live
 list, because the end-to-end harness leans on it.
 
+
+## 28 August — the disk image, and what it costs
+
+The question was whether the app could be handed to somebody as a `.dmg`. It
+can, and the whole procedure turns out to be `xcrun`: the Command Line Tools
+ship `notarytool` and `stapler`, so nothing here needs Xcode and no third-party
+signer is required. Measured before writing anything, because the alternative
+was a Rust re-implementation nobody would have needed.
+
+`Scripts/release.sh` builds it, with three outcomes it refuses to confuse: the
+local certificate produces an image macOS rejects; a Developer ID produces a
+signed image macOS *still* rejects the first time; only notarization lifts that.
+The script asks `spctl` — the same service that will decide on somebody else's
+Mac — and prints its verdict before the file leaves, so the difference is read
+rather than assumed. The version travels from the git tag, so an image cannot
+carry a number no commit has.
+
+Notarization forces the hardened runtime, which takes away precisely the two
+things this app lives on: Apple Events, which raise the window you clicked, and
+the microphone, which dictation holds down. Two entitlements give them back and
+the script grants nothing else. Both secrets — the identity and the
+notarization profile — are read from the environment: this repository is
+public, and a Team ID is not ours to publish.
