@@ -50,6 +50,16 @@ DMG="$ROOT/dist/$APP_NAME-$VERSION.dmg"
 IDENTITY="${CLAWD_LIGHT_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${CLAWD_LIGHT_NOTARY_PROFILE:-}"
 
+# How long Apple gets before we call it a failure.
+#
+# `--wait` on its own waits for ever, and that is not a theoretical problem:
+# measured once, a disk image submission printed "initiating connection to the
+# Apple notary service" and then held the terminal for two and a half hours,
+# never reaching the queue — the submission does not even appear in
+# `notarytool history`. Notarization normally takes one to five minutes, so
+# twenty is generous and a hang stops looking like patience.
+NOTARY_DEADLINE="${CLAWD_LIGHT_NOTARY_TIMEOUT:-20m}"
+
 # One Developer ID in the keychain is unambiguous, so we use it without being
 # told. Several are a choice that belongs to the person releasing, not to us.
 if [ -z "$IDENTITY" ]; then
@@ -124,7 +134,8 @@ if [ -n "$IDENTITY" ] && [ -n "$NOTARY_PROFILE" ]; then
     ZIP="$ROOT/.build/$APP_NAME-$VERSION.zip"
     ditto -c -k --keepParent "$APP_DIR" "$ZIP"
     echo "▸ Notarizing the app (Apple takes a few minutes)…"
-    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" \
+        --wait --timeout "$NOTARY_DEADLINE"
     xcrun stapler staple "$APP_DIR"
     rm -f "$ZIP"
     NOTARIZED=1
@@ -151,7 +162,8 @@ fi
 
 if [ "$NOTARIZED" = "1" ]; then
     echo "▸ Notarizing the disk image…"
-    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" \
+        --wait --timeout "$NOTARY_DEADLINE"
     xcrun stapler staple "$DMG"
 fi
 
