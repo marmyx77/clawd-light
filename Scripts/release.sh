@@ -30,7 +30,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="ClawdLight"
-APP_DIR="$ROOT/dist/$APP_NAME.app"
+
+# The bundle that gets released is a copy, never the one in dist/. A Developer
+# ID signature is a different identity from the local one, and macOS grants
+# Accessibility and Automation to an identity: signing dist/ in place would
+# silently revoke the permissions of the app you are running right now.
+BUILT="$ROOT/dist/$APP_NAME.app"
+APP_DIR="$ROOT/.build/release-app/$APP_NAME.app"
 
 # The number travels from the git tag, so a disk image cannot claim a version
 # that no commit carries. An explicit argument wins, for a dry run.
@@ -65,7 +71,10 @@ echo "▸ clawd-light $VERSION"
 echo
 
 CLAWD_LIGHT_VERSION="$VERSION" "$ROOT/Scripts/build-app.sh" release >/dev/null
-echo "▸ Bundle built."
+rm -rf "$ROOT/.build/release-app"
+mkdir -p "$ROOT/.build/release-app"
+cp -R "$BUILT" "$APP_DIR"
+echo "▸ Bundle built and copied aside."
 
 # ---------------------------------------------------------------------------
 # Signature
@@ -95,7 +104,7 @@ cat > "$ENTITLEMENTS" <<'PLIST'
 PLIST
 
 if [ -n "$IDENTITY" ]; then
-    echo "▸ Signing with “$IDENTITY”…"
+    echo "▸ Signing with “${IDENTITY}”…"
     codesign --force --options runtime --timestamp \
         --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP_DIR"
     codesign --verify --deep --strict "$APP_DIR"

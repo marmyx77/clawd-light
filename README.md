@@ -458,6 +458,10 @@ export CLAWD_LIGHT_NOTARY_PROFILE='clawd-light'
 
 Neither belongs in this repository, so the script reads both from the
 environment; with a single Developer ID in the keychain it finds it on its own.
+The bundle it signs is a **copy**, never `dist/ClawdLight.app`: macOS grants
+Accessibility and Automation to a signing identity, so signing the daily app
+with a different one would silently revoke the permissions of the panel you are
+running while you release.
 Notarization is what forces the **hardened runtime**, which by default takes
 away exactly the two things this app does for a living — Apple Events and the
 microphone — so the script signs it with the two entitlements that give them
