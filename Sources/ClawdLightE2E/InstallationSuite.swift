@@ -298,6 +298,37 @@ enum InstallationSuite {
             // endpoint. Without it the chat window has nothing to open, and the
             // failure is silent: an empty conversation looks exactly like a
             // conversation where nothing was said.
+            // The same chain, refusing. `POST /signal` carries no token by
+            // design, and this value is opened for reading: measured on the
+            // running app before the rule existed, a forged signal naming
+            // /etc/passwd produced a row holding it within a second. The
+            // signal is still accepted — a rejected hook would block a Claude
+            // Code turn — but the path is dropped on the way in.
+            TestCase("a transcript path outside ~/.claude is dropped, and the row still appears") { a in
+                let id = "e2e-transcript-outside"
+                app.writeLiveSession(sessionId: id, cwd: LifecycleSuite.workspace)
+
+                var payload = HookPayloads.userPromptSubmit(
+                    sessionId: id, cwd: LifecycleSuite.workspace
+                )
+                payload["transcript_path"] = "/etc/passwd"
+                app.runHookScript(payload: payload)
+
+                a.expect(
+                    app.waitUntil { app.status(of: id) == "working" },
+                    "the row must still appear — status: \(app.status(of: id))"
+                )
+                guard let response = app.sessions(),
+                      let session = response.sessions.first(where: { $0.id == id })
+                else {
+                    return a.fail("session not in the read endpoint")
+                }
+                a.expectNil(
+                    session.transcriptPath,
+                    "the app must not carry a path it would refuse to open"
+                )
+            },
+
             TestCase("the transcript path survives the whole chain") { a in
                 let id = "e2e-transcript-path"
                 // The live-session file first: by this point in the run the
@@ -320,7 +351,7 @@ enum InstallationSuite {
                     return a.fail("session not in the read endpoint")
                 }
                 a.expectEqual(
-                    session.transcriptPath, "/tmp/\(id).jsonl",
+                    session.transcriptPath, HookPayloads.transcriptPath(id),
                     "transcriptPath — the hook sent it, the endpoint has to publish it"
                 )
                 a.expectEqual(

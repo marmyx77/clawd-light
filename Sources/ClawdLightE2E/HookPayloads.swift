@@ -99,7 +99,19 @@ enum HookPayloads {
             "session_id": sessionId,
             "hook_event_name": event,
             "cwd": cwd,
-            "transcript_path": "/tmp/\(sessionId).jsonl",
+            "transcript_path": transcriptPath(sessionId),
         ]
     }
+
+    /// Where the fixtures claim the transcript is.
+    ///
+    /// Under the fake home's `.claude`, because that is the only place the app
+    /// will now open one: `TranscriptPathPolicy` refuses anything outside it,
+    /// and a fixture in `/tmp` was quietly testing a path production rejects.
+    static func transcriptPath(_ sessionId: String) -> String {
+        transcriptRoot.appendingPathComponent("projects/e2e/\(sessionId).jsonl").path
+    }
+
+    /// Set once by the run, from the fake home the app is given.
+    nonisolated(unsafe) static var transcriptRoot = URL(fileURLWithPath: NSTemporaryDirectory())
 }

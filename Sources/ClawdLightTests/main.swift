@@ -62,6 +62,7 @@ let suites: [TestSuite] = [
     RowNamesSuite.suite,
     PanelIssueSuite.suite,
     PermissionWaitSuite.suite,
+    TranscriptPathPolicySuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

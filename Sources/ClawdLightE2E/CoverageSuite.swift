@@ -63,7 +63,7 @@ enum CoverageSuite {
                 // other case writes.
                 app.writeLiveSession(sessionId: id, cwd: folder, entrypoint: "cli", pid: 1)
                 // Where the hook fixture says the transcript is.
-                let transcript = "/tmp/\(id).jsonl"
+                let transcript = HookPayloads.transcriptPath(id)
                 app.writeTranscript(sessionId: id, cwd: folder, title: "Wire the release script", at: transcript)
                 defer {
                     app.removeLiveSessions()

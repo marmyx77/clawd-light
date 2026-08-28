@@ -450,9 +450,14 @@ front, but the right window is not raised.
 > ```bash
 > tccutil reset Accessibility com.clawdlight.app
 > tccutil reset AppleEvents com.clawdlight.app
+> pkill -x clawd-light && open -a ClawdLight
 > ```
 >
-> Then click a traffic light again and answer the request.
+> The relaunch is not optional: `tccutil` clears the records, but macOS keeps the
+> accessibility session of a **running** process open until it exits — so without
+> it the app goes on holding what you have just taken away, and the next check
+> reports a state nobody is in any more. Then click a traffic light and answer
+> the request.
 
 > **It has to be re-authorized after every rebuild.** The bundle is ad-hoc signed,
 > and the signature changes on every build: macOS considers it a different app and
@@ -731,6 +736,15 @@ and that is a choice: the hook script could read the token, but a hook that fail
 authentication would block a Claude Code turn for the sake of a decorative widget.
 The risk is asymmetric and so is the treatment.
 
+**What an open endpoint is not allowed to do.** Because that route takes no
+token, everything arriving on it is treated as untrusted. The `transcript_path`
+it carries is opened for reading, so it is accepted only under `~/.claude`, where
+Claude Code actually writes transcripts — `..` resolved first, and a sibling
+directory whose name merely starts the same refused. Before that rule a forged
+signal naming any file produced a row holding it, and the extended window would
+have read it. A row itself still cannot be conjured out of nothing: it needs an
+editor window open on that folder, or a live session file.
+
 ## Commands
 
 ```
@@ -858,8 +872,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 482 domain tests, instantaneous
-swift run ClawdLightE2E                # 81 end-to-end tests, ~1 minute
+swift run ClawdLightTests              # 489 domain tests, instantaneous
+swift run ClawdLightE2E                # 82 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

@@ -97,7 +97,11 @@ public enum HookPayloadDecoder {
             // A transcript on another machine is not a file here. Keeping the path
             // would make the chat window open an empty conversation and call it
             // "nothing was said".
-            transcriptPath: host == nil ? absolutePath(object, key: "transcript_path") : nil,
+            transcriptPath: host == nil
+                ? TranscriptPathPolicy.accepted(
+                    optionalString(object, key: "transcript_path"),
+                    under: AppConfig.claudeDirectory)
+                : nil,
             host: host
         )
     }

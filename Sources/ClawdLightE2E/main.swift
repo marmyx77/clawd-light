@@ -48,6 +48,10 @@ let binaryURL = URL(fileURLWithPath: CommandLine.arguments[0])
 
 let app = AppUnderTest(binaryURL: binaryURL, port: testPort)
 
+// The fixtures have to name a transcript the app will agree to open, and that is
+// now only somewhere under this run's fake `~/.claude`.
+HookPayloads.transcriptRoot = app.home.appendingPathComponent(".claude", isDirectory: true)
+
 do {
     try app.start()
 } catch {

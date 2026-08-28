@@ -1,14 +1,14 @@
 # Code map
 
-~24,000 lines of Swift across five targets. For each file: what it contains, why
+~24,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,106 lines · 53 files   pure logic, zero AppKit
-  ClawdLightApp/    9,870 lines · 53 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,023 lines · 32 files   482 cases, instantaneous
-  ClawdLightE2E/    1,887 lines ·  9 files   81 cases, the real binary
+  ClawdLightCore/   6,170 lines · 54 files   pure logic, zero AppKit
+  ClawdLightApp/    9,879 lines · 53 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,117 lines · 33 files   489 cases, instantaneous
+  ClawdLightE2E/    1,934 lines ·  9 files   82 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
@@ -74,6 +74,13 @@ decides which session is a group's face and which one a click opens.
 The names the user gave to rows, by folder: read, renamed, bounded. A name is
 what the panel shows and nothing that finds a window or a file ever believes it
 (D26).
+
+### `TranscriptPathPolicy.swift`
+Which transcript paths the app will open: only those under `~/.claude`, after
+`..` has been resolved and with the trailing separator that stops a sibling
+directory from passing as a child. `POST /signal` carries no token by design,
+and the path it names is opened for reading — measured before this rule existed,
+a forged signal naming `/etc/passwd` produced a row holding it within a second.
 
 ### `PanelIssue.swift` · `PermissionWait.swift`
 A fault the person looking at the panel can fix, as a value rather than a
@@ -526,7 +533,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 482 cases
+## `ClawdLightTests/` — 489 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -569,7 +576,7 @@ by name, prints the ✓/✗ lines and the final count) and `Assertions` (`expect
 `fail`). It exists because the Command Line Tools without Xcode ship neither
 XCTest nor a complete swift-testing (D11).
 
-## `ClawdLightE2E/` — 81 cases
+## `ClawdLightE2E/` — 82 cases
 
 | Suite | Covers |
 |---|---|

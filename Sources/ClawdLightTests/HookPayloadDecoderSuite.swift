@@ -32,12 +32,28 @@ enum HookPayloadDecoderSuite {
     static let suite = TestSuite("Hook payload decoding", [
 
         TestCase("The transcript path is carried through") { t in
+            // Built from the configured Claude directory rather than written out:
+            // the path has to be inside it to be accepted, and the directory is
+            // wherever this run's home points — the fake one under test.
+            let inside = AppConfig.claudeDirectory
+                .appendingPathComponent("projects/p/s.jsonl").path
             let signal = try? HookPayloadDecoder.decode(
-                payload(["transcript_path": "/Users/dev/.claude/projects/p/s.jsonl"])
+                payload(["transcript_path": inside])
             )
-            t.expectEqual(
-                signal?.transcriptPath, "/Users/dev/.claude/projects/p/s.jsonl", "path"
-            )
+            t.expectEqual(signal?.transcriptPath, inside, "path")
+        },
+
+        // `POST /signal` has no token, and this value is opened for reading. A
+        // forged signal naming a file outside `~/.claude` used to produce a row
+        // holding it — measured on the running app — so the decoder is where the
+        // boundary is enforced, before anything stores it.
+        TestCase("A transcript path outside the Claude directory is refused") { t in
+            for path in ["/etc/passwd", "/tmp/anything.jsonl"] {
+                let signal = try? HookPayloadDecoder.decode(
+                    payload(["transcript_path": path])
+                )
+                t.expectNil(signal?.transcriptPath, path)
+            }
         },
 
         // The path gets opened for reading. A relative one would resolve against
@@ -85,9 +101,15 @@ enum HookPayloadDecoderSuite {
 
             // A path on the node is not a path here: the chat window would open
             // an empty conversation and call it "nothing was said".
-            let withPath = payload(["transcript_path": "/home/dev/.claude/projects/p/s.jsonl"])
-            t.expectNil((try? HookPayloadDecoder.decode(withPath, host: "node"))?.transcriptPath, "a remote transcript path is dropped")
-            t.expect((try? HookPayloadDecoder.decode(withPath))?.transcriptPath != nil, "a local one is kept")
+            // The remote path is a node's, so it is dropped for carrying a host at
+            // all; the local one has to be inside this home's Claude directory,
+            // which is the separate rule `TranscriptPathPolicy` enforces.
+            let remotePath = payload(["transcript_path": "/home/dev/.claude/projects/p/s.jsonl"])
+            t.expectNil((try? HookPayloadDecoder.decode(remotePath, host: "node"))?.transcriptPath, "a remote transcript path is dropped")
+
+            let localPath = payload(["transcript_path":
+                AppConfig.claudeDirectory.appendingPathComponent("projects/p/s.jsonl").path])
+            t.expect((try? HookPayloadDecoder.decode(localPath))?.transcriptPath != nil, "a local one is kept")
         },
 
         TestCase("Decodes a permission request notification") { t in

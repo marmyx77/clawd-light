@@ -1364,6 +1364,21 @@ tccutil reset Accessibility com.clawdlight.app
 tccutil reset AppleEvents com.clawdlight.app
 ```
 
+**And the cure has its own trap.** `tccutil reset` does not revoke anything from
+a process that is **already running**: macOS keeps its accessibility session
+open until it exits. Measured while testing this very fix — the record was
+reset, a row was clicked, and the click worked perfectly, which reads as "the
+reset did nothing". It had done exactly what it says; the running app was simply
+still holding what it had been granted. The command has to be followed by
+
+```bash
+pkill -x clawd-light && open -a ClawdLight
+```
+
+or the next check will be about a state nobody is in any more. It is the same
+family of mistake as the switch that says yes while the app says no: the system
+answering about something other than the process in front of you.
+
 **What it cost, beyond the diagnosis.** Nothing prompted, because the click
 checks the permission and takes the fallback rather than asking; and the reason
 lived at the bottom of a context menu. An app that degrades silently into a

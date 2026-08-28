@@ -84,11 +84,18 @@ public enum AppConfig {
         ProcessInfo.processInfo.environment[homeOverrideVariable]?.trimmed.isEmpty == false
     }
 
+    /// Everything Claude Code keeps on disk: settings, sessions, transcripts.
+    ///
+    /// Named once because it is also a **boundary**, not only a location: a
+    /// transcript path arriving in a hook payload is accepted only when it falls
+    /// inside here (`TranscriptPathPolicy`), and `POST /signal` carries no token.
+    public static var claudeDirectory: URL {
+        homeDirectory.appendingPathComponent(".claude", isDirectory: true)
+    }
+
     /// Directory where the Claude Code VS Code plugin drops one lock file per window.
     public static var ideLockDirectory: URL {
-        homeDirectory
-            .appendingPathComponent(".claude", isDirectory: true)
-            .appendingPathComponent("ide", isDirectory: true)
+        claudeDirectory.appendingPathComponent("ide", isDirectory: true)
     }
 
     /// Directory where Claude Code drops one file per live process,

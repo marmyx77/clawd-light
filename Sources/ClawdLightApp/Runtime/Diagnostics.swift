@@ -24,7 +24,16 @@ enum Diagnostics {
         try? FileManager.default.createDirectory(
             at: AppConfig.supportDirectory, withIntermediateDirectories: true
         )
-        try? Data().write(to: logURL)
+        // Created with the permissions it needs, not repaired afterwards: the
+        // log carries workspace paths, window titles and remote host names —
+        // the same information the token on `GET /sessions` exists to protect —
+        // and until this line it was born 0644 and readable by every other
+        // account on the machine.
+        try? FileManager.default.removeItem(at: logURL)
+        _ = FileManager.default.createFile(
+            atPath: logURL.path, contents: Data(),
+            attributes: [.posixPermissions: 0o600]
+        )
         log("session started")
     }
 

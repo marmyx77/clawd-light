@@ -110,7 +110,11 @@ public enum PanelIssue: Equatable, Sendable {
 
             tccutil reset Accessibility com.clawdlight.app
             tccutil reset AppleEvents com.clawdlight.app
+            pkill -x clawd-light && open -a ClawdLight
 
-        Then click a traffic light again and answer the request.
+        The relaunch is part of the cure: macOS keeps a running process's \
+        accessibility session open until it exits, so without it clawd-light \
+        goes on holding what you just took away. Then click a traffic light \
+        again and answer the request.
         """
 }
