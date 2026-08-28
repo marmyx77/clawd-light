@@ -379,6 +379,15 @@ required.
 open dist/ClawdLight.app
 ```
 
+The icon is drawn by [`Scripts/make-icon.py`](Scripts/make-icon.py) and committed
+as `Resources/ClawdLight.icns`, so the build needs no Python. Three claw marks —
+the name carries *claw*, the product is a traffic light, and the marks are its
+three states. It is generated rather than drawn because the rule that keeps it
+readable at 16 px is arithmetic: the gap between two marks is never smaller than
+a mark is wide. The sizes below 32 px are not the large one shrunk — they carry
+thicker strokes and no shadow, because at that scale ornament only mutes the
+colour, and colour is all that is left doing the work.
+
 On first launch the app offers to register the hooks in
 `~/.claude/settings.json`. You can also do it from a terminal:
 
@@ -800,6 +809,7 @@ swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
 ./Scripts/build-app.sh                 # bundle into dist/
 ./Scripts/release.sh                   # signed disk image into dist/
+python3 Scripts/make-icon.py --preview # redraw the icon, with a size check
 ```
 
 The Command Line Tools without Xcode provide neither XCTest nor the complete

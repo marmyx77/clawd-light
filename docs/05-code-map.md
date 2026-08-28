@@ -576,6 +576,7 @@ the realignment is asynchronous.
 |---|---|
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
+| `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/ClawdLight.icns`; `--preview` adds the small-size contact sheet |
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |

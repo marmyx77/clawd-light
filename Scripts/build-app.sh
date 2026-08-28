@@ -31,6 +31,16 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 cp "$BUILD_DIR/ClawdLightApp" "$MACOS_DIR/clawd-light"
 
+# The icon is committed, not generated here: a build should not depend on
+# Python being present. Scripts/make-icon.py redraws it when the design changes.
+ICON="$ROOT/Resources/$APP_NAME.icns"
+if [ -f "$ICON" ]; then
+    cp "$ICON" "$RESOURCES_DIR/$APP_NAME.icns"
+else
+    echo "  ⚠ Resources/$APP_NAME.icns is missing: the bundle gets the generic icon."
+    echo "     Rebuild it with: python3 Scripts/make-icon.py"
+fi
+
 cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -42,6 +52,10 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <string>$APP_NAME</string>
     <key>CFBundleExecutable</key>
     <string>clawd-light</string>
+    <key>CFBundleIconFile</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleIconName</key>
+    <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>
     <string>$BUNDLE_ID</string>
     <key>CFBundlePackageType</key>
