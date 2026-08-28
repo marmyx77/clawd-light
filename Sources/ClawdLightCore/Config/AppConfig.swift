@@ -144,6 +144,17 @@ public enum AppConfig {
     /// not by cost.
     public static let permissionWatchInterval: TimeInterval = 1.5
 
+    // MARK: - Updates
+
+    /// Asking GitHub which release is the latest. Short: it happens because
+    /// somebody chose a menu entry and is waiting for an answer.
+    public static let updateCheckTimeout: TimeInterval = 10
+
+    /// Downloading the disk image. Long, because it is a few megabytes over
+    /// whatever connection the user has, and giving up early on a slow line
+    /// would look like a broken update rather than a slow one.
+    public static let updateDownloadTimeout: TimeInterval = 300
+
     /// How long that watch stays up before giving in.
     ///
     /// Long enough to find the pane, read the sentence and authenticate; short

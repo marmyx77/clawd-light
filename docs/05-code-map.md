@@ -1,13 +1,13 @@
 # Code map
 
-~24,300 lines of Swift across five targets. For each file: what it contains, why
+~25,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,170 lines · 54 files   pure logic, zero AppKit
-  ClawdLightApp/    9,879 lines · 53 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,117 lines · 33 files   489 cases, instantaneous
+  ClawdLightCore/   6,306 lines · 56 files   pure logic, zero AppKit
+  ClawdLightApp/    10,296 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,231 lines · 34 files   497 cases, instantaneous
   ClawdLightE2E/    1,934 lines ·  9 files   82 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 285
+### `AppConfig.swift` · 324
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -74,6 +74,15 @@ decides which session is a group's face and which one a click opens.
 The names the user gave to rows, by folder: read, renamed, bounded. A name is
 what the panel shows and nothing that finds a window or a file ever believes it
 (D26).
+
+### `ReleaseVersion.swift` · `ReleaseFeed.swift`
+The update check as a parser that says no. Versions compare as three integers,
+because `"0.10.0"` sorts before `"0.9.0"` and the tenth release would silently
+stop being offered. The download URL is **pinned** to this project's own
+releases: an answer arriving over HTTPS is still only an answer, and a field that
+could name any host would be choosing the code that runs on a Mac where this app
+holds the Accessibility permission. Drafts and pre-releases are published without
+being offered, which is what they are for.
 
 ### `TranscriptPathPolicy.swift`
 Which transcript paths the app will open: only those under `~/.claude`, after
@@ -510,6 +519,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PanelRootView.swift` | 280 | the general menu, and the gear under the rows that opens it |
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
+| `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 132 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
@@ -533,7 +543,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 489 cases
+## `ClawdLightTests/` — 497 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

@@ -525,6 +525,33 @@ back, and nothing else.
 > already running, and a build that is an hour old is indistinguishable from a
 > revoked permission. `pkill -x clawd-light; open dist/ClawdLight.app`
 
+### Updating it
+
+*Check for updates…* in the panel's menu. It asks GitHub what the latest release
+is and says one of three things: you are on it, there is a newer one, or the
+question could not be answered.
+
+If there is a newer one you get a button, and nothing happens until you press it.
+That is not timidity: macOS grants Accessibility and Automation to a **signing
+identity**, so a replacement signed with the same certificate inherits the
+permission to drive this Mac's keyboard and windows without asking anybody
+anything. An app with that permission asks before it replaces itself.
+
+When you do press it, four things are proved before the running copy is touched,
+and any one of them failing stops everything with nothing installed:
+
+- the disk image passes **Gatekeeper's own assessment** — signed *and* notarized,
+  the same verdict a stranger's Mac would reach;
+- the app inside verifies as intact against its own signature;
+- its **Team ID equals this copy's**, so a valid Developer ID belonging to
+  somebody else is refused — compared against the running app rather than a
+  constant, because a constant could be edited by whoever edited the download;
+- its bundle identifier is ours.
+
+The download location is pinned to this project's releases, so the answer from
+GitHub cannot redirect the update elsewhere. Then the app replaces itself and
+comes back: the permissions survive, because the certificate is the same one.
+
 ### Removing it
 
 In this order, because the second step needs the app to still be there:
@@ -872,7 +899,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 489 domain tests, instantaneous
+swift run ClawdLightTests              # 497 domain tests, instantaneous
 swift run ClawdLightE2E                # 82 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

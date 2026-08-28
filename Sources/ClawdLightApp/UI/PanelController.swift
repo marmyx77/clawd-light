@@ -376,6 +376,17 @@ final class PanelController {
         }
     }
 
+    // MARK: - Updates
+
+    private func checkForUpdates() {
+        Task { @MainActor in
+            await UpdateFlow.run(
+                report: { [weak self] in self?.store.reportError($0) },
+                clear: { [weak self] in self?.store.clearError() }
+            )
+        }
+    }
+
     // MARK: - Waiting for a permission
 
     /// Hands the interrupted click to the watcher, for the permissions it can
@@ -593,6 +604,7 @@ final class PanelController {
                 self?.rebuildContent()
             },
             clearSessions: { [weak self] in self?.store.reset() },
+            checkForUpdates: { [weak self] in self?.checkForUpdates() },
             quit: { NSApp.terminate(nil) }
         )
     }

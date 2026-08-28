@@ -25,6 +25,8 @@ struct PanelActions {
     let fixIssue: (PanelIssue) -> Void
     let showHiddenAgain: () -> Void
     let clearSessions: () -> Void
+    /// Asks GitHub whether there is a newer release, and offers to install it.
+    let checkForUpdates: () -> Void
     let quit: () -> Void
 }
 
@@ -249,6 +251,12 @@ struct PanelRootView: View {
         }
 
         Button("Clear the list", action: actions.clearSessions)
+
+        // Never automatic, and never silent. macOS grants Accessibility to a
+        // signing identity, so a replacement signed with ours inherits the run
+        // of the machine without asking anybody: an app with that permission
+        // asks before it replaces itself.
+        Button("Check for updates…", action: actions.checkForUpdates)
 
         if let error = store.lastError {
             Divider()
