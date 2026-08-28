@@ -53,6 +53,13 @@ enum StatusPalette {
     /// result disappears.
     static let timeColor = Color.primary.opacity(0.62)
 
+    /// The strip that says a click could not do its job.
+    ///
+    /// It borrows the `awaiting` hue rather than inventing one: the column already
+    /// teaches that this shade means "this needs you", and a strip in a colour the
+    /// panel has never used would read as belonging to some other application.
+    static let warningTint = Color(red: 1.00, green: 0.45, blue: 0.10)
+
     /// Text of the badge carrying the session or subagent count.
     static let badgeForeground = Color.primary.opacity(0.80)
 
@@ -108,10 +115,18 @@ enum Layout {
     /// hint that the menu exists, not a toolbar.
     static let footerHeight: CGFloat = 19
 
-    /// Height needed for `count` rows, capped at `maxVisibleRows`, plus the footer.
-    static func height(rowCount: Int) -> CGFloat {
+    /// The line that appears only when a click could not raise a window.
+    ///
+    /// The panel grows by it rather than the strip overlapping a row: a widget
+    /// that covers its own content to complain is worse than one that is a few
+    /// points taller for as long as the fault lasts.
+    static let issueStripHeight: CGFloat = 17
+
+    /// Height needed for `count` rows, capped at `maxVisibleRows`, plus the footer
+    /// and, while there is one, the issue strip.
+    static func height(rowCount: Int, showsIssue: Bool = false) -> CGFloat {
         let visible = min(max(rowCount, 1), AppConfig.maxVisibleRows)
         let rows = CGFloat(visible) * rowHeight + CGFloat(max(visible - 1, 0)) * rowSpacing
-        return rows + panelPadding * 2 + footerHeight
+        return rows + panelPadding * 2 + footerHeight + (showsIssue ? issueStripHeight : 0)
     }
 }

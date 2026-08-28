@@ -1,14 +1,14 @@
 # Code map
 
-~23,400 lines of Swift across five targets. For each file: what it contains, why
+~24,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   5,942 lines · 51 files   pure logic, zero AppKit
-  ClawdLightApp/    9,542 lines · 51 files   shell: AppKit, network, windows
-  ClawdLightTests/  5,892 lines · 31 files   472 cases, instantaneous
-  ClawdLightE2E/    1,844 lines ·  9 files   79 cases, the real binary
+  ClawdLightCore/   6,106 lines · 53 files   pure logic, zero AppKit
+  ClawdLightApp/    9,870 lines · 53 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,023 lines · 32 files   482 cases, instantaneous
+  ClawdLightE2E/    1,887 lines ·  9 files   81 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
 ```
 
@@ -74,6 +74,14 @@ decides which session is a group's face and which one a click opens.
 The names the user gave to rows, by folder: read, renamed, bounded. A name is
 what the panel shows and nothing that finds a window or a file ever believes it
 (D26).
+
+### `PanelIssue.swift` · `PermissionWait.swift`
+A fault the person looking at the panel can fix, as a value rather than a
+sentence: which System Settings pane grants it, the line the strip shows, the
+paragraph behind the button, and the `tccutil` cure for the records macOS keeps
+per signature. `PermissionWait` is the one tick of the wait that follows —
+granted, expired, or neither — with the tie resolved in favour of finishing the
+click, because a permission granted at the last second was still granted.
 
 ### `RowOrder.swift`
 The column's order as data: give newcomers a place (`absorbing`), move a row to
@@ -389,7 +397,7 @@ Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
-### `SelfTest.swift` · 172
+### `SelfTest.swift` · 240
 `clawd-light selftest`: the whole chain, link by link — the port opens, a signal
 crosses HTTP, decodes, resolves to a workspace, the Accessibility permission is
 there, the hooks are registered — and it names the link that broke.
@@ -448,6 +456,13 @@ deliberately not a general-purpose one.
 
 ## `Focus/`
 
+### `PermissionWatcher.swift`
+Holds the click a missing permission interrupted, and finishes it when the
+permission arrives. Granting a TCC authorization notifies nobody — the only way
+to notice is to keep asking — and the point is not the noticing: it is that
+making the user click again is how a permission they just granted feels like it
+changed nothing.
+
 ### `ProcessTree.swift` · `SeatResolver.swift` · `TerminalFocuser.swift`
 The click on a terminal row. `ProcessTree` reads parent, tty, start time and
 arguments from the kernel (`sysctl`, `proc_pidpath`; no `ps`). `SeatResolver`
@@ -481,14 +496,15 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 693 | holds everything together; row and panel actions |
+| `PanelController.swift` | 812 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 322 | one row: dot, slot, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
-| `PanelRootView.swift` | 216 | the general menu, and the gear under the rows that opens it |
+| `PanelRootView.swift` | 280 | the general menu, and the gear under the rows that opens it |
 | `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
-| `StatusPalette.swift` | 112 | colors and measurements |
+| `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
+| `StatusPalette.swift` | 132 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
@@ -510,7 +526,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 472 cases
+## `ClawdLightTests/` — 482 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -553,7 +569,7 @@ by name, prints the ✓/✗ lines and the final count) and `Assertions` (`expect
 `fail`). It exists because the Command Line Tools without Xcode ship neither
 XCTest nor a complete swift-testing (D11).
 
-## `ClawdLightE2E/` — 79 cases
+## `ClawdLightE2E/` — 81 cases
 
 | Suite | Covers |
 |---|---|

@@ -178,7 +178,7 @@ final class SignalServer {
             return handleSlotRoute(request, action: onChatInSlot)
 
         // Courtesy endpoint: lets you check that the app is alive.
-        case "/health":
+        case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "clawd-light")
 
         default:

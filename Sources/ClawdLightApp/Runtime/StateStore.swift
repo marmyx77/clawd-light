@@ -15,6 +15,13 @@ final class StateStore: ObservableObject {
     /// Last diagnostic error, shown in the context menu.
     @Published private(set) var lastError: String?
 
+    /// The same fault as a value, when it is one the user can act on.
+    ///
+    /// Kept beside the sentence rather than parsed out of it: the panel needs to
+    /// decide whether to offer a button, and which pane that button opens, and
+    /// neither question can be answered by reading English back.
+    @Published private(set) var issue: PanelIssue?
+
     private let windowReader: IDEWindowReader
     private let liveSessionReader: LiveSessionReader
     private let clock: () -> Date
@@ -300,15 +307,17 @@ final class StateStore: ObservableObject {
         apply(.reset, now: clock())
     }
 
-    func reportError(_ message: String) {
+    func reportError(_ message: String, issue: PanelIssue? = nil) {
         lastError = message
+        self.issue = issue
     }
 
     /// Clears the last error after a successful operation, so the menu doesn't
     /// keep showing a fault that has already gone away.
     func clearError() {
-        guard lastError != nil else { return }
+        guard lastError != nil || issue != nil else { return }
         lastError = nil
+        issue = nil
     }
 
     // MARK: - Periodic realignment

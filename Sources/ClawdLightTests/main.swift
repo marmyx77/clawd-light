@@ -60,6 +60,8 @@ let suites: [TestSuite] = [
     MultiplexerSuite.suite,
     TerminalListingSuite.suite,
     RowNamesSuite.suite,
+    PanelIssueSuite.suite,
+    PermissionWaitSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

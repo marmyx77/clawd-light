@@ -41,8 +41,7 @@ enum FocusError: LocalizedError, Equatable {
             System Settings › Privacy & Security › Accessibility → \
             add clawd-light and turn the switch on.
 
-            If the app is already listed, remove it with “−” and add it back: after \
-            every rebuild the signature changes and macOS treats it as a different app.
+            \(PanelIssue.staleEntryCure)
             """
         case .automationDenied(let app):
             return """
@@ -70,6 +69,19 @@ enum FocusError: LocalizedError, Equatable {
             return "Window activation failed: \(reason)"
         case .activationFailed(let reason):
             return "Cannot bring VS Code to the front: \(reason)"
+        }
+    }
+
+    /// The same fault as something the panel can act on, when it is one.
+    ///
+    /// Only the two permissions map to an issue. "No window for that folder" is
+    /// a true statement about the world, not a thing to press a button about,
+    /// and giving it one would train the eye to ignore the strip.
+    var panelIssue: PanelIssue? {
+        switch self {
+        case .accessibilityDenied: return .accessibilityMissing
+        case .automationDenied(let app): return .automationMissing(app: app)
+        default: return nil
         }
     }
 

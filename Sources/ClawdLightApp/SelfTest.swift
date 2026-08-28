@@ -15,7 +15,33 @@ enum SelfTest {
 
         print("clawd-light — self-diagnosis\n")
 
-        // 1. Can the server open the port?
+        // 1. Is somebody already there?
+        //
+        // Asked before trying to bind, because `SignalServer.start()` returns
+        // before the listener is ready: with the panel running it announced a
+        // server that had in fact failed with "Address already in use", the probe
+        // then reached the *panel*, and the test concluded "the signal never
+        // reached the handler". A false alarm, raised at the one moment somebody
+        // runs a diagnosis — when they already suspect something is broken.
+        if let running = probeRunningInstance(port: port) {
+            print("• a clawd-light is already listening on \(AppConfig.listenHost):\(port)")
+            switch running {
+            case .status(204):
+                print("✓ the running panel accepts signals (HTTP 204)")
+            case .status(let code):
+                print("✗ the running panel answered HTTP \(code) to a signal")
+                failures += 1
+            case .failed(let reason):
+                print("✗ the running panel refused the probe: \(reason)")
+                failures += 1
+            }
+            print("  the loop test needs the port to itself, so it is not run here.")
+            print("  Quit the panel and run this again to check the whole chain.")
+            failures += reportEnvironment(cwd: cwd)
+            return finish(failures)
+        }
+
+        // 2. Can the server open the port?
         let received = Box<HookSignal?>(nil)
         let semaphore = DispatchSemaphore(value: 0)
 
@@ -40,7 +66,7 @@ enum SelfTest {
         }
         defer { server.stop() }
 
-        // 2. Does a signal cross HTTP and get decoded?
+        // 3. Does a signal cross HTTP and get decoded?
         let payload = probePayload(cwd: cwd)
         switch post(payload, port: port) {
         case .failed(let reason):
@@ -60,7 +86,19 @@ enum SelfTest {
             failures += 1
         }
 
-        // 3. Does the current folder match a VS Code window?
+        failures += reportEnvironment(cwd: cwd)
+        return finish(failures)
+    }
+
+    /// Everything that is true whether or not this process owns the port.
+    ///
+    /// Split out so the two paths — panel running, panel not running — report the
+    /// same things. A diagnosis that says less when the app is running says least
+    /// exactly when it is needed most.
+    private static func reportEnvironment(cwd: String) -> Int {
+        var failures = 0
+
+        // 4. Does the current folder match a VS Code window?
         let windows = IDEWindowReader().readWindows()
         let fresh = windows.filter { $0.isSupported }
         print("\nVS Code windows with Claude Code active: \(fresh.count)")
@@ -107,6 +145,10 @@ enum SelfTest {
             print("✓ hooks registered for: \(events.joined(separator: ", "))")
         }
 
+        return failures
+    }
+
+    private static func finish(_ failures: Int) -> Int32 {
         print("\n" + String(repeating: "─", count: 56))
         switch failures {
         case 0: print("All good.")
@@ -116,7 +158,33 @@ enum SelfTest {
         return failures == 0 ? 0 : 1
     }
 
+
     // MARK: - Helpers
+
+    /// Is a clawd-light already answering on this port?
+    ///
+    /// Asked by sending it a real probe signal rather than by opening a socket:
+    /// the useful answer is not "something is bound there" but "the thing bound
+    /// there behaves like our server", and the second is what the user needs to
+    /// know. `nil` means nobody is home and the loop test can proceed.
+    private static func probeRunningInstance(port: UInt16) -> ProbeResult? {
+        guard let url = URL(string:
+            "http://\(AppConfig.listenHost):\(port)\(AppConfig.healthPath)") else { return nil }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2
+
+        let answered = Box<Bool>(false)
+        let semaphore = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            answered.value = (response as? HTTPURLResponse)?.statusCode == 200
+            semaphore.signal()
+        }.resume()
+        _ = semaphore.wait(timeout: .now() + 3)
+
+        guard answered.value else { return nil }
+        return post(probePayload(cwd: FileManager.default.currentDirectoryPath), port: port)
+    }
 
     private static func probePayload(cwd: String) -> Data {
         let object: [String: Any] = [

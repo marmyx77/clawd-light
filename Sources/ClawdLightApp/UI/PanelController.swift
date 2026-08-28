@@ -18,6 +18,9 @@ final class PanelController {
     private var compact: Bool
     private var cancellables = Set<AnyCancellable>()
 
+    /// Holds the click a missing permission interrupted, until it can be finished.
+    private let permissions = PermissionWatcher()
+
     /// The extended window: the conversation list plus the selected conversation.
     /// Opened on request; the panel is the resting state.
     private lazy var chats = ChatWindowController(
@@ -126,6 +129,19 @@ final class PanelController {
                 }
             }
             .store(in: &cancellables)
+
+        // The strip appears and disappears under the rows, so the panel has to
+        // find room for it. Without this the strip shows up inside the footer's
+        // space and the gear is pushed off the bottom edge — which is how the
+        // last version of this footer was already learned, the hard way.
+        store.$issue
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.resizeToFit(self.store.state)
+            }
+            .store(in: &cancellables)
     }
 
     private func observePanelMoves() {
@@ -199,7 +215,7 @@ final class PanelController {
     private func resize(rowCount: Int) {
         let size = NSSize(
             width: Layout.width(compact: compact),
-            height: Layout.height(rowCount: rowCount)
+            height: Layout.height(rowCount: rowCount, showsIssue: store.issue != nil)
         )
         guard size != panel.frame.size else { return }
 
@@ -327,11 +343,16 @@ final class PanelController {
 
         case .activatedOnly(let reason):
             // VS Code is in front of the user: interrupting with a modal window
-            // would be out of proportion. The reason stays in the context menu,
-            // where you go looking for it once you notice you're in the wrong window.
+            // would be out of proportion. The strip under the rows carries it
+            // instead, with the button — the context menu alone was a place
+            // nobody looks, which is how a missing permission read as a broken app.
             store.reportError(
-                "Window not raised (\(reason.shortDescription)) — only VS Code was activated."
+                "Window not raised (\(reason.shortDescription)) — only VS Code was activated.",
+                issue: reason.panelIssue
             )
+            awaitPermission(for: reason) { [weak self] in
+                self?.activate(row, markSeen: false, opensTab: opensTab)
+            }
 
         case .failed(let error):
             // Normal for a session driven from a terminal on the node: there is no
@@ -344,11 +365,32 @@ final class PanelController {
                 )
                 return
             }
-            store.reportError(error.shortDescription)
+            store.reportError(error.shortDescription, issue: error.panelIssue)
+            awaitPermission(for: error) { [weak self] in
+                self?.activate(row, markSeen: false, opensTab: opensTab)
+            }
             Alerts.warn(
                 title: "Cannot open “\(session.workspace.name)”",
                 message: error.localizedDescription
             )
+        }
+    }
+
+    // MARK: - Waiting for a permission
+
+    /// Hands the interrupted click to the watcher, for the permissions it can
+    /// honestly wait on.
+    ///
+    /// Automation towards a terminal application is not one of them: asking *is*
+    /// using it, so there is no way to poll without sending an Apple Event every
+    /// second and no way to tell "denied" from "not asked yet". That one is
+    /// retried by the next click.
+    private func awaitPermission(for error: FocusError, retry: @escaping () -> Void) {
+        guard case .accessibilityDenied = error else { return }
+        permissions.watch(retry: retry) { [weak self] in
+            guard let self else { return }
+            self.store.clearError()
+            self.rebuildContent()
         }
     }
 
@@ -385,9 +427,17 @@ final class PanelController {
         case .raised:
             store.clearError()
         case .activatedOnly(let reason):
-            store.reportError("“\(name)”: only \(seat.label) was activated (\(reason.shortDescription)).")
+            store.reportError(
+                "“\(name)”: only \(seat.label) was activated (\(reason.shortDescription)).",
+                issue: reason.panelIssue
+            )
+            awaitPermission(for: reason) { [weak self] in self?.activateTerminal(session) }
         case .failed(let error):
-            store.reportError("“\(name)” runs in \(seat.label) — \(error.shortDescription).")
+            store.reportError(
+                "“\(name)” runs in \(seat.label) — \(error.shortDescription).",
+                issue: error.panelIssue
+            )
+            awaitPermission(for: error) { [weak self] in self?.activateTerminal(session) }
         }
     }
 
@@ -537,6 +587,7 @@ final class PanelController {
             installHooks: { [weak self] in self?.installHooks() },
             uninstallHooks: { [weak self] in self?.uninstallHooks() },
             requestAccessibility: { VSCodeFocuser.requestAccessibilityPermission() },
+            fixIssue: { PermissionRequest.offer($0) },
             showHiddenAgain: { [weak self] in
                 self?.preferences.hiddenWorkspaces = []
                 self?.rebuildContent()

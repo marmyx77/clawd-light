@@ -14,6 +14,11 @@ public enum AppConfig {
     /// HTTP path where the Claude Code hooks post their signals.
     public static let signalPath = "/signal"
 
+    /// Answers 200 and nothing else: the cheapest way to ask "is a panel there?".
+    /// Named here because the self-test asks it too, and a route spelled out in
+    /// two files drifts in one of them.
+    public static let healthPath = "/health"
+
     /// HTTP path returning the column state as JSON. Requires the token.
     public static let sessionsPath = "/sessions"
 
@@ -122,6 +127,22 @@ public enum AppConfig {
     /// half-gigabyte transcript opens in the time a small one does. The head is
     /// read separately for the title.
     public static let transcriptInitialWindow = 8 * 1024 * 1024
+
+    // MARK: - Waiting for a permission
+
+    /// How often the app re-asks the system whether a permission has arrived.
+    ///
+    /// The check is a single function call, so the interval is set by how long a
+    /// person is willing to look at an unchanged panel after flipping a switch —
+    /// not by cost.
+    public static let permissionWatchInterval: TimeInterval = 1.5
+
+    /// How long that watch stays up before giving in.
+    ///
+    /// Long enough to find the pane, read the sentence and authenticate; short
+    /// enough that walking away does not leave a timer running for the rest of
+    /// the day. The click is not lost when it expires — it is simply made again.
+    public static let permissionWatchWindow: TimeInterval = 180
 
     /// The app's support directory (panel position, preferences).
     public static var supportDirectory: URL {

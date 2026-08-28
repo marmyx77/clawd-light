@@ -752,3 +752,43 @@ the microphone, which dictation holds down. Two entitlements give them back and
 the script grants nothing else. Both secrets — the identity and the
 notarization profile — are read from the environment: this repository is
 public, and a Team ID is not ours to publish.
+
+## 28 August — the permission that was granted and wasn't
+
+The disk image was the easy half. The install proved the hard half: on a fresh
+machine macOS asked for nothing, the click activated the editor without choosing
+a window, and the reason sat at the bottom of a context menu. An app that
+degrades silently into a place nobody looks is indistinguishable from a broken
+one, and the first person it defeated was the person who wrote it.
+
+Two faults underneath. System Settings listed clawd-light with the switch **on**
+while `AXIsProcessTrusted()` said no, and the app was right: these
+authorizations are keyed on the signature, so the same bundle identifier signed
+three ways leaves three records — `tccutil reset` reported success four times.
+And granting a permission notifies nobody, so the panel went on complaining
+until it was relaunched, which nobody would think to do.
+
+What changed follows from the ordering, not from better wording. The traffic
+lights already work with no system permission at all, so nothing is asked until
+the first click; when that click cannot finish, a line under the rows says so
+where the eye already is; the button behind it explains what macOS calls the
+permission, the one thing it is used for, what refusing costs and how to undo
+it, before opening the pane. And when the permission arrives, the app finishes
+the click it interrupted — a permission you granted that visibly changes nothing
+reads as a permission that did not work.
+
+The self-test was lying too, in the way that matters most: run with the panel up
+it announced "the signal never reached the handler" on a working chain, because
+`SignalServer.start()` returns before its listener has failed on a taken port
+and the probe then reached the panel instead. It now asks before it binds, says
+who holds the port, and states that the loop test was not run — silence there
+reads as a pass, and a diagnosis is read by somebody who already suspects a
+fault.
+
+Measured, not assumed: the strip appears and the panel grows by exactly the
+seventeen points it costs, in the wide layout and in the thirty-five-point one
+where the triangle is the whole message; the sheet carries the four paragraphs
+and the cure; and on the installed, notarized copy two different rows raise two
+different windows. The wait itself is a value — granted, expired, or neither —
+so the tie can be tested: granted at the last second still wins, because a click
+is not less owed for being answered late.

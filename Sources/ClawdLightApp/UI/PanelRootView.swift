@@ -21,6 +21,8 @@ struct PanelActions {
     let installHooks: () -> Void
     let uninstallHooks: () -> Void
     let requestAccessibility: () -> Void
+    /// The strip's button: explain the permission, then open the pane that grants it.
+    let fixIssue: (PanelIssue) -> Void
     let showHiddenAgain: () -> Void
     let clearSessions: () -> Void
     let quit: () -> Void
@@ -67,6 +69,7 @@ struct PanelRootView: View {
                 actions: rowActions,
                 onRevealHidden: actions.showHiddenAgain
             )
+            issueStrip
             footer
         }
         .background(PanelBackground())
@@ -80,6 +83,53 @@ struct PanelRootView: View {
         // right precedence. The global entries are not duplicated into every row
         // because a fifteen-item menu cannot be read.
         .contextMenu { menu }
+    }
+
+    /// The one line that says a click went nowhere, where the eye already is.
+    ///
+    /// This used to live only at the bottom of the context menu, and the result
+    /// was measured on a fresh install: the click activated the editor without
+    /// choosing a window, which reads as a half-working app rather than a missing
+    /// permission, and the sentence explaining it was three levels away. Nobody
+    /// opens a context menu to find out why something they just did worked oddly.
+    ///
+    /// It appears only for faults the person can fix from here, and it disappears
+    /// by itself the moment the permission arrives.
+    @ViewBuilder
+    private var issueStrip: some View {
+        if let issue = store.issue {
+            Button { actions.fixIssue(issue) } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(StatusPalette.warningTint)
+
+                    // In compact mode the panel is thirty-five points wide: the
+                    // triangle is the whole message, and the strip is the button.
+                    // A word squeezed in there would be truncated to two letters,
+                    // which says less than the glyph alone.
+                    if !flags.compact {
+                        Text(issue.summary)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.primary.opacity(0.65))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+
+                        Spacer(minLength: 4)
+
+                        Text(issue.actionTitle)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(StatusPalette.warningTint)
+                    }
+                }
+                .padding(.horizontal, flags.compact ? 4 : Layout.panelPadding + 6)
+                .frame(maxWidth: .infinity, alignment: flags.compact ? .center : .leading)
+                .frame(height: Layout.issueStripHeight)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(issue.summary + " — click to fix")
+        }
     }
 
     /// The gear under the rows: the same menu as a right-click on the margins,

@@ -399,6 +399,31 @@ Existing hooks are preserved and a dated backup copy of the file is created.
 Claude Code sessions that are **already open** pick up the new configuration only
 when they restart.
 
+### What it asks for, and why
+
+Nothing on first launch. The traffic lights light up from the hooks alone, and
+the two system permissions are asked for at the moment they are needed — the
+first time you click a row — because a permission requested before you have seen
+what the app does is a permission you have no reason to grant.
+
+| What | What it is used for | If you refuse |
+|---|---|---|
+| **Nine lines in `~/.claude/settings.json`** | Claude Code tells the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks from Claude Code* in the menu, or `clawd-light uninstall-hooks`. |
+| **Accessibility** | macOS calls it "controlling your computer". It is used for one thing: bringing the editor window of the row you clicked to the front. | The click still activates the editor, but cannot choose which window — you land wherever you were last. |
+| **Automation** | Reading window titles, to tell your projects apart. One entry per application it has to ask: System Events for editors, plus a terminal application for its own tabs. | Same as above: the application comes forward, the right window does not. |
+| **Notifications** *(optional)* | Alerting you when a session blocks while you are elsewhere. | The panel still shows it; nothing pops up. |
+| **Microphone and speech** *(optional)* | Dictation, only while you hold the button. Transcribed on this Mac by the on-device model. | The dictation button does nothing. |
+
+Everything stays on this Mac. The panel's server listens on `127.0.0.1` and is
+never exposed; nothing is sent anywhere. Every switch above can be turned off
+again in the same place, and clawd-light keeps working with less precision
+rather than failing.
+
+When a click cannot raise a window, the panel says so **on itself** — a line
+under the rows with a button that explains the permission and opens the right
+pane. It used to say so only at the bottom of a context menu, which is a place
+nobody looks; the result was an app that read as broken.
+
 ### Permissions
 
 On the first click on a traffic light, macOS asks for **two distinct
@@ -414,6 +439,20 @@ authorizations**, granted in two different panes:
 
 Both of the first two are needed. Without them the click falls back to `open -b`: VS Code still comes to the
 front, but the right window is not raised.
+
+> **If clawd-light is already in the list with the switch on and the click still
+> doesn't work**, macOS is remembering an older copy. These authorizations are
+> keyed on the signature, not the name, so a build from source and a release
+> leave separate records — measured on one machine: four of them for the same
+> bundle identifier, of which the list showed one, switched on, while the running
+> app held nothing. Removing the visible row is not enough:
+>
+> ```bash
+> tccutil reset Accessibility com.clawdlight.app
+> tccutil reset AppleEvents com.clawdlight.app
+> ```
+>
+> Then click a traffic light again and answer the request.
 
 > **It has to be re-authorized after every rebuild.** The bundle is ad-hoc signed,
 > and the signature changes on every build: macOS considers it a different app and
@@ -480,6 +519,23 @@ back, and nothing else.
 > **how long the app has been running**. A new bundle does not replace the process
 > already running, and a build that is an hour old is indistinguishable from a
 > revoked permission. `pkill -x clawd-light; open dist/ClawdLight.app`
+
+### Removing it
+
+In this order, because the second step needs the app to still be there:
+
+```bash
+pkill -x clawd-light
+/Applications/ClawdLight.app/Contents/MacOS/clawd-light uninstall-hooks
+rm -rf ~/.clawd-light "~/Library/Application Support/clawd-light"
+tccutil reset Accessibility com.clawdlight.app
+tccutil reset AppleEvents com.clawdlight.app
+```
+
+Then drag the app to the Trash. `uninstall-hooks` removes only the registrations
+it added and leaves the rest of `~/.claude/settings.json` alone; the `tccutil`
+lines take the authorizations back, which the Trash does not do on its own — a
+record left behind is what makes a later reinstall behave strangely.
 
 ## How it works
 
@@ -802,8 +858,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 472 domain tests, instantaneous
-swift run ClawdLightE2E                # 79 end-to-end tests, ~1 minute
+swift run ClawdLightTests              # 482 domain tests, instantaneous
+swift run ClawdLightE2E                # 81 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

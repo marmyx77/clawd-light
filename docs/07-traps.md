@@ -1336,3 +1336,63 @@ Before diagnosing a click that doesn't work: `ps -o etime`.
 
 It changes on every build, macOS considers the app a different one, the
 authorizations lapse **while still showing the switch as on**.
+
+## The permission that was granted and wasn't
+
+**Symptom.** A fresh install from the notarized disk image. macOS asks for
+nothing. Clicking a row activates the editor but never raises the right window.
+System Settings › Privacy & Security › Accessibility lists **clawd-light with
+the switch on**.
+
+**Cause.** These authorizations are keyed on the code signature, not on the
+name. The same bundle identifier signed differently — ad-hoc, a local
+certificate, a Developer ID — is a different subject to macOS, and each leaves
+its own record. The list collapses them into one row bearing one name, and shows
+one of them. `tccutil reset` on the real machine reported success four times for
+`com.clawdlight.app`: four separate records, one visible.
+
+So the pane said yes while `AXIsProcessTrusted()` said no, and the app was
+right. The advice the README used to give — remove the row with "−" and add it
+back — removes the visible record and leaves the others, which is why it can
+appear to change nothing.
+
+**The cure**, now carried by the error text itself so it does not have to be
+remembered:
+
+```bash
+tccutil reset Accessibility com.clawdlight.app
+tccutil reset AppleEvents com.clawdlight.app
+```
+
+**What it cost, beyond the diagnosis.** Nothing prompted, because the click
+checks the permission and takes the fallback rather than asking; and the reason
+lived at the bottom of a context menu. An app that degrades silently into a
+place nobody looks is indistinguishable from an app that is broken — and the
+first person it defeated was the person who wrote it.
+
+**What changed.** The fault now appears as a line under the rows with a button,
+the button explains the permission before opening the pane, and when the
+permission arrives the app finishes the click that was interrupted instead of
+waiting to be clicked again.
+
+## The self-test that invented a failure
+
+**Symptom.** `clawd-light selftest`, run while the panel was up, reported *"the
+signal never reached the handler"* on a chain that was working perfectly.
+
+**Cause.** `SignalServer.start()` returns before its listener is ready. With the
+port already taken, it returned successfully, the test printed `✓ server
+listening`, and the failure arrived afterwards through the error callback as
+`Address already in use`. The probe POST then reached **the running panel**,
+which answered 204 — so the transport looked fine — while the test's own handler,
+attached to a listener that had never started, was never called.
+
+**Why it matters more than it looks.** A diagnosis is run by somebody who
+already suspects a fault. A failure it invents is not a cosmetic bug: it sends
+them looking for a problem that does not exist, at the exact moment they are
+least able to tell the difference.
+
+**Correction.** Ask before binding. If something already answers on `/health`,
+say who holds the port, confirm that it accepts signals, and state plainly that
+the loop test was **not run** — never let silence read as a pass. Covered by two
+end-to-end cases, which run with the panel up and would fail on the old text.

@@ -342,6 +342,49 @@ enum CoverageSuite {
                 a.expectEqual(app.status(of: id), "ready", "status")
                 a.expectEqual(app.session(id: id)?.activeSubagents, 0, "counter")
             },
+
+            // The diagnosis is run when something already seems wrong, so a
+            // failure it invents is worse than one it misses. This one was
+            // invented: with the panel running, `SignalServer.start()` returned
+            // before its listener had failed on the taken port, the probe reached
+            // the panel instead, and the test announced "the signal never reached
+            // the handler" on a chain that was working.
+            TestCase("the self-test does not invent a failure when the panel is running") { a in
+                let result = app.runCommand(["selftest", "--port", String(app.port)])
+
+                a.expect(
+                    !result.output.contains("the signal never reached the handler"),
+                    "phantom failure reported — output:\n\(result.output)"
+                )
+                a.expect(
+                    result.output.contains("already listening"),
+                    "it should say who holds the port — output:\n\(result.output)"
+                )
+                a.expect(
+                    result.output.contains("accepts signals (HTTP 204)"),
+                    "and confirm the running panel answers — output:\n\(result.output)"
+                )
+                a.expect(
+                    !result.output.contains("the server won't start"),
+                    "it should not try to bind a port it knows is taken — output:\n\(result.output)"
+                )
+            },
+
+            // The other half of the same promise: what it cannot verify, it says
+            // it did not verify. Silence there reads as a pass.
+            TestCase("the self-test still reports the environment it can check") { a in
+                let result = app.runCommand(["selftest", "--port", String(app.port)])
+
+                a.expect(
+                    result.output.contains("hooks registered")
+                        || result.output.contains("no hooks registered"),
+                    "the hooks are reported either way — output:\n\(result.output)"
+                )
+                a.expect(
+                    result.output.contains("is not run here"),
+                    "and the loop test is declared skipped, not passed — output:\n\(result.output)"
+                )
+            },
         ])
     }
 }
