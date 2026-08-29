@@ -341,17 +341,20 @@ enum VSCodeFocuser {
     /// - No path among the arguments. `open -b <bundle> <folder>` asks VS Code to
     ///   *open* that folder, and when it doesn't recognize it as already open it
     ///   materializes a new window for it. Without a path it merely activates the app.
+    ///
+    /// - The wait has a deadline. This runs on the thread that draws the panel,
+    ///   and `open` hands the request to LaunchServices, which may have to start
+    ///   an application that is not running. Fifteen seconds is generous for
+    ///   that and finite, which the previous `waitUntilExit()` was not.
     private static func activate(_ ide: IDEKind) -> FocusError? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = ["-b", ide.bundleIdentifier]
-
         do {
-            try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus == 0
-                ? nil
-                : .activationFailed("open returned \(process.terminationStatus)")
+            let result = try Command.run(
+                "/usr/bin/open", ["-b", ide.bundleIdentifier],
+                deadline: AppConfig.focusActivationTimeout
+            )
+            return result.succeeded ? nil : .activationFailed("open returned \(result.status)")
+        } catch let failure as Command.Failure {
+            return .activationFailed(failure.explanation)
         } catch {
             return .activationFailed(error.localizedDescription)
         }

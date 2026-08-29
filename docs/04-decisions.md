@@ -1107,6 +1107,52 @@ renaming the workspace itself — the name is the key every window is found by
 
 ---
 
+## D27 · A bounded freeze now, and the click stays on the main thread
+
+**Decided.** Every command the click runs — `lsof`, `tmux`, `wezterm`, `kitten`,
+`open` — goes through `Command` with a deadline: five seconds for a probe,
+fifteen for `open`, which may have to start an application that is not running.
+Nothing moves off the main actor.
+
+**The problem.** `PanelController` is `@MainActor`, so the whole click runs on
+the thread that draws the panel, and every one of those commands was launched
+with `try process.run()` followed by `process.waitUntilExit()` — an unbounded
+wait. Two of them can genuinely stop: `lsof` stats every open descriptor, so a
+network mount whose server has gone away holds it there indefinitely, and the
+three multiplexer clients each ask a server of their own over a socket. When
+that happens the panel does not redraw, no other row is clickable, and the
+column keeps showing the last state it managed to draw while the signals pile
+up behind it — the lights telling a past, which is the one thing this app must
+not do.
+
+**Measured, on a healthy machine:** `lsof` 0.059s, `ps` 0.065s, AppleScript to
+System Events 0.672s, `open -b` 0.749s. A click costs between 0.7 and 1.5
+seconds of main thread even when everything works.
+
+**Why not the real fix.** The real fix is to resolve the seat and consult the
+tools off the main actor, hopping back only to report — that removes the freeze
+*and* the 0.7–1.5 second hitch. It is not done here for three reasons, and none
+of them is that it does not matter. `NSAppleScript` is not thread-safe and would
+have to be pinned to one thread of its own. No automated test covers the click:
+neither suite raises a window, so the only verification is a person clicking each
+kind of row. And the ranking between "annoying hitch" and "must fix" depends on
+a measurement nobody has taken yet — the click timed on the rows actually in
+use, VS Code, zellij, Terminal.app.
+
+**So this is deliberately the smaller half.** It converts an unbounded freeze
+into a bounded one with a sentence under the rows, and leaves the behaviour
+identical in every case that was already working. What it does not do is make
+the click feel instant.
+
+**Discarded:** a watchdog that abandons the click halfway. It would leave an
+application activated but its window not raised, which is the state the panel
+has the hardest time explaining, and the one that reads as "it half works".
+**Discarded:** skipping `lsof` because it is slow. It is the only way to pair a
+zellij client to its server (D24), and at 59 milliseconds it is the fast part of
+the chain.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

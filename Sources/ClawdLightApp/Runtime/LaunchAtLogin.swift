@@ -85,19 +85,13 @@ enum CodeSignature {
     /// case. It is read exactly once at startup — spawning a process for every
     /// query would be out of proportion.
     static let isAdHoc: Bool = {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        process.arguments = ["-dv", Bundle.main.bundleURL.path]
-
-        let pipe = Pipe()
-        process.standardError = pipe
-        process.standardOutput = FileHandle.nullDevice
-
-        guard (try? process.run()) != nil else { return true }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        let output = String(data: data, encoding: .utf8) ?? ""
+        // Read at startup, on the thread that is about to draw the panel: a
+        // `codesign` that does not return would mean an app that never appears,
+        // with nothing on screen to say why.
+        let output = (try? Command.run(
+            "/usr/bin/codesign", ["-dv", Bundle.main.bundleURL.path],
+            deadline: AppConfig.focusProbeTimeout
+        ).output) ?? ""
         // When in doubt assume ad-hoc: the feature stays locked, which is the
         // harmless failure of the two.
         guard !output.isEmpty else { return true }

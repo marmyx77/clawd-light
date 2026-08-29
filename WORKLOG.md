@@ -696,9 +696,10 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **503**, instantaneous |
+| Domain tests | **504**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
+| Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **9**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **20**, all caught |
 | Longest file | 786 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
@@ -984,3 +985,44 @@ whenever.
 
 Everything in this entry replaces a sentence that used to ask a person to
 remember.
+
+## 29 August — the same defect, in the place that is clicked
+
+Having taken the unbounded wait out of the updater in the morning, the obvious
+question was where else it lived. Five more: `lsof` and the three multiplexer
+clients that find a terminal tab, `open` that brings an application forward, and
+`codesign` read once at startup. All of them launched with `waitUntilExit()` and
+no deadline, and all of them on the main actor — `PanelController` is
+`@MainActor`, so the whole click runs on the thread that draws the panel.
+
+Measured before deciding anything: `lsof` 0.059s, `ps` 0.065s, AppleScript to
+System Events 0.672s, `open -b` 0.749s. A working click already costs between
+0.7 and 1.5 seconds of main thread, which is the hitch you feel rather than a
+fault you report. The fault is the tail: `lsof` stats every open descriptor, so
+a network mount whose server has gone stops it indefinitely, and tmux, wezterm
+and kitten each ask a server of their own over a socket. Either one froze the
+panel until the app was killed, with the column still showing the last state it
+had managed to draw.
+
+Now bounded — five seconds for a probe, fifteen for `open`, which may have to
+start an application. The behaviour in every case that already worked is
+unchanged; `focus clawd-light --dry-run` still picks the right window out of
+eight, in 0.84s. What this does not do is make the click feel instant, and the
+reason it stops here is written down as D27 rather than left as an intention.
+
+`Command` learned to leave standard error out, because three of those callers
+**parse** what they read and a warning arriving interleaved would be read as a
+record.
+
+Then the new guard bit its author. `Scripts/bite.sh` became tracked on its first
+commit, and it carries the fake leaks it plants — so the leak check went red on
+a home directory and a mesh address that were fixtures. The tempting fix was an
+exemption for that file, which is what the check already had for itself. Both
+are gone instead: the fixtures are assembled from pieces at runtime, and **no
+file is exempt**. An exemption is a hole with a good excuse, and the guard it
+protects is the one whose failure nobody can see.
+
+Worth recording that the commit made an hour earlier would have failed its own
+check. It was green when it was written, and turned red the moment `bite.sh`
+stopped being untracked — which is a decent argument for the CI landing before
+the next commit does.

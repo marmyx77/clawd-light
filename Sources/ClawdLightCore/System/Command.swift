@@ -82,10 +82,16 @@ public enum Command {
     ///   - arguments: passed as a vector, for the same reason.
     ///   - deadline: seconds. On expiry the process is asked to stop, then made
     ///     to, and `Failure.timedOut` is thrown.
+    ///   - capturingStandardError: `false` sends it to `/dev/null`. Off only
+    ///     where the output is **parsed** — `tmux list-panes`, `lsof`, `ssh -G`
+    ///     — because a warning printed on the error stream would arrive
+    ///     interleaved with the data and be read as a record. Everywhere else it
+    ///     stays on: that is where a tool puts the sentence explaining a refusal.
     public static func run(
         _ tool: String,
         _ arguments: [String] = [],
-        deadline: TimeInterval
+        deadline: TimeInterval,
+        capturingStandardError: Bool = true
     ) throws -> Result {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
@@ -93,7 +99,7 @@ public enum Command {
 
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardError = capturingStandardError ? pipe : FileHandle.nullDevice
 
         let buffer = Buffer()
         let finished = DispatchSemaphore(value: 0)

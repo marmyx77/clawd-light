@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,454 lines · 57 files   pure logic, zero AppKit
-  ClawdLightApp/    10,307 lines · 56 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,333 lines · 35 files   503 cases, instantaneous
+  ClawdLightCore/   6,479 lines · 57 files   pure logic, zero AppKit
+  ClawdLightApp/    10,318 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,354 lines · 35 files   504 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -346,7 +346,7 @@ The Python that runs on another machine to inspect it, write the hook script and
 
 ## `System/`
 
-### `Command.swift` · 135
+### `Command.swift` · 141
 Running an outside tool without being taken hostage by it. The obvious three
 lines have two failure modes and both are silence: `waitUntilExit` waits
 forever, so a hung `spctl` took the updater with it and nothing was ever going
@@ -556,7 +556,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 503 cases
+## `ClawdLightTests/` — 504 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -603,7 +603,7 @@ ship neither XCTest nor a complete swift-testing (D11).
 ### `Instrument.swift` · 133
 Calibrates the assertions before anything is measured with them, and it is the
 reason the number in the heading above means something. Adding one early
-`return` to `expect` made all 503 cases report success while verifying nothing —
+`return` to `expect` made all 504 cases report success while verifying nothing —
 a full green, no warning, no clue. So every assertion is now made to fail on
 purpose and must record it, made to pass and must stay silent, and a failing run
 must still reach a non-zero exit code; nineteen proofs, none of them written in

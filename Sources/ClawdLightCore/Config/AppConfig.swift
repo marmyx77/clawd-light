@@ -168,6 +168,25 @@ public enum AppConfig {
     /// of a person's patience.
     public static let updateToolTimeout: TimeInterval = 90
 
+    /// How long a tool consulted while raising a window may take.
+    ///
+    /// The click runs on the thread that draws the panel, so every second spent
+    /// here is a second the column is frozen. Measured on a healthy machine:
+    /// `lsof` 0.06s, `ps` 0.07s, `open -b` 0.75s — five seconds is seventy times
+    /// the cost of the slowest probe and still short enough that a person reads
+    /// it as "it failed" rather than "it is broken".
+    ///
+    /// The risk being bounded is not hypothetical for two of them: `lsof` stats
+    /// every open descriptor, so a network mount whose server has gone away
+    /// stops it indefinitely, and `tmux`, `wezterm` and `kitten` all talk to a
+    /// server over a socket that can stop answering. Before this, either one
+    /// froze the panel until the app was killed.
+    public static let focusProbeTimeout: TimeInterval = 5
+
+    /// The same, for `open` — which may have to start an application that is not
+    /// running yet, and that is legitimately slower than a probe.
+    public static let focusActivationTimeout: TimeInterval = 15
+
     /// How long that watch stays up before giving in.
     ///
     /// Long enough to find the pane, read the sentence and authenticate; short

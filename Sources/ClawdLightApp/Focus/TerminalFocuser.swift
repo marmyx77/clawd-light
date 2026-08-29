@@ -255,22 +255,33 @@ enum TerminalFocuser {
     }
 
     /// Runs a CLI with an argument list — never a shell — and returns its stdout.
+    ///
+    /// With a deadline, because this is the click and the click runs on the
+    /// thread that draws the panel. Every tool reached from here talks to
+    /// something that can stop answering: `lsof` stats open descriptors and a
+    /// network mount whose server has gone away holds it there, and `tmux`,
+    /// `wezterm` and `kitten` all ask a server of their own over a socket.
+    /// Without the deadline the panel froze until somebody killed the app.
+    ///
+    /// An empty answer is what the callers already expect from a tool that is
+    /// absent or fails, and it makes the click fall back to activating the
+    /// application — a worse outcome than raising the right tab, and a much
+    /// better one than a dead panel.
     private static func output(of executable: String, _ arguments: [String]) -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
         do {
-            try process.run()
+            let result = try Command.run(
+                executable, arguments,
+                deadline: AppConfig.focusProbeTimeout,
+                capturingStandardError: false
+            )
+            return result.output
+        } catch let failure as Command.Failure {
+            Diagnostics.log("seat: \(failure.explanation)")
+            return ""
         } catch {
             Diagnostics.log("seat: \(executable) could not run: \(error.localizedDescription)")
             return ""
         }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(decoding: data, as: UTF8.self)
     }
 
     // MARK: - Activation
@@ -290,13 +301,13 @@ enum TerminalFocuser {
     }
 
     private static func run(_ arguments: [String]) -> FocusError? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = arguments
         do {
-            try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus == 0 ? nil : .activationFailed("open returned \(process.terminationStatus)")
+            let result = try Command.run(
+                "/usr/bin/open", arguments, deadline: AppConfig.focusActivationTimeout
+            )
+            return result.succeeded ? nil : .activationFailed("open returned \(result.status)")
+        } catch let failure as Command.Failure {
+            return .activationFailed(failure.explanation)
         } catch {
             return .activationFailed(error.localizedDescription)
         }

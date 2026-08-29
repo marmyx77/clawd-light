@@ -426,12 +426,12 @@ def self_test():
         found = pattern.search(text)
         return None if found is None else found.group(index)
 
-    must(group(HOME, "/Users/somebody/x") is not None, "the home pattern no longer matches /Users/somebody")
-    must(group(HOME, "/home/somebody/x") is not None, "the home pattern no longer matches /home/somebody")
+    must(group(HOME, "/Users/" + "somebody/x") is not None, "the home pattern no longer matches a real name under /Users")
+    must(group(HOME, "/home/" + "somebody/x") is not None, "the home pattern no longer matches a real name under /home")
     must(group(HOME, "/Users/dev/x", 1) == "dev", "the home pattern no longer reports the user name")
-    must(group(VPN, "100.101.5.7") is not None, "the VPN pattern no longer matches 100.101.5.7")
+    must(group(VPN, "100." + "101.5.7") is not None, "the VPN pattern no longer matches the mesh range")
     must(group(VPN, "100.5.5.7") is None, "the VPN pattern matches an address outside the range")
-    must(group(SSH, "node@10.0.0.4") is not None, "the ssh pattern no longer matches user@address")
+    must(group(SSH, "node@" + "10.0.0.4") is not None, "the ssh pattern no longer matches user@address")
     must((group(SSH, "dev@192.0.2.10", 1) or "").startswith(DOCUMENTATION_NETS),
          "the documentation ranges are no longer recognised")
     return broken
@@ -452,10 +452,10 @@ if not files:
     sys.exit(2)
 
 hits, read = [], 0
+# No file is exempt, this one included. The examples in the self-test above are
+# assembled from pieces for that reason: an exemption is a hole with a good
+# excuse, and the guard it protects is the one whose failure nobody can see.
 for path in files:
-    # This file carries the patterns, so it matches itself by construction.
-    if path == "Scripts/check-docs.sh":
-        continue
     try:
         text = open(path, encoding="utf-8").read()
     except (UnicodeDecodeError, OSError):

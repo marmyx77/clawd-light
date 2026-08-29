@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `ClawdLightTests` — domain
 
-503 cases, instantaneous. They verify Core.
+504 cases, instantaneous. They verify Core.
 
 ### `ClawdLightE2E` — the real chain
 

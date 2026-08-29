@@ -49,6 +49,27 @@ enum CommandSuite {
             }
         },
 
+        TestCase("Where the output is parsed, standard error can be left out") { t in
+            // The focus path reads `tmux list-panes`, `lsof` and `ssh -G` as
+            // records. A warning printed on the error stream would arrive
+            // interleaved with them and be parsed as one, which is why those
+            // three callers ask for stdout alone.
+            do {
+                let merged = try Command.run(
+                    "/bin/sh", ["-c", "echo out; echo noise >&2"], deadline: 10
+                )
+                t.expect(merged.output.contains("noise"), "merged by default")
+
+                let clean = try Command.run(
+                    "/bin/sh", ["-c", "echo out; echo noise >&2"],
+                    deadline: 10, capturingStandardError: false
+                )
+                t.expectEqual(clean.output, "out\n", "only what was parsed")
+            } catch {
+                t.fail("unexpected: \(error)")
+            }
+        },
+
         TestCase("A tool that hangs is killed at the deadline") { t in
             let started = Date()
             t.expectThrows(Command.Failure.timedOut(tool: "/bin/sleep", seconds: 1)) {

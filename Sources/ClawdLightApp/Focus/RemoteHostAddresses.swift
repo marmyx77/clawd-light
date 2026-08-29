@@ -1,3 +1,4 @@
+import ClawdLightCore
 import Foundation
 
 /// The names a Remote-SSH window may carry for a configured host.
@@ -31,16 +32,18 @@ enum RemoteHostAddresses {
     /// a process and no network. The name has passed `RemoteHostList.isUsable`;
     /// it cannot be read as an option.
     static func sshHostName(for host: String) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = ["-G", host]
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return nil }
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard let text = String(data: data, encoding: .utf8) else { return nil }
+        let text: String
+        do {
+            // No network, but `ssh -G` still reads every included config file,
+            // and one of those can sit on a mount that has gone away.
+            text = try Command.run(
+                "/usr/bin/ssh", ["-G", host],
+                deadline: AppConfig.focusProbeTimeout,
+                capturingStandardError: false
+            ).output
+        } catch {
+            return nil
+        }
         for line in text.split(separator: "\n") where line.hasPrefix("hostname ") {
             let value = line.dropFirst("hostname ".count).trimmingCharacters(in: .whitespaces)
             return value.isEmpty || value.caseInsensitiveCompare(host) == .orderedSame ? nil : value

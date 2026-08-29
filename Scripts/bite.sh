@@ -239,16 +239,21 @@ PY
 gate "No personal paths or private addresses in tracked files"
 
 protect docs/07-traps.md
-attack "a real home directory committed to the tree" "/Users/notarealperson" <<'PY'
+attack "a real home directory committed to the tree" "notarealperson" <<'PY'
 p = "docs/07-traps.md"
-s = open(p).read() + "\n<!-- planted by bite.sh: /Users/notarealperson/Development/thing -->\n"
+# Assembled rather than written out: this file is scanned by the very guard it
+# is testing, and the alternative — an exemption for it — is exactly the kind of
+# list that grows quietly until it is hiding a real leak.
+planted = "/Users/" + "notarealperson/Development/thing"
+s = open(p).read() + f"\n<!-- planted by bite.sh: {planted} -->\n"
 open(p, "w").write(s)
 PY
 
 protect docs/07-traps.md
-attack "a private VPN address committed to the tree" "100.101.5.7" <<'PY'
+attack "a private VPN address committed to the tree" "101.5.7" <<'PY'
 p = "docs/07-traps.md"
-s = open(p).read() + "\n<!-- planted by bite.sh: 100.101.5.7 -->\n"
+planted = "100." + "101.5.7"
+s = open(p).read() + f"\n<!-- planted by bite.sh: {planted} -->\n"
 open(p, "w").write(s)
 PY
 
