@@ -42,11 +42,11 @@ struct ContextRing: View {
             }
             if let reading {
                 Text(reading.modelInitial)
-                    .font(.system(size: 6, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.primary.opacity(reading.fraction == nil ? 0.35 : 0.75))
+                    .font(.system(size: Layout.contextRingLetter, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.primary.opacity(reading.fraction == nil ? 0.38 : 0.85))
             }
         }
-        .frame(width: Layout.dotSize, height: Layout.dotSize)
+        .frame(width: Layout.contextRingSize, height: Layout.contextRingSize)
     }
 
     /// Solid once something has been read; dashed while nothing has.
@@ -56,12 +56,12 @@ struct ContextRing: View {
             Circle()
                 .inset(by: Layout.contextRingWidth / 2)
                 .stroke(
-                    Color.primary.opacity(0.18),
+                    Color.primary.opacity(0.24),
                     style: StrokeStyle(lineWidth: Layout.contextRingWidth, dash: [1.6, 1.6])
                 )
         } else {
             Circle()
-                .strokeBorder(Color.primary.opacity(0.16), lineWidth: Layout.contextRingWidth)
+                .strokeBorder(Color.primary.opacity(0.20), lineWidth: Layout.contextRingWidth)
         }
     }
 
@@ -72,6 +72,10 @@ struct ContextRing: View {
     /// it. Fainter rather than longer — drawing the uncertainty as extra arc would
     /// invent tokens nobody counted.
     private var arcColor: Color {
-        Color.primary.opacity(reading?.confidence == .floor ? 0.48 : 0.78)
+        // Against a track at 0.20. The first pair — 0.16 and 0.78 — was measured
+        // on screen and the arc did not separate from the circle it sits on: on a
+        // vibrant surface the difference between two translucent whites is
+        // smaller than it is on paper.
+        Color.primary.opacity(reading?.confidence == .floor ? 0.62 : 0.92)
     }
 }

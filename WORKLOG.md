@@ -1209,3 +1209,56 @@ Verified: 531 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
 committed and 20 caught, 10 contract checks. The three new domain cases lock the
 denominator itself — the highest reading ever seen before a compaction, 999,083,
 must print 100% and not 109%.
+
+## 29 August — the tooltips nobody had ever seen
+
+Three things reported from use, and the first one is the kind of defect that
+cannot be found any other way.
+
+**Every tooltip in the panel was dead text.** `.help(…)` was on the row, the
+gear, the filter note, the hidden-projects row and the issue strip. It compiles,
+it says the right thing, and in this window it shows nothing: AppKit puts a
+tooltip on screen through `NSToolTipManager`, which wants the window under the
+pointer to be key and the application to be active — and this panel is a
+`nonactivatingPanel` in an accessory app, both on purpose, because clicking a
+light must not take the focus from the editor. So the row's entire second layer
+had never been seen by anybody: the context figure and the tokens behind it, the
+model with its version, the folder under a renamed row, the slot and its command,
+which sessions of a group are in which state.
+
+No test caught it and none could have. Every one of them checks the *string*,
+which was right. It is the same gap as the blink that outlived its state: a
+correct model proves nothing about the screen.
+
+The panel now draws its own — one borderless window that ignores the mouse, never
+becomes key, appears after 450 ms under the pointer and takes itself away on any
+mouse-down, including the right-click that opens the row's menu, which
+`.contextMenu` gives no notice of. The first version measured the text with
+`NSHostingView.fittingSize`, which answers before the view has a width to wrap
+against: the tooltip came out **358 by 3,332 points**, two thousand points off the
+top of the screen. Seen, not guessed — the window list says what size a window
+is. Now the width is decided first and the height follows from it.
+
+**The ring was illegible, in that word.** It was eleven points across with a
+two-point stroke and a six-point letter. Now sixteen, three, and eight and a half,
+with the light beside it grown from eleven to thirteen and the row from
+twenty-two to twenty-four. Then a second look at a real capture: the consumed arc
+did not separate from the track behind it — on a vibrant surface the difference
+between two translucent whites is smaller than it is on paper. Track 0.20, arc
+0.92, floor 0.62, and it reads at a glance.
+
+The ten points this cost the name were bought back: the light and the ring are
+one pair now, four points apart instead of seven, because they are one session
+asked two questions. Measured, on a plain row with a `14:56` timestamp: 110.87
+before, 100.87 with the ring, 102.87 after the pair was tightened.
+
+**A door out of the strip.** Switching to traffic-lights-only was a menu entry,
+and switching back meant finding a menu inside a panel thirty-five points wide.
+The footer now carries three glyphs expanded — legend, width, menu — and two in
+the strip: widen, and the menu. Verified by flipping the preference and reading
+the window list: 240 × 189 with three, 35 × 189 with two.
+
+Verified: 531 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
+caught, 10 contract checks; and, for the parts no suite can reach, the on-screen
+window list and two captures — the tooltip at 357 × 140 where it belongs, and six
+rings whose arcs say 33%, 11%, 63%, none, 85% and 63%.

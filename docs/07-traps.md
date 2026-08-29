@@ -45,6 +45,9 @@ severity.
 13. **Three readings that agree can agree on the wrong thing.** A denominator
     fitted to three hand-read percentages survived every sanity check and was
     refuted in twenty-four seconds by asking 18,622 files the same question.
+14. **An API that compiles is not an API that runs here.** Every tooltip in the
+    panel was written, reviewed and never displayed: AppKit shows them only in a
+    key window, and this window is never key on purpose.
 
 ---
 
@@ -1565,3 +1568,42 @@ denominator is not too small and never that it is not slightly too large.
 display is a hypothesis wearing a measurement's clothes. Before it goes in, find
 the event the number claims to predict — here, the compaction itself — and count
 how often it happened where the number says it should.
+
+
+---
+
+# The tooltips that were written and never shown
+
+**Symptom.** "Passando sopra le righe o sui semafori non compare nessun tooltip."
+Reported by use, which is the only way this could have been found.
+
+**What was wrong.** `.help(…)` was on the row, on the gear, on the filter note, on
+the hidden-projects row and on the issue strip. It compiles, it reads correctly,
+and in this window it does nothing. AppKit puts a tooltip on screen through
+`NSToolTipManager`, which wants the window under the pointer to be **key** and the
+application to be **active**. The panel is a `nonactivatingPanel` that becomes key
+only in the instant of a click, and the app is an accessory that never activates —
+both deliberate, both the reason clicking a light does not steal the focus from
+the editor.
+
+So the row's entire second layer had never been seen by anybody: the exact
+context figure and the tokens behind it, the model with its version, the folder
+underneath a renamed row, the slot and the command that opens it, which of the
+sessions in a group are in which state, and the sentence explaining a failed turn.
+All of it written, some of it under test, none of it displayed.
+
+**Why no test caught it.** Every one of them checks a *string* — that the tooltip
+says the right thing, which it did. There is no test in this project, and no
+cheap one to write, that asks whether a tooltip appeared on a screen. The same
+gap as D-19's blink: a correct model proves nothing about the screen.
+
+**Correction.** `Tooltip.swift`: one borderless window that ignores the mouse,
+never becomes key, appears after 450 ms under the pointer and removes itself on
+any mouse-down — including the right-click that opens the row's menu, which
+`.contextMenu` gives no notice of. `.help` stays only in the ordinary windows —
+Settings, the conversations — where it works because those windows do become key.
+
+**Lesson.** An API that compiles is not an API that runs *here*. A widget whose
+whole design is "never take the focus" cannot borrow the parts of the toolkit
+that assume focus, and the borrowing fails silently — the call is there, the text
+is right, and the pixels never arrive.

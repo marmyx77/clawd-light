@@ -170,7 +170,7 @@ struct TrafficLightColumn: View {
         .frame(height: Layout.rowHeight * 0.7)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 6)
-        .help("The “only what's waiting” filter is hiding \(count) sessions that are idle or working.")
+        .tooltip("The “only what's waiting” filter is hiding \(count) sessions that are idle or working.")
     }
 
     /// No sessions seen yet: almost always means the hooks aren't installed.
@@ -190,7 +190,7 @@ struct TrafficLightColumn: View {
         .frame(height: Layout.rowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 6)
-        .help(
+        .tooltip(
             filteredOut > 0
                 ? "The “only what's waiting” filter is on and \(filteredOut) sessions are asking for nothing."
                 : "No sessions detected.\nIf Claude Code is running, check that the hooks are installed (right-click menu)."
@@ -238,7 +238,7 @@ private struct HiddenSummaryRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: onReveal)
-        .help(tooltip)
+        .tooltip(tooltip)
     }
 
     private var tooltip: String {

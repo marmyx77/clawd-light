@@ -64,20 +64,17 @@ struct TrafficLightRow: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0)
+            // The light and its ring travel together, closer to each other than
+            // to anything else: same session, two questions.
+            HStack(spacing: Layout.dotToRing) {
+                TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0)
+
+                if !compact {
+                    ring
+                }
+            }
 
             if !compact {
-                // How full this session's context is, and on which model. It took
-                // the cell the slot number used to have: the slot answers "which
-                // key opens this" once and never changes, and it reads well enough
-                // in the tooltip. This changes while you work, and it is what
-                // decides whether a large task starts here or in a new session.
-                //
-                // Drawn on every row, including the ones with nothing read yet —
-                // a cell that appears and disappears would move the names of half
-                // the column sideways every time a session replied.
-                ContextRing(reading: row.context)
-
                 // A terminal row says so, the way a remote one says where it is:
                 // its click leads to a tab, not to an editor window.
                 if row.isTerminal {
@@ -138,13 +135,27 @@ struct TrafficLightRow: View {
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
         .contextMenu { menu }
-        .help(tooltip)
+        .tooltip(tooltip)
         // The row follows the pointer while it is the one being dragged, and steps
         // aside — animated — when another row is dragged past it.
         .offset(y: drag?.offset ?? 0)
         .zIndex(isDragged ? 1 : 0)
         .shadow(color: .black.opacity(isDragged ? 0.35 : 0), radius: isDragged ? 6 : 0, y: 2)
         .animation(isDragged ? nil : .easeOut(duration: 0.12), value: drag?.offset ?? 0)
+    }
+
+    /// How full this session's context is, and on which model.
+    ///
+    /// It took the cell the slot number used to have: the slot answers "which key
+    /// opens this" once and never changes, and it reads well enough in the
+    /// tooltip. This changes while you work, and it is what decides whether a
+    /// large task starts here or in a new session.
+    ///
+    /// Drawn on every row, including the ones with nothing read yet — a cell that
+    /// appeared and disappeared would move the names of half the column sideways
+    /// every time a session replied.
+    private var ring: some View {
+        ContextRing(reading: row.context)
     }
 
     /// The three lines on the right: where you grab the row to move it.

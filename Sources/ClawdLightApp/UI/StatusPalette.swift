@@ -96,17 +96,41 @@ enum StatusPalette {
 /// Interface measurements, gathered here so magic numbers don't scatter through
 /// the views.
 enum Layout {
-    static let dotSize: CGFloat = 11
-    /// Thickness of the listening ring, drawn inside the dot. Two points of
-    /// eleven: visible at a glance across a room, and it still leaves a core
-    /// large enough to read the colour underneath.
-    static let listeningRing: CGFloat = 2
-    /// Thickness of the context ring, which is the same eleven points across as
-    /// the dot and sits beside it. Two points again, and for the same reason:
-    /// any thinner and the arc stops being readable at a glance, any thicker and
-    /// there is no room left inside for the model's letter.
-    static let contextRingWidth: CGFloat = 2
-    static let rowHeight: CGFloat = 22
+    /// The traffic light itself.
+    ///
+    /// Eleven for most of this project's life, and two points too small: on a
+    /// 27-inch display at arm's length the difference between the dimmed red of
+    /// a resting session and the full red of a dead turn is a difference in
+    /// brightness across eleven points, which is exactly the kind of judgement
+    /// a glance from across the desk cannot make.
+    static let dotSize: CGFloat = 13
+    /// Thickness of the listening ring, drawn inside the dot. Enough to see from
+    /// across a room, and it still leaves a core large enough to read the colour
+    /// underneath — which is the whole point of a ring rather than a colour.
+    static let listeningRing: CGFloat = 2.5
+    /// The context ring, beside the light and slightly larger than it.
+    ///
+    /// Larger, and that is deliberate rather than an oversight: it has to hold a
+    /// letter inside a stroked circle, and the letter was illegible at eleven
+    /// points — reported from use, in exactly those words. The light keeps the
+    /// eye anyway, because it is the only saturated thing on the row and this one
+    /// is grey.
+    static let contextRingSize: CGFloat = 16
+    /// Three points of sixteen. Thick, and deliberately so: the first version
+    /// was two points of eleven, and on screen the consumed arc did not separate
+    /// from the track behind it — the ring read as a letter in a circle, which is
+    /// half of what it is. Three points leaves ten of clear middle, which is
+    /// still more than a capital needs.
+    static let contextRingWidth: CGFloat = 3
+    /// The letter in the middle of that ring.
+    static let contextRingLetter: CGFloat = 8.5
+    /// The gap between the light and its context ring.
+    ///
+    /// Tighter than the row's own spacing, because they are one thing said twice
+    /// — this session's state, and this session's room — and because the seven
+    /// points the row uses everywhere else are seven points off the name.
+    static let dotToRing: CGFloat = 4
+    static let rowHeight: CGFloat = 24
     static let rowSpacing: CGFloat = 2
     static let panelPadding: CGFloat = 8
     static let cornerRadius: CGFloat = 12

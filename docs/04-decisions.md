@@ -1249,8 +1249,15 @@ on a renamed row — the folder underneath.
 **Why the slot lost.** It answers "which key opens this" once and then never
 changes, on a row whose position never changes either (D23). The saturation is
 the opposite kind of fact: it moves while you work, and it is the one that
-decides whether a large task starts here or in a fresh session. Seven points of
-the name were the price of the swap — 108.82 becomes 104.82 on a plain row.
+decides whether a large task starts here or in a fresh session.
+
+**The price, measured.** Ten points of the name: on a plain row with a `14:56`
+timestamp the field goes from **110.87 pt to 100.87 pt**. Six of those went to
+the ring being wider than the cell it replaced (15 against 7) and four to the
+light growing from 11 to 13 — because the first version of this shipped at eleven
+points and came back with one word from use, *illeggibile*. A letter inside a
+stroked circle needs the circle: 15 points across, a 2.5-point stroke and an
+8-point capital, which leaves 10 points of clear middle.
 
 **Why monochrome.** Six states already own the colour in this panel. A ring that
 turned red near the end would be a seventh voice, arriving exactly when the row's
@@ -1311,6 +1318,37 @@ beside the column, and cannot be found again once it has closed itself.
 **Discarded:** opening it by itself on first run. It is the one moment a stranger
 exists — and also the kind of thing that is presumptuous the second time. It
 stays a door, not a greeting.
+
+---
+
+## D32 · The panel draws its own tooltips
+
+**Decided.** `.help(…)` is not used anywhere inside the floating panel. A single
+borderless window, reused, shows the text under the pointer after 450 ms and
+takes itself away on a click, a scroll or the pointer leaving.
+
+**Why.** AppKit's tooltips are put on screen by `NSToolTipManager`, which wants
+the window under the pointer to be key and the application to be active. This
+panel is neither, on purpose: it is a `nonactivatingPanel` that becomes key only
+in the instant of a click, so that clicking a light never takes the focus from
+the editor. Every `.help` on a row was therefore dead text — and the row's entire
+second layer, the exact context figure, the model with its version, the folder
+under a renamed row, the slot and its command, was written, tested, and never
+once displayed. Found the only way it could be: reported by somebody hovering
+and seeing nothing.
+
+**What it must never do.** Take the focus, take a click, or outlive the thing it
+explains. So: `ignoresMouseEvents`, `orderFrontRegardless` and never `makeKey`,
+and a local event monitor that removes it on any mouse-down — because a
+right-click opens the row's menu over the very row being explained, and
+`.contextMenu` gives no notice that it did.
+
+**Discarded:** making the panel key on hover, which would have taken the focus
+from the editor every time the pointer crossed the column — the exact defect the
+non-activating panel exists to prevent. **Discarded:** a SwiftUI popover, which
+is clipped by a panel 240 points wide and 35 in the strip. **Discarded:** leaving
+`.help` in place as well: two tooltips for one row, one of which almost never
+appears, is worse than either.
 
 ---
 

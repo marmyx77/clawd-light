@@ -60,8 +60,6 @@ struct PanelRootView: View {
     let actions: PanelActions
     let rowActions: RowActions
 
-    @State private var hoveringGear = false
-    @State private var hoveringLegend = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -134,56 +132,59 @@ struct PanelRootView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(issue.summary + " — click to fix")
+            .tooltip(issue.summary + " — click to fix")
         }
     }
 
-    /// The gear under the rows: the same menu as a right-click on the margins,
-    /// behind a left-click on something you can see. A menu that exists only
-    /// behind a right-click on an empty edge is a menu nobody finds — reported
-    /// by use, after a week of not finding it.
+    /// The strip under the rows: legend, width, menu.
+    ///
+    /// The gear came first, and for a reason worth keeping: a menu that exists
+    /// only behind a right-click on an empty edge is a menu nobody finds —
+    /// reported by use, after a week of not finding it. The same argument brought
+    /// the other two here. Switching to the strip was a menu entry, and switching
+    /// back meant opening a menu inside a panel thirty-five points wide.
     private var footer: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
             // The door to the legend, and it is a question mark because that is
-            // the shape of the question: the column now has six colours and two
-            // rings, and nothing on screen says what they are. Expanded mode only
-            // — thirty-five points hold one glyph, and between the two the gear
-            // is the one that leads everywhere.
+            // the shape of the question: the column has six colours and two rings,
+            // and nothing on screen says what they are. Expanded only — the strip
+            // has room for the two glyphs that get you out of it and into the menu.
             if !flags.compact {
-                Button(action: actions.openLegend) {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Color.primary.opacity(hoveringLegend ? 0.55 : 0.2))
-                        .frame(width: 14, height: Layout.footerHeight)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("What the lights mean — and how many of each there are right now")
-                .onHover { hoveringLegend = $0 }
+                FooterButton(
+                    symbol: "questionmark.circle",
+                    help: "What the lights mean — and how many of each there are right now",
+                    action: actions.openLegend
+                )
             }
 
-            Button(action: openMenuUnderPointer) {
-                // Drawn exactly like the rows' drag handles — same weight,
-                // same translucency, same column — so it reads as one more
-                // affordance of the panel, not as a control from elsewhere.
-                Image(systemName: "gearshape")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.primary.opacity(hoveringGear ? 0.55 : 0.2))
-                    .frame(width: 14, height: Layout.footerHeight)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Options and Settings — the same menu as a right-click on the panel's edge")
-            .onHover { hoveringGear = $0 }
-            // Centred in compact mode, where there is no "right"; otherwise
-            // under the drag handles, fourteen points from the edge like them.
+            // Compact mode used to be reachable only from the menu, and going back
+            // meant finding a menu inside a strip thirty-five points wide. A door
+            // you can see, in both directions.
+            FooterButton(
+                symbol: flags.compact
+                    ? "arrow.up.left.and.arrow.down.right"
+                    : "arrow.down.right.and.arrow.up.left",
+                help: flags.compact
+                    ? "Widen the panel — names, times, context and the drag handles"
+                    : "Traffic lights only — a strip thirty-five points wide",
+                action: actions.toggleCompact
+            )
+
+            FooterButton(
+                symbol: "gearshape",
+                help: "Options and Settings — the same menu as a right-click on the panel's edge",
+                action: openMenuUnderPointer
+            )
+
+            // Centred in compact mode, where there is no "right"; otherwise under
+            // the drag handles, fourteen points from the edge like them.
             if flags.compact { Spacer(minLength: 0) }
         }
         .padding(.horizontal, flags.compact ? 0 : Layout.panelPadding + 6)
-        // Three points more below than above: asked for, and right — the
-        // glyph sits nearer the rows than the edge.
+        // Three points more below than above: asked for, and right — the glyphs
+        // sit nearer the rows than the edge.
         .padding(.bottom, 3)
         .frame(height: Layout.footerHeight)
     }
@@ -302,6 +303,30 @@ struct PanelRootView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
+    }
+}
+
+/// One glyph in the footer: dim at rest, brighter under the pointer, and the
+/// same size as the rows' drag handles so the strip reads as one row of
+/// affordances rather than a toolbar.
+private struct FooterButton: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Color.primary.opacity(hovering ? 0.65 : 0.32))
+                .frame(width: 14, height: Layout.footerHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .tooltip(help)
+        .onHover { hovering = $0 }
     }
 }
 
