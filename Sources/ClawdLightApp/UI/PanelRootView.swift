@@ -144,39 +144,48 @@ struct PanelRootView: View {
     /// the other two here. Switching to the strip was a menu entry, and switching
     /// back meant opening a menu inside a panel thirty-five points wide.
     private var footer: some View {
-        Group {
-            if flags.compact {
-                // Thirty-five points wide: there is no left and no right down
-                // there, only a middle. The legend stays out — two glyphs is
-                // what the strip can hold without them touching.
-                HStack(spacing: 3) {
-                    sizeButton
-                    menuButton
+        VStack(spacing: 0) {
+            // Where the rows end. Inset to the column's own padding, so it lines
+            // up with the content and stops short of the rounded corners.
+            Rectangle()
+                .fill(Color.primary.opacity(0.10))
+                .frame(height: Layout.footerRule)
+                .padding(.horizontal, flags.compact ? 6 : Layout.panelPadding)
+
+            Group {
+                if flags.compact {
+                    // Thirty-five points wide: there is no left and no right down
+                    // there, only a middle. The legend stays out — two glyphs is
+                    // what the strip can hold without them touching.
+                    HStack(spacing: 3) {
+                        sizeButton
+                        menuButton
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 3) {
+                        // Under the lights, in their column: it is the control
+                        // that decides whether the lights are all there is.
+                        sizeButton
+                        Spacer(minLength: 0)
+                        legendButton
+                        menuButton
+                    }
+                    // The row's own inset, so the gear lands in the drag handles'
+                    // column and the width control in the lights'.
+                    .padding(.horizontal, Layout.panelPadding + 6)
                 }
-                .frame(maxWidth: .infinity)
-            } else {
-                HStack(spacing: 2) {
-                    // Under the lights, in their column: it is the control that
-                    // decides whether the lights are all there is.
-                    sizeButton
-                    Spacer(minLength: 0)
-                    legendButton
-                    menuButton
-                }
-                // The row's own inset, so the gear lands in the drag handles'
-                // column and the width control in the lights'.
-                .padding(.horizontal, Layout.panelPadding + 6)
             }
+            .frame(height: Layout.footerBand)
         }
-        .padding(.bottom, Layout.footerLift)
         .frame(height: Layout.footerHeight)
     }
 
     private var sizeButton: some View {
         FooterButton(
             symbol: flags.compact
-                ? "arrow.up.left.and.arrow.down.right"
-                : "arrow.down.right.and.arrow.up.left",
+                ? "arrow.up.left.and.arrow.down.right.circle"
+                : "arrow.down.right.and.arrow.up.left.circle",
             help: flags.compact
                 ? "Widen the panel — names, times, context and the drag handles"
                 : "Traffic lights only — a strip thirty-five points wide",
@@ -197,9 +206,16 @@ struct PanelRootView: View {
         )
     }
 
+    /// Three dots and not a gear, and the reason is half legibility and half
+    /// accuracy. A gear inside a circle at twelve points is a shape inside a
+    /// shape: rendered and looked at, its teeth merge with the ring and it comes
+    /// out a grey blob beside a crisp question mark. And this button does not open
+    /// settings — it opens the panel's menu, which holds the view switches, the
+    /// hooks, the update check and the quit. `…` is what macOS puts on that
+    /// button everywhere else.
     private var menuButton: some View {
         FooterButton(
-            symbol: "gearshape",
+            symbol: "ellipsis.circle",
             help: "Options and Settings — the same menu as a right-click on the panel's edge",
             action: openMenuUnderPointer
         )
@@ -331,9 +347,10 @@ struct PanelRootView: View {
 private struct FooterButton: View {
     let symbol: String
     let help: String
-    /// Fourteen by default, the drag handles' column. The width control passes
-    /// the width of a light instead, so it centres in the lights' column.
-    var width: CGFloat = 14
+    /// The glyph's own width by default, so two of them sitting side by side are
+    /// separated by the spacing and nothing else. The width control passes the
+    /// width of a light instead, so it centres in the lights' column.
+    var width: CGFloat = 15
     let action: () -> Void
 
     @State private var hovering = false
@@ -343,10 +360,17 @@ private struct FooterButton: View {
             Image(systemName: symbol)
                 .font(.system(size: Layout.footerGlyph, weight: .regular))
                 .foregroundStyle(hovering ? Color.primary.opacity(0.95) : StatusPalette.timeColor)
-                // The box is what the strip actually has, minus the gap above
-                // it. Asking for the full height inside a shorter space is how a
-                // glyph ends up cut at the bottom.
-                .frame(width: width, height: Layout.footerHeight - Layout.footerLift)
+                // The pill is wider than the layout box and overflows it evenly,
+                // so the glyph keeps its column while the highlight gets room to
+                // be a target. Same shape and same white as a row's own hover:
+                // the footer borrows the column's language instead of inventing
+                // one for three glyphs.
+                .frame(width: width + 8, height: 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.white.opacity(hovering ? 0.12 : 0))
+                )
+                .frame(width: width, height: Layout.footerBand)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -140,20 +140,32 @@ enum Layout {
     /// The strip under the rows: the width control on the left, under the lights,
     /// and the legend and the menu on the right, under the drag handles.
     ///
-    /// Nineteen points for most of this project's life, with glyphs at nine —
-    /// which was a hint that the controls existed rather than controls. At twelve
-    /// points a glyph needs about fifteen of line, and three of those points are
-    /// spent on the gap between the strip and the rows, so nineteen would have
-    /// clipped the descender of the gear. It has happened once already, when the
-    /// gear was a SwiftUI `Menu` and came out low and cut.
-    static let footerHeight: CGFloat = 22
-    /// The glyphs down there. Same size as the row's name, and the same colour:
+    /// **It is one more row of the column, and that is the whole point.** At 19
+    /// points with 9-point glyphs it was a hint that controls existed; at 22 it
+    /// was controls in a band of its own height, which read — accurately — as a
+    /// strip bolted underneath. It is now a hairline and a band exactly as tall
+    /// as a row, so the footer belongs to the same rhythm as everything above it
+    /// instead of interrupting it.
+    static let footerHeight: CGFloat = footerRule + rowHeight
+    /// The band the glyphs live in: one row, so their centres sit on the same
+    /// pitch the lights do.
+    static let footerBand: CGFloat = rowHeight
+    /// The hairline that says where the rows end. Without it the glyphs float on
+    /// the same surface as the column and read as debris; with it they are a
+    /// region. One point, at a tenth of the primary colour: any stronger and it
+    /// becomes a border, which this panel does not have anywhere else.
+    static let footerRule: CGFloat = 1
+    /// The glyphs down there. Same size as a row's name, and the same colour:
     /// they are part of the panel's text, not a toolbar bolted under it.
+    ///
+    /// All three are `.circle` variants, and that is not decoration. A gear, a
+    /// question mark in a circle and a pair of loose diagonal arrows have the same
+    /// point size and nothing else in common: the arrows are two thin marks with
+    /// no bounding shape and an ink that hangs to one corner, so beside two round
+    /// outlines they read as smaller, lower and unrelated. Enclosed, all three are
+    /// 15 × 15, one silhouette, one weight — which is the difference between three
+    /// glyphs and a set of controls.
     static let footerGlyph: CGFloat = 12
-    /// The gap between the strip and the rows above it. Taken out of the strip's
-    /// own height, so a button's box is what is left — never more, which is what
-    /// pushes a glyph past its edge.
-    static let footerLift: CGFloat = 3
 
     /// The line that appears only when a click could not raise a window.
     ///

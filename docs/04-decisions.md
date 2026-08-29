@@ -1312,6 +1312,18 @@ what makes it worth opening twice. The counts come from
 `PanelController.currentRendering`, so a census and a column cannot disagree:
 same renderer, same options, hidden projects left out of both.
 
+**They are one family, and that took two tries.** The first version paired a
+question mark in a circle, a bare gear and a pair of loose diagonal arrows: same
+point size, nothing else in common. The arrows are two thin marks with no
+bounding shape and their ink hangs to one corner, so beside two round outlines
+they read as smaller, lower and unrelated — which is what "disordinato" meant.
+All three are `.circle` variants now: 15 × 15, one silhouette, one weight. The
+menu's is `ellipsis.circle` rather than `gearshape.circle` for two reasons that
+agree — a gear inside a circle at twelve points comes out a grey blob beside a
+crisp question mark, and this button opens the panel's **menu**, not a settings
+pane. A hairline above the band says where the rows end; without it three glyphs
+float on the same surface as the column and read as debris.
+
 **Where the three glyphs sit.** The width control is on the left, centred in the
 lights' own column; the legend and the menu are on the right, in the drag
 handles'. Neither is a toolbar arrangement — each one lands in the column of the
@@ -1319,8 +1331,9 @@ thing it acts on, so the strip reads as the bottom of the grid rather than as a
 bar bolted under it. At twelve points and in the timestamp's colour, because the
 first version — nine points at 0.32 opacity — was reported as *"troppo piccole e
 veramente poco visibili"*, which is what a control looks like when it is drawn as
-a watermark. The strip grew from 19 points to 22 to hold them: a glyph asking for
-more height than the space it sits in is how the gear came out cut once already.
+a watermark. And the band is exactly as tall as a row, so the footer belongs to
+the column's rhythm instead of interrupting it: measured on screen, the glyphs
+have eight points of clear space above their ink and eight below.
 
 **Discarded:** a popover off the footer. The panel never takes focus, and a
 popover hung off a non-activating window cannot be scrolled, cannot be left open

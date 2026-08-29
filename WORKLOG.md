@@ -1378,3 +1378,24 @@ and the legend stays out — three would touch at thirty-five points wide.
 
 Verified on screen in both modes: nothing clipped, the panel 240 × 192 expanded
 and 35 × 192 as a strip.
+
+**And then it was looked at again, at five times life size.** Bigger and better
+placed was not enough: a question mark in a circle, a bare gear and a pair of
+loose diagonal arrows have the same point size and nothing else in common. The
+arrows are two thin marks with no bounding shape whose ink hangs to one corner,
+so beside two round outlines they read as smaller, lower and unrelated — which is
+what "disordinato" was pointing at, and no amount of margin would have fixed it.
+
+All three are `.circle` variants now: 15 × 15, one silhouette, one weight. The
+menu's is `ellipsis.circle` and not `gearshape.circle`, for two reasons that
+happen to agree — a gear inside a circle at twelve points comes out a grey blob
+beside a crisp question mark (rendered both, looked at both), and the button opens
+the panel's *menu*, not a settings pane, which is what `…` means everywhere else
+on this system.
+
+A hairline now marks where the rows end, and the band below it is exactly as tall
+as a row, so the footer belongs to the column's rhythm instead of sitting under
+it. Each glyph also got the rows' own hover treatment — the same rounded white
+wash, overflowing its layout box so the highlight is a target while the glyph
+keeps its column. Measured on the capture: eight points of clear space above the
+ink and eight below.
