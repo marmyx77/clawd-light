@@ -71,6 +71,7 @@ let suites: [TestSuite] = [
     UpdateFeedSuite.suite,
     CommandSuite.suite,
     TunnelRefusalSuite.suite,
+    ContextSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

@@ -341,5 +341,64 @@
         "MessageDisplay"
       ]
     }
+  },
+  "modelContextWindows": {
+    "_comment": [
+      "The context window of each model, which is the denominator of any",
+      "'how full is this session' figure.",
+      "",
+      "It is not discoverable from a transcript on its own. A transcript records",
+      "the model as 'claude-opus-5', with no note of the window; the session it",
+      "came from is the 1M variant, and a session started with '--model sonnet'",
+      "and no suffix at all also resolves to a 1M window. The window is a",
+      "property of the MODEL, and it lives here, in Claude Code's own registry.",
+      "",
+      "Measured in the installed binary:",
+      "  python3 - <binary>  # regex id:\"claude-...\" then window: within 1400 chars",
+      "Claude Code's own status line confirms both halves of the formula: it",
+      "reports context_window_size equal to the window below, and",
+      "total_input_tokens equal to input_tokens + cache_creation_input_tokens +",
+      "cache_read_input_tokens — the same sum read from the transcript.",
+      "",
+      "WHY THIS IS A CONTRACT AND NOT A CONSTANT. A release can change a window",
+      "silently, and the panel would keep dividing by the old one with complete",
+      "confidence. check-contract.sh re-reads the binary and reports any window",
+      "that moved, any model that vanished, and any model that appeared without",
+      "being classified here.",
+      "",
+      "A model absent from this table gets NO percentage. Guessing a denominator",
+      "is the one failure that cannot be noticed from the outside."
+    ],
+    "windows": {
+      "claude-opus-5": 1000000,
+      "claude-sonnet-5": 1000000,
+      "claude-fable-5": 1000000,
+      "claude-mythos-5": 1000000,
+      "claude-opus-4-7": 1000000,
+      "claude-opus-4-8": 1000000,
+      "claude-opus-4-0": 200000,
+      "claude-opus-4-1": 200000,
+      "claude-opus-4-5": 200000,
+      "claude-opus-4-6": 200000,
+      "claude-sonnet-4-0": 200000,
+      "claude-sonnet-4-5": 200000,
+      "claude-sonnet-4-6": 200000,
+      "claude-haiku-4-5": 200000,
+      "claude-3-5-haiku": 200000,
+      "claude-3-7-sonnet": 200000
+    },
+    "_note": [
+      "claude-opus-4-6 and claude-sonnet-4-6 carry native_1m:!0 in the registry",
+      "while their window says 200000. The window field is what Claude Code",
+      "divides by, so it is what this table records; the flag is noted here so",
+      "that a future reader does not 'correct' the table from the flag."
+    ],
+    "overridesThatAreNotVisibleHere": [
+      "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+      "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+      "DISABLE_COMPACT",
+      "settings.json: autoCompactWindow"
+    ]
   }
 }

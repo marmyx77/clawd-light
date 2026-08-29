@@ -40,11 +40,21 @@ public struct LiveSession: Sendable, Equatable {
     /// to another process after this one died.
     public let procStart: String?
 
+    /// How full that session's context was at its last reply, when the machine
+    /// it runs on was able to say.
+    ///
+    /// Carried here rather than fetched later because a transcript on another
+    /// machine is not a file on this one: the probe standing in that directory
+    /// is the only thing that can read it, and this is where what it read
+    /// arrives.
+    public let context: ContextReading?
+
     /// Copy with a different activity timestamp.
     public func with(modifiedAt newValue: Date) -> LiveSession {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
-            name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart
+            name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
+            context: context
         )
     }
 
@@ -57,8 +67,10 @@ public struct LiveSession: Sendable, Equatable {
         kind: String? = nil,
         modifiedAt: Date,
         host: String? = nil,
-        procStart: String? = nil
+        procStart: String? = nil,
+        context: ContextReading? = nil
     ) {
+        self.context = context
         self.host = host?.trimmed.nilIfEmpty
         self.procStart = procStart?.trimmed.nilIfEmpty
         self.pid = pid

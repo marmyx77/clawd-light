@@ -1195,6 +1195,48 @@ would have nothing to say.
 
 ---
 
+## D29 · A context figure is a floor, or it is nothing
+
+**Decided.** Each row can say how full its session's context is, read from the
+end of the transcript, in three renderings and never two: `62%` when nothing has
+been added since the last reply, `≥62%` when something has, and `—` when the
+number is known to be wrong. The dash is never a blank.
+
+**Why not one number.** Only assistant records carry a token count, so what can
+be read is the context as it stood at the last reply; anything loaded since — a
+pasted file, a tool result, a resumed history — is invisible. Measured across 171
+compaction boundaries, the truth was a median of 1.00× the last reading and a
+maximum of **17.67×**: one session would have displayed 56,555 while holding
+close to a million. A figure that is occasionally seventeen times too small is
+not a figure, it is a trap, because somebody would start a large task on it.
+
+**The denominator is a contract, not a constant.** The window is not in the
+transcript: it records `claude-opus-5` and says nothing, and `--model sonnet`
+with no suffix resolves to a million as well. It is a property of the model, and
+the table lives in `Contracts/required-fields.json` with `check-contract.sh`
+re-reading Claude Code's binary on every run — a release can move a window
+silently, and the panel would go on dividing by the old one with complete
+confidence. A model absent from the table gets no percentage at all.
+
+**Remote sessions are read where they live.** A transcript on another machine is
+not a file here, and `HookPayloadDecoder` deliberately nils the path for any
+signal carrying a host. But the probe already stands in that directory: it now
+sends back a **miniature of the tail** in the same shape as the real thing, and
+the Mac reads it with exactly the code it reads a local transcript with. The
+rule stays in one place; the machine we do not update judges nothing.
+
+**Discarded:** a bare percentage. It is the version everybody asks for and the
+one that would lie. **Discarded:** anything on the dot — fill level, arc, a
+second ring, red at 90%. Red already means "idle, nothing is coming from here",
+and the ring is spent on D28. **Discarded:** a burn rate, or "fills in about
+forty minutes". The input is a floor sampled once per completed turn, and a
+single measured turn grew by 52,218 tokens. **Discarded:** building it on
+Claude Code's status line, which reports the number exactly and does not run
+under the VS Code extension — six of the eight sessions open here would get
+nothing.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

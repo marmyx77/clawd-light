@@ -46,6 +46,14 @@ public enum RemoteSessionsDecoder {
         // The node's clock, not this machine's: the whole point of asking it.
         let epoch = (record["activityEpoch"] as? NSNumber)?.doubleValue ?? 0
 
+        // The same scanner the Mac runs on its own transcripts, over the
+        // miniature the probe sent. One rule, one implementation, one set of
+        // tests — the alternative was a copy of it in Python on a machine we do
+        // not update, which is how two implementations of one rule start
+        // disagreeing without anybody noticing.
+        let context = (record["contextTail"] as? String)
+            .flatMap { $0.isEmpty ? nil : ContextScanner.read(tail: $0) }
+
         return LiveSession(
             pid: pid,
             sessionId: sessionId,
@@ -54,7 +62,8 @@ public enum RemoteSessionsDecoder {
             name: string(record, "name"),
             kind: string(record, "kind"),
             modifiedAt: Date(timeIntervalSince1970: epoch),
-            host: host
+            host: host,
+            context: context
         )
     }
 

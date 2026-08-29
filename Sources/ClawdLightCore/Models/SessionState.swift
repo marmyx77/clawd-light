@@ -75,6 +75,16 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// what the person sees in their terminal's title bar.
     public let title: String?
 
+    /// How full this session's context was at its last reply.
+    ///
+    /// A reading, not a fact about now: only assistant records carry a token
+    /// count, so anything loaded since is invisible and the reading says as much
+    /// about itself. `nil` for a session that has never answered, for one on a
+    /// machine that could not be asked, and for a model whose window is not in
+    /// the table — three different silences, all of which must render as a dash
+    /// rather than as an empty space.
+    public let context: ContextReading?
+
     public init(
         id: String,
         status: SessionStatus,
@@ -88,8 +98,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         waitingOn: [String] = [],
         entrypoint: String? = nil,
         origin: SessionOrigin = .editor,
-        title: String? = nil
+        title: String? = nil,
+        context: ContextReading? = nil
     ) {
+        self.context = context
         self.waitingOn = waitingOn
         self.entrypoint = entrypoint?.trimmed.nilIfEmpty
         self.origin = origin
@@ -175,6 +187,16 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     }
 
     /// Copy that records — or forgets — what the session is waiting on.
+    /// Copy carrying a fresh context reading.
+    ///
+    /// Compared before replacing, like every other `with`: a reading that has
+    /// not moved must not produce a new value, or the panel republishes its
+    /// whole snapshot every five seconds and redraws for nothing.
+    public func with(context reading: ContextReading?) -> SessionState {
+        guard reading != context else { return self }
+        return replacing(context: .some(reading))
+    }
+
     public func with(waitingOn types: [String]) -> SessionState {
         guard types != waitingOn else { return self }
         return replacing(waitingOn: types)
@@ -288,7 +310,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         waitingOn: [String]? = nil,
         entrypoint: String?? = nil,
         origin: SessionOrigin? = nil,
-        title: String?? = nil
+        title: String?? = nil,
+        context: ContextReading?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -303,7 +326,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             waitingOn: waitingOn ?? self.waitingOn,
             entrypoint: entrypoint ?? self.entrypoint,
             origin: origin ?? self.origin,
-            title: title ?? self.title
+            title: title ?? self.title,
+            context: context ?? self.context
         )
     }
 }

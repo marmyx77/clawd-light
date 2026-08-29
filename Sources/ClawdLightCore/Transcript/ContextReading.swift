@@ -1,0 +1,124 @@
+import Foundation
+
+/// How full a session's context is, and how much that figure can be trusted.
+///
+/// WHY THE CONFIDENCE IS PART OF THE VALUE
+/// Only `assistant` records carry a token count, so what can be read is the
+/// context as it stood at the **last reply**. Anything loaded since — a pasted
+/// file, a tool result, a resumed history — is invisible. Measured across 171
+/// compaction boundaries, the real figure was a median of 1.00× the last reading
+/// and a maximum of **17.67×**: one session would have displayed 56,555 while
+/// holding close to a million.
+///
+/// A percentage that is sometimes seventeen times too small is not a percentage,
+/// it is a trap — somebody would start a large task on the strength of it. So
+/// the reading carries what happened after it was taken, and the panel says
+/// `62%`, `≥62%` or `—` accordingly. The `≥` and the dash are the feature; the
+/// number on its own is the part that would lie.
+public struct ContextReading: Sendable, Equatable {
+
+    /// What can be claimed about the number.
+    public enum Confidence: String, Sendable, Equatable, Codable {
+        /// Nothing has been added since the reply this was read from.
+        case exact
+        /// Something was loaded afterwards: the true figure is higher.
+        case floor
+        /// A compaction or a refused prompt sits after it. The number is known
+        /// to be wrong, and is not shown at all.
+        case unknown
+    }
+
+    public let tokens: Int
+    /// The model **of the same record** the tokens came from. A session
+    /// interleaves models — twenty-eight switches in one real transcript — so
+    /// taking it from anywhere else describes a different turn.
+    public let model: String
+    /// `nil` when the model is not in the table, which means no percentage.
+    public let window: Int?
+    public let confidence: Confidence
+    /// The timestamp of the reply, not of the read: the panel says how old this is.
+    public let at: Date?
+
+    public init(tokens: Int, model: String, window: Int?, confidence: Confidence, at: Date?) {
+        self.tokens = tokens
+        self.model = model
+        self.window = window
+        self.confidence = confidence
+        self.at = at
+    }
+
+    /// `nil` when there is no denominator, or when the number is known to be wrong.
+    public var percent: Int? {
+        guard let window, window > 0, confidence != .unknown else { return nil }
+        return Int((Double(tokens) / Double(window) * 100).rounded())
+    }
+
+    /// What a row shows. Never empty: a blank cell reads as "there is room",
+    /// which is exactly what would make somebody start a large task in a session
+    /// that has none.
+    public var label: String {
+        guard let percent else { return "—" }
+        return confidence == .floor ? "≥\(percent)%" : "\(percent)%"
+    }
+
+    /// The full sentence, for the tooltip, where the whole truth fits.
+    public var explanation: String {
+        guard let window, confidence != .unknown else {
+            return confidence == .unknown
+                ? "context unknown — the session was compacted since the last reading"
+                : "context \(tokens.formatted()) tokens (\(model) — no window recorded)"
+        }
+        let prefix = confidence == .floor ? "at least " : ""
+        return "context \(label) — \(prefix)\(tokens.formatted()) of \(window.formatted()) (\(model))"
+    }
+}
+
+/// The denominator, per model.
+///
+/// Not discoverable from a transcript: it records `claude-opus-5` and says
+/// nothing about the window, and a session started with `--model sonnet` — no
+/// suffix — resolves to a million. The window is a property of the model, and
+/// these numbers are Claude Code's own, read out of its model registry.
+///
+/// `Contracts/required-fields.json` carries the same table and
+/// `Scripts/check-contract.sh` re-reads the binary on every run, so a window
+/// that moves in a release is reported instead of silently dividing wrong.
+public enum ContextWindows {
+
+    public static let byModel: [String: Int] = [
+        "claude-opus-5": 1_000_000,
+        "claude-sonnet-5": 1_000_000,
+        "claude-fable-5": 1_000_000,
+        "claude-mythos-5": 1_000_000,
+        "claude-opus-4-7": 1_000_000,
+        "claude-opus-4-8": 1_000_000,
+        "claude-opus-4-0": 200_000,
+        "claude-opus-4-1": 200_000,
+        "claude-opus-4-5": 200_000,
+        "claude-opus-4-6": 200_000,
+        "claude-sonnet-4-0": 200_000,
+        "claude-sonnet-4-5": 200_000,
+        "claude-sonnet-4-6": 200_000,
+        "claude-haiku-4-5": 200_000,
+        "claude-3-5-haiku": 200_000,
+        "claude-3-7-sonnet": 200_000,
+    ]
+
+    /// The window, or `nil` — which means no percentage rather than a guess.
+    ///
+    /// A transcript writes the model with its release date attached
+    /// (`claude-sonnet-4-5-20250929`) about as often as without, so the suffix
+    /// comes off before the lookup. Only a trailing group of exactly eight
+    /// digits: `claude-3-5-haiku` must keep its own numbers.
+    public static func window(for model: String) -> Int? {
+        byModel[stripped(model)]
+    }
+
+    public static func stripped(_ model: String) -> String {
+        let parts = model.split(separator: "-")
+        guard let last = parts.last, last.count == 8, last.allSatisfy(\.isNumber) else {
+            return model
+        }
+        return parts.dropLast().joined(separator: "-")
+    }
+}

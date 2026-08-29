@@ -32,6 +32,15 @@ public enum ReducerAction: Sendable, Equatable {
     /// not that every session disappeared.
     case reconcile(alive: Set<String>)
 
+    /// A fact read from outside the hooks: how full a session's context is.
+    ///
+    /// Separate from every other action because it changes nothing about the
+    /// session's state — not its colour, not its order, not when it was last
+    /// seen. It is an observation attached to a row, and a row that does not
+    /// exist gets none: this never creates one, because a context reading is not
+    /// evidence that a session is worth showing.
+    case observed(sessionId: String, context: ContextReading?)
+
     /// Inserts a session discovered from the filesystem, without overwriting one
     /// already known: what the hooks know is always more precise than a deduction.
     case adopt(SessionState)
@@ -62,6 +71,10 @@ public enum StateReducer {
         case .reconcile(let alive):
             guard !alive.isEmpty else { return state }
             return TrafficLightState(sessions: state.sessions.filter { alive.contains($0.key) })
+
+        case .observed(let sessionId, let context):
+            guard let session = state.sessions[sessionId] else { return state }
+            return state.upserting(session.with(context: context))
 
         case .adopt(let session):
             guard state.sessions[session.id] == nil else { return state }

@@ -80,6 +80,10 @@ final class StateStore: ObservableObject {
     /// burst of signals does not start a read per signal.
     private var titleReadsInFlight: Set<String> = []
 
+    /// Reads how full each local session's context is, cached on file size.
+    private let contextReader = ContextReader()
+    private var contextReadsInFlight: Set<String> = []
+
     // MARK: - Terminal sessions
 
     /// The folder a terminal row is anchored on, for a signal nothing claims:
@@ -126,6 +130,40 @@ final class StateStore: ObservableObject {
             await MainActor.run {
                 self.titleReadsInFlight.remove(sessionId)
                 if let title { self.apply(.remember(sessionId: sessionId, title: title), now: self.clock()) }
+            }
+        }
+    }
+
+    /// Refreshes how full a session's context is, from its transcript.
+    ///
+    /// Off the actor, like the title read and for the same reason: this seeks
+    /// into a file that can be a hundred megabytes, and the thread it must not
+    /// do that on is the one drawing the panel. Remote sessions are skipped —
+    /// their transcript is not a file here, and their reading arrives from the
+    /// probe that stands where it is.
+    private func refreshContext(sessionId: String) {
+        guard let session = state.sessions[sessionId], session.workspace.host == nil,
+              !contextReadsInFlight.contains(sessionId)
+        else { return }
+
+        let derived = TranscriptLocator.candidateURL(
+            sessionId: sessionId, cwd: session.workspace.path
+        ).path
+        let path = session.transcriptPath.flatMap { FileManager.default.fileExists(atPath: $0) ? $0 : nil }
+            ?? derived
+        guard FileManager.default.fileExists(atPath: path) else { return }
+
+        contextReadsInFlight.insert(sessionId)
+        // Captured here, on the actor, so the detached task never reaches back
+        // for a main-actor property: `await self.contextReader…` compiles and
+        // quietly performs the read on the main thread.
+        let reader = contextReader
+        Task.detached(priority: .utility) { [weak self] in
+            let reading = await reader.reading(ofTranscriptAt: path, for: sessionId)
+            guard let self else { return }
+            await MainActor.run {
+                self.contextReadsInFlight.remove(sessionId)
+                self.apply(.observed(sessionId: sessionId, context: reading), now: self.clock())
             }
         }
     }
@@ -188,6 +226,17 @@ final class StateStore: ObservableObject {
             }
             remoteSessions[host] = sessions
             remoteAnsweredAt[host] = askedAt
+
+            // What the probe read of each session's context, on the machine
+            // where its transcript actually is. `.observed` attaches it to a row
+            // that already exists and creates none — a remote session earns its
+            // row by speaking through the tunnel, not by being seen.
+            for session in sessions where session.context != nil {
+                apply(
+                    .observed(sessionId: session.sessionId, context: session.context),
+                    now: askedAt
+                )
+            }
         }
 
         // An answer that is days old is not an answer. Dropping it puts the host
@@ -476,6 +525,12 @@ final class StateStore: ObservableObject {
         // be bounded by the twelve-hour prune like every other mistake, or a
         // session killed without a `SessionEnd` stays in the column forever.
         apply(.prune(alive: confirmed), now: now)
+
+        // The context readings, last: they change no colour and no order, so
+        // they ride the tick that is already walking every session rather than
+        // getting a timer of their own. An unchanged file costs one `stat`.
+        for sessionId in state.sessions.keys { refreshContext(sessionId: sessionId) }
+
         republish()
     }
 

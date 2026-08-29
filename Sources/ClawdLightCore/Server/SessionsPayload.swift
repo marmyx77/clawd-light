@@ -18,6 +18,25 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// in Claude Code's order. Empty unless the status is `waiting`. A reader that
     /// shows a blue dot without this cannot tell a CI wait from a forgotten server.
     public let waitingOn: [String]
+    /// How full the session's context was at its last reply, as a percentage —
+    /// and how much that figure can be trusted.
+    ///
+    /// Three fields rather than one number, because one number would be read as
+    /// "how full it is now" and it is not: only assistant records carry a token
+    /// count, so anything loaded since the last reply is invisible.
+    /// `contextConfidence` is `exact`, `floor` or `unknown`, and a reader that
+    /// shows the percentage without it is publishing a figure measured, once, at
+    /// seventeen times too small.
+    ///
+    /// All three are absent for a session that has never answered, one on a
+    /// machine that could not be asked, and a model whose window is not
+    /// recorded.
+    public let contextPercent: Int?
+    public let contextTokens: Int?
+    public let contextWindow: Int?
+    public let contextModel: String?
+    public let contextConfidence: String?
+
     public let failureReason: String?
     public let lastMessage: String?
     public let muted: Bool
@@ -72,6 +91,11 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         statusSince: Date,
         activeSubagents: Int = 0,
         waitingOn: [String] = [],
+        contextPercent: Int? = nil,
+        contextTokens: Int? = nil,
+        contextWindow: Int? = nil,
+        contextModel: String? = nil,
+        contextConfidence: String? = nil,
         failureReason: String? = nil,
         lastMessage: String? = nil,
         muted: Bool = false,
@@ -83,6 +107,11 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         title: String? = nil,
         label: String? = nil
     ) {
+        self.contextPercent = contextPercent
+        self.contextTokens = contextTokens
+        self.contextWindow = contextWindow
+        self.contextModel = contextModel
+        self.contextConfidence = contextConfidence
         self.id = id
         self.status = status
         self.workspace = workspace
@@ -157,6 +186,11 @@ public enum SessionsCodec {
             statusSince: session.statusSince,
             activeSubagents: session.activeSubagents,
             waitingOn: session.waitingOn,
+            contextPercent: session.context?.percent,
+            contextTokens: session.context?.tokens,
+            contextWindow: session.context?.window,
+            contextModel: session.context?.model,
+            contextConfidence: session.context?.confidence.rawValue,
             failureReason: session.failureReason?.rawValue,
             lastMessage: session.lastMessage,
             muted: muted,

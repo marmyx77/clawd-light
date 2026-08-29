@@ -1,13 +1,13 @@
 # Code map
 
-~25,900 lines of Swift across five targets. For each file: what it contains, why
+~26,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,628 lines · 58 files   pure logic, zero AppKit
-  ClawdLightApp/    10,433 lines · 56 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,498 lines · 36 files   516 cases, instantaneous
+  ClawdLightCore/   7,004 lines · 60 files   pure logic, zero AppKit
+  ClawdLightApp/    10,586 lines · 57 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,638 lines · 37 files   528 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -43,7 +43,7 @@ The six states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 309
+### `SessionState.swift` · 333
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -229,6 +229,32 @@ Where a window opening on a long transcript starts reading: a few megabytes
 before the end, on a whole line. A transcript can be half a gigabyte and the
 window shows three hundred entries; reading it all was the beachball on ⌘+click.
 
+### `ContextReading.swift` · 124 · `ContextScanner.swift` · 117
+How full a session's context is, read backwards from the end of its transcript.
+
+The numerator is the sum of `input_tokens`, `cache_creation_input_tokens` and
+`cache_read_input_tokens` — the same sum Claude Code's own status line reports as
+`total_input_tokens`, verified against a live payload rather than derived. The
+denominator is the model's window, which the transcript does **not** carry: it
+records `claude-opus-5` and nothing else, and a session started with
+`--model sonnet` and no suffix also resolves to a million. The table lives in
+`ContextWindows`, mirrored in `Contracts/required-fields.json`, and
+`check-contract.sh` re-reads Claude Code's binary on every run.
+
+Four rules, each from a real file and each one the naive version gets wrong: a
+`<synthetic>` record is a refusal with zeros, not a reply — one of them says
+*"Prompt is too long"*, so reading the last usage-bearing record prints **0%**
+at the moment a session is full; zero at the top level can hide the figure in
+`usage.iterations`; the model comes from the same record as the tokens, because
+a session switches models mid-flight; and the order in the file is not
+chronological, because a resumed session replays its history.
+
+The reading also carries what happened after it. Only assistant records hold a
+count, so anything loaded since is invisible: measured across 171 compaction
+boundaries the truth was a median of 1.00× and a maximum of **17.67×** the last
+reading. Hence `exact`, `floor` and `unknown` — rendered `62%`, `≥62%` and `—`.
+The `≥` and the dash are the feature; the bare number is the part that lies.
+
 ### `TranscriptLocator.swift`
 Where a transcript **would** be, for sessions adopted from the filesystem with no
 hook to tell us — after a restart, that is all of them. The rule matched 7065 of
@@ -290,7 +316,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 414
+### `StateReducer.swift` · 431
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -310,7 +336,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 172
+### `SessionsPayload.swift` · 206
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -376,7 +402,7 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 88
+### `RemoteProbeScript.swift` · 131
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
@@ -445,7 +471,7 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 518 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 587 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 294 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -453,6 +479,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
 | `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
+| `ContextReader.swift` | 98 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
@@ -566,7 +593,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 516 cases
+## `ClawdLightTests/` — 528 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -600,6 +627,7 @@ script, before it was split. The most important ones:
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
+| `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 
 ## `TestKit/` — the assertions
@@ -613,7 +641,7 @@ ship neither XCTest nor a complete swift-testing (D11).
 ### `Instrument.swift` · 133
 Calibrates the assertions before anything is measured with them, and it is the
 reason the number in the heading above means something. Adding one early
-`return` to `expect` made all 516 cases report success while verifying nothing —
+`return` to `expect` made all 528 cases report success while verifying nothing —
 a full green, no warning, no clue. So every assertion is now made to fail on
 purpose and must record it, made to pass and must stay silent, and a failing run
 must still reach a non-zero exit code; nineteen proofs, none of them written in

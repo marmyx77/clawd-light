@@ -246,6 +246,62 @@ INVPY
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Model context windows"
+
+# The denominator of every saturation figure the panel shows. It is not in the
+# transcript — a transcript says "claude-opus-5" and nothing about the window,
+# and a session started with `--model sonnet`, no suffix, resolves to a 1M
+# window. The number lives in Claude Code's own model registry, so this reads it
+# back and reports anything that moved.
+#
+# A window that changed in a release and went unnoticed would not break the
+# panel: it would make it divide by the wrong number, confidently, for everyone.
+if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
+    skip "claude binary not found - the model context windows were not examined"
+else
+    python3 - "$SPEC" "$CLAUDE_BIN" <<'CTXPY' && ok "every recorded context window is the one the binary carries" || bad "a model context window moved - see above"
+import json, re, sys
+
+recorded = json.load(open(sys.argv[1]))["modelContextWindows"]["windows"]
+data = open(sys.argv[2], "rb").read().decode("utf-8", "ignore")
+
+found = {}
+for match in re.finditer(r'id:"(claude-[a-z0-9.-]{1,40})",', data):
+    name = match.group(1)
+    if name in found:
+        continue
+    # The window sits inside the same record; 1400 characters is past the
+    # provider_ids block and short of the next model.
+    window = re.search(r"window:\s*([0-9_e+.]+)", data[match.end(): match.end() + 1400])
+    if window:
+        found[name] = int(float(window.group(1).replace("_", "")))
+
+problems = []
+if not found:
+    print("    no model registry found in the binary - this check read nothing", file=sys.stderr)
+    sys.exit(2)
+
+for name, window in sorted(recorded.items()):
+    actual = found.get(name)
+    if actual is None:
+        problems.append(f"{name} is recorded here and no longer in the binary")
+    elif actual != window:
+        problems.append(f"{name} says {window:,}, the binary says {actual:,}")
+
+# A model the binary knows and this table does not gets no percentage at all,
+# which is safe but silent. Naming it here is how the table gets extended.
+for name, window in sorted(found.items()):
+    if name not in recorded:
+        problems.append(f"{name} ({window:,}) is in the binary and not in the table - sessions on it show no figure")
+
+print(f"    {len(found)} models in the binary, {len(recorded)} recorded", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+CTXPY
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 head_ "Background work (the reason a working session is not green)"
 
 # The traffic light trusts Claude Code to have already filtered this list down to

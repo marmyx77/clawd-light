@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **516**, instantaneous |
+| Domain tests | **528**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1100,3 +1100,57 @@ exists. The fix was written, tested with eight passing cases, and would have
 been correct and unreachable. What caught it was installing the build and
 watching the old sentence appear anyway — the same lesson as the guard that had
 never read a file, arriving by a different door.
+
+## 29 August — how full is it, and how much of that do we know
+
+The question was whether the panel could say how full each session's context is.
+Eleven agents spent thirty-four minutes measuring it, and the answer corrected
+the premise the question was asked under.
+
+**The denominator is discoverable**, which three of the five research strands had
+concluded it was not; all three were refuted by their own verifiers. The window
+is a property of the model and it sits in Claude Code's registry — sixteen
+models, six of them on a million. The transcript's model string is enough to look
+it up, and the `[1m]` suffix is a red herring: a session started with
+`--model sonnet`, no suffix, reported a window of a million. Claude Code's own
+status line confirmed both halves of the arithmetic, numerator and denominator,
+against a live payload.
+
+**But the number is a floor, not a reading of now.** Only assistant records carry
+a token count, so anything loaded since the last reply is invisible. Across 171
+compaction boundaries the truth was a median of 1.00× the last reading and a
+maximum of 17.67×: one session would have shown 56,555 while holding close to a
+million. So there are three renderings and never two — `62%`, `≥62%`, `—` — and
+the `≥` and the dash are the feature. The bare percentage is the version
+everybody asks for and the one that would lie.
+
+Four traps, each found in a real file and each one the obvious implementation
+walks into. A `<synthetic>` record is a refusal carrying zeros — one of them says
+*"Prompt is too long"* — so reading the last usage-bearing record prints **0%**
+at the exact moment a session is full. Zero at the top level can hide the real
+figure in `usage.iterations`. The model must come from the same record as the
+tokens, because a session switches models mid-flight, twenty-eight times in one
+file. And the order in a transcript is not chronological: a resumed session
+replays its history, six thousand records stepping backwards, the worst by nine
+days.
+
+Built bottom-up, and nothing is on screen yet. The contract first, with a check
+that re-reads the binary — proven to bite on a moved window, a vanished model and
+an invented one. Then the pure rule in Core with twelve cases. Then the reader,
+an `actor` rather than a class, because `await self.reader…` on a main-actor
+property compiles and quietly performs the seek on the thread that draws the
+panel — a defect I wrote, this afternoon, hours after spending the morning
+removing exactly that.
+
+Remote sessions do get a figure, which the research had ruled out. Their
+transcript is not a file here — the decoder nils the path for any signal carrying
+a host, correctly — but the probe already stands in that directory on the far
+machine. It now returns a **miniature of the tail** in the same shape as the real
+thing, a kilobyte or so, and the Mac reads it with exactly the code it reads a
+local transcript with. One rule, one implementation, one set of tests, and no
+judgement made on a machine we do not update. Measured on the node: 208,943 of
+1,000,000, `exact`.
+
+The numbers, from the real path, through HTTP, on the sessions open right now:
+`≥85%`, `≥63%`, `≥63%`, `52%`, `≥11%`, and one `—` for a session compacted since
+its last reply. The dash is doing exactly what it exists for.

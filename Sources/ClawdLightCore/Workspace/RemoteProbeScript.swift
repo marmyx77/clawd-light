@@ -73,6 +73,48 @@ public enum RemoteProbeScript {
                 activity = max(activity, os.path.getmtime(transcript))
             except OSError:
                 pass
+        # A miniature of the transcript's tail, in the same shape as the real
+        # thing, so that the Mac reads a remote session with exactly the code it
+        # reads a local one with. The rule for what these records mean — which
+        # is a reply, what a compaction does to it, when a number is only a
+        # floor — stays in one place, on the machine we actually update. This
+        # side only projects the fields that rule reads, and judges nothing.
+        tail = ""
+        own = folder + "/" + str(record.get("sessionId") or "") + ".jsonl"
+        try:
+            size = os.path.getsize(own)
+            with open(own, "rb") as handle:
+                handle.seek(max(0, size - 32768))
+                chunk = handle.read().decode("utf-8", "ignore")
+            kept, replies = [], 0
+            for line in reversed(chunk.split("\\n")):
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                message = entry.get("message") or {}
+                usage = message.get("usage") or {}
+                small = {"type": entry.get("type"), "timestamp": entry.get("timestamp")}
+                if entry.get("compactMetadata") is not None:
+                    small["compactMetadata"] = {}
+                if message.get("model"):
+                    small["message"] = {"model": message.get("model"), "usage": {
+                        k: usage.get(k, 0) for k in (
+                            "input_tokens", "cache_creation_input_tokens",
+                            "cache_read_input_tokens")}}
+                    if usage.get("iterations"):
+                        small["message"]["usage"]["iterations"] = usage["iterations"][-1:]
+                    if message.get("model") != "<synthetic>" and usage:
+                        replies += 1
+                kept.append(small)
+                # Two candidates rather than one: the first may report zeros at
+                # the top level with the real figure inside `iterations`, and the
+                # far end must not have to know that to send enough.
+                if replies >= 2:
+                    break
+            tail = "\\n".join(json.dumps(x) for x in reversed(kept))
+        except Exception:
+            tail = ""
         out.append({
             "pid": pid,
             "sessionId": record.get("sessionId"),
@@ -81,6 +123,7 @@ public enum RemoteProbeScript {
             "name": record.get("name"),
             "kind": record.get("kind"),
             "activityEpoch": int(activity),
+            "contextTail": tail,
         })
 
     json.dump(out, sys.stdout)

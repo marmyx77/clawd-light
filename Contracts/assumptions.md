@@ -325,6 +325,55 @@ conversations, which is the same behavior it has today.
 
 ---
 
+## transcript.usage · A reply records what the context held
+
+**We assume** every `assistant` record in a transcript carries
+`message.usage` with `input_tokens`, `cache_creation_input_tokens` and
+`cache_read_input_tokens`, that their sum is the context at that moment, and
+that `message.model` names the model that produced it.
+
+**Depends at** [ContextScanner.swift](../Sources/ClawdLightCore/Transcript/ContextScanner.swift)
+· [ContextReading.swift](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+
+**How verified** — `probe`. A `statusLine` command was configured in a throwaway
+project and its stdin captured: for a live session it reported
+`context_window.total_input_tokens` equal to that sum, and
+`context_window.context_window_size` equal to the model's window. Claude Code
+computes the same number the same way, which is the only reason this is a
+reading and not an estimate.
+
+**Failure mode** — if the field names moved, the panel would show a dash for
+every row. Visible, and the safe direction: the figure disappears rather than
+becoming wrong.
+
+---
+
+## model.contextWindow · The window is a property of the model
+
+**We assume** each model id maps to a fixed context window, recorded under
+`modelContextWindows` and re-read from the installed binary on every run of
+`check-contract.sh`.
+
+**Depends at** [ContextWindows](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+· [required-fields.json](required-fields.json)
+
+**How verified** — `binary`, on 2.1.251: sixteen models, each with a `window:`
+in Claude Code's own registry. And by contradiction: a session started with
+`--model sonnet`, with **no** `[1m]` suffix anywhere, reported a window of
+1,000,000 — so the suffix is not the discriminator and the model id is.
+
+**Failure mode** — a release changes a window and nothing else changes. The
+panel would divide by the old number with full confidence, which is why this is
+a contract with a check rather than a constant in the source. A model the table
+does not know gets no percentage, never a guessed one.
+
+**Not covered** — `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`,
+`CLAUDE_CODE_DISABLE_1M_CONTEXT`, `DISABLE_COMPACT` and the `autoCompactWindow`
+setting can move the real ceiling with nothing on disk to record it per session.
+All unset on this machine when this was written; undetectable the day one is set.
+
+---
+
 ## hook.background_tasks · Stop reports the work still in flight
 
 **We assume** `Stop` carries `background_tasks`, a list of the background work
