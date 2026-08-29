@@ -19,8 +19,10 @@ cd "$ROOT"
 # the panel you have open.
 PORT="${CLAWD_LIGHT_TEST_PORT:-9899}"
 
+# Warnings as errors, the same way CI does it: a warning that only appears on a
+# build machine is a warning that gets discovered by whoever is trying to ship.
 echo "▸ Building…"
-swift build
+swift build -Xswiftc -warnings-as-errors
 
 echo
 echo "▸ Domain tests"
@@ -37,3 +39,11 @@ echo "▸ End-to-end tests (port $PORT)"
 echo
 echo "▸ Documentation"
 "$ROOT/Scripts/check-docs.sh"
+
+# Fourth, and last because it is the one that judges the other three: every gate
+# above is made to fail on purpose. A check nobody has ever seen fail is a check
+# that has never been distinguished from a broken one — and one of them was
+# broken, silently, for weeks.
+echo
+echo "▸ The gates bite"
+"$ROOT/Scripts/bite.sh"

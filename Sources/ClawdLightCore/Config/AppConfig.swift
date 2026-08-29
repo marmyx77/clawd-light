@@ -155,6 +155,19 @@ public enum AppConfig {
     /// would look like a broken update rather than a slow one.
     public static let updateDownloadTimeout: TimeInterval = 300
 
+    /// How long any one command the updater runs may take before it is killed.
+    ///
+    /// `spctl`, `codesign`, `hdiutil` and `ditto` are all local and quick, but
+    /// two of them talk to Apple when a signature has never been seen on this
+    /// Mac, and `hdiutil attach` on a damaged image can sit there indefinitely.
+    /// Without a deadline the update simply never returns: no error, no menu, no
+    /// way to tell a slow verification from a hung one — the worst shape a
+    /// failure can take, because there is nothing to report.
+    ///
+    /// Ninety seconds is far beyond any honest run of these tools and far short
+    /// of a person's patience.
+    public static let updateToolTimeout: TimeInterval = 90
+
     /// How long that watch stays up before giving in.
     ///
     /// Long enough to find the pane, read the sentence and authenticate; short

@@ -1,0 +1,94 @@
+name: checks
+
+# Everything in this file used to be a sentence in a document asking a person to
+# remember. Six commits in one afternoon needed the documentation realigned by
+# hand, twenty-eight compiler warnings sat unnoticed behind an incremental build
+# that kept answering "0 warnings", and a guard against leaking a real home
+# directory into this public repository was green for weeks because the version
+# of `grep` on the machine rejected its pattern and the error was thrown away.
+#
+# None of that was laziness. It is what happens when the only thing standing
+# between a mistake and a release is somebody's attention at the end of a long
+# day.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A superseded run tells you about a commit nobody is looking at any more.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    # Deliberately not pinned to a numbered image on the first run: a label
+    # GitHub has retired fails before a single step executes, and the toolchain
+    # is printed below anyway. Pin it once a green run says which one this was.
+    runs-on: macos-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Printed rather than assumed: when this file eventually breaks, the first
+      # question is always which toolchain it ran on.
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version || true
+
+      # Warnings are errors here and nowhere else on purpose. Locally they are a
+      # nuisance in the middle of a thought; here they are the last chance before
+      # the code is somebody else's problem. The twenty-eight this project once
+      # carried were four real defects, repeated seven times.
+      - name: Build, with warnings treated as errors
+        run: swift build -Xswiftc -warnings-as-errors
+
+      # Before the suites: the assertions themselves. Neutralising one guard
+      # clause in the assertion library made 497 tests report success while
+      # verifying nothing, so the instrument is calibrated before it is read.
+      - name: Domain tests
+        run: .build/debug/ClawdLightTests
+
+      # Launches the real binary against a fake home and talks to it over HTTP.
+      # This is where the project's worst defects have always been: in the seams
+      # between parts that each work.
+      - name: End-to-end tests
+        run: .build/debug/ClawdLightE2E --port 9899
+
+      - name: Documentation describes this repository
+        run: ./Scripts/check-docs.sh
+
+      # And the checks above are checked: every gate is made to fail on purpose.
+      # A guard nobody has ever seen fail is indistinguishable from no guard.
+      - name: The gates bite
+        run: ./Scripts/bite.sh
+
+      # Nothing here may leave the tree modified — bite.sh restores what it
+      # damages, and this is the proof rather than the promise.
+      - name: The tree is as it was found
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "the checks left the working tree modified:"
+            git status --porcelain
+            git diff | head -100
+            exit 1
+          fi
+          echo "clean"
+
+# NOT RUN HERE: Scripts/check-contract.sh.
+#
+# It measures this project against another product's shipped binary — whether
+# `SubagentStop` still fires, whether the @internal rewake options still exist —
+# and Claude Code is not installed on a build machine and never will be. A check
+# that cannot observe its subject has exactly two honest options: say so, or stay
+# out of the gate. It does both: run without Claude Code it reports ⚠ and exits
+# 3, and it lives outside this file so that a network or a version bump on
+# somebody else's release schedule can never turn this red.
+#
+# It is the external tier in docs/08-gates.md, and it runs on a person's machine
+# before a release.

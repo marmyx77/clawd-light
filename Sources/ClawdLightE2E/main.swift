@@ -9,6 +9,11 @@ import TestKit
 // no system permissions: everything it writes lives in a temporary folder that
 // gets deleted at the end, pass or fail.
 
+// Before anything is launched: if the assertions do not bite, this run would
+// start a real binary, talk to it for a minute and report a success that means
+// nothing. Cheaper and clearer to find out here.
+Instrument.prove()
+
 let arguments = Array(CommandLine.arguments.dropFirst())
 
 /// Port dedicated to the test run: never the default one, or a test run would

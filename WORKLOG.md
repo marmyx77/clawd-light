@@ -696,9 +696,11 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **497**, instantaneous |
+| Domain tests | **503**, instantaneous |
 | End-to-end tests | **82**, about a minute |
-| Build | clean, no warnings |
+| Build | clean, no warnings — CI builds with `-warnings-as-errors` |
+| Documentation gates | **9**, each with a mutation that proves it fails |
+| Mutations committed by `bite.sh` | **20**, all caught |
 | Longest file | 786 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 
 ## 27 August — sessions in a terminal
@@ -913,3 +915,72 @@ written instead. And the `v0.1.0` tag points at a commit made thirty-one minutes
 after the published disk image was built: the difference is `Scripts/release.sh`,
 which never enters the app, so the artefact is the right one — but the order for
 next time is tag, then build, then publish.
+
+## 29 August — the checks, checked
+
+The morning's question was the one left over from the audit: what stops any of
+this from rotting again. The answer came from reading another project's engine
+and five days of its notes, and then — this is the part that mattered — trying
+its failures here instead of admiring them there. Two landed.
+
+**The instrument.** One line, `if true { return }`, at the top of `expect`, and
+the suite reported `497 tests passed`. Every number this project has ever stated
+about itself passes through fifty lines that nothing checked. `TestKit/Instrument`
+now calibrates them before either suite runs: nineteen proofs, each assertion
+made to fail and made to pass, and a failing run demonstrated to reach a non-zero
+exit code — none of it written in the vocabulary being tested. A blunt instrument
+exits 70, not the 1 of an ordinary failure.
+
+**The guard that had never looked.** Worse, because it was real and not
+simulated. The check against committing a real home directory into this public
+repository was `grep -nIE '/Users/(?!dev|…)'` with `2>/dev/null` and `|| true`.
+`/usr/bin/grep -E` has no lookahead: it exits 2 with `repetition-operator operand
+invalid`, every time, and both the message and the status were being discarded.
+It had never read a file. `Contracts/golden/hooks.jsonl` had carried a real user
+name in thirteen places since the day it was recorded. Scrubbed, and
+`check-contract --record` now scrubs on the way in — trusting somebody to notice
+on the way out is what failed.
+
+Both are the same shape, and it has a name: **absence mistaken for permission**.
+A search that finds nothing, a guard that cannot run, a test that cannot fail —
+all three produce silence, and silence reads as "all clear".
+
+So the rest of the day was spent making silence impossible.
+
+Every search in `check-docs.sh` now declares how many matches it expects; finding
+fewer is a finding, because a reworded sentence used to switch a check off
+without switching anything red. There is a third outcome, ⚠, for a check that
+could not observe what it judges, and a run containing one exits 3: a green with
+a skip in it is not a green. The leak guard proves its own patterns against
+examples before it believes them, and says `THE GUARD ITSELF IS BROKEN` when they
+stop matching. `check-contract.sh` learned the same word: without Claude Code
+installed it now reports ⚠ instead of a red that means nothing.
+
+`Scripts/bite.sh` is the new load-bearing piece. It commits twenty violations —
+a drifted figure, a broken link, a planted home directory, a suite nobody runs,
+an assertion that has stopped asserting, a gate added with nothing to prove it —
+and fails if any guard fails to notice. Three things have to hold for a bite to
+count: the mutation actually changed something (a find-and-replace whose target
+was renamed proves nothing, so the files are fingerprinted), the gate exited
+non-zero, and it said why in the expected words. The two lists are compared in
+both directions, so a gate without a bite and a bite without a gate are both
+failing checks. Twenty-six seconds.
+
+Then the thing that makes all of it stick: `.github/workflows/checks.yml`. Build
+with warnings as errors, both suites, the documentation gates, the bites, and a
+last step asserting the tree was left exactly as found. `check-contract.sh` stays
+out of it deliberately — it measures another product's shipped binary, and a gate
+that reddens because somebody else made a release teaches people that red is
+noise.
+
+Two smaller things. `Command.swift` in Core, because `UpdateInstaller` still had
+a `waitUntilExit()` with no deadline: a hung `spctl` took the update with it and
+nothing was ever going to appear on screen. It also fixes a second failure the
+obvious code has — a pipe holds about 64 KB, so a tool that says more blocks
+writing while the caller blocks waiting — and both are now tested with real
+processes rather than argued about. And `docs/README.md` had an editing
+instruction left inside the published prose, in the second paragraph, since
+whenever.
+
+Everything in this entry replaces a sentence that used to ask a person to
+remember.

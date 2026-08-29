@@ -4,6 +4,11 @@ import TestKit
 // Suite entry point: `swift run ClawdLightTests [filter]`.
 // The filter is optional and selects by suite or case name.
 
+// First, the instrument. Everything printed after this line is a measurement,
+// and a measurement is worth exactly what the measuring device is worth: a
+// neutralised `expect` made all of these report success while checking nothing.
+Instrument.prove()
+
 let suites: [TestSuite] = [
     PathNormalizerSuite.suite,
     HookPayloadDecoderSuite.suite,
@@ -64,6 +69,7 @@ let suites: [TestSuite] = [
     PermissionWaitSuite.suite,
     TranscriptPathPolicySuite.suite,
     UpdateFeedSuite.suite,
+    CommandSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

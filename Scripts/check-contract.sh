@@ -47,9 +47,17 @@ esac
 # after executing zero tests.
 CHECKS=0
 FAILURES=0
+SKIPS=0
 
 ok()   { CHECKS=$((CHECKS+1)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
 bad()  { CHECKS=$((CHECKS+1)); FAILURES=$((FAILURES+1)); printf '  \033[31m✗\033[0m %s\n' "$1"; }
+# Everything in this file is measured against another product's binary. When
+# that binary is not here — a fresh machine, a build server — the honest answer
+# is neither "passed" nor "failed" but "could not look", and it has to be said
+# out loud: a checker that reports a failure for a missing tool teaches people
+# to ignore its red, and one that reports success teaches them to trust a green
+# that means nothing.
+skip() { CHECKS=$((CHECKS+1)); SKIPS=$((SKIPS+1)); printf '  \033[33m⚠\033[0m %s\n' "$1"; }
 note() { printf '    %s\n' "$1"; }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
@@ -65,7 +73,7 @@ INSTALLED="$( (command -v claude >/dev/null 2>&1 && claude --version 2>/dev/null
 EXPECTED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["verifiedAgainst"])' "$SPEC")"
 
 if [ -z "$INSTALLED" ]; then
-    bad "claude not found on PATH"
+    skip "claude is not on PATH — nothing here could be observed"
 elif [ "$INSTALLED" = "$EXPECTED" ]; then
     ok "version $INSTALLED — the version the contract was verified against"
 else
@@ -148,7 +156,7 @@ head_ "Message delivery (rewake)"
 # only defence is asserting the names still exist in the shipped binary.
 CLAUDE_BIN="$(readlink -f "$(command -v claude 2>/dev/null)" 2>/dev/null || true)"
 if [ -z "$CLAUDE_BIN" ] || [ ! -f "$CLAUDE_BIN" ]; then
-    bad "claude binary not found — cannot check the message delivery contract"
+    skip "claude binary not found — the message delivery contract was not examined"
 else
     MISSING_OPTS=""
     for opt in $(python3 -c '
@@ -175,7 +183,7 @@ head_ "Hook event inventory"
 # events". There are thirty-one. Nothing would have reported a thirty-second
 # appearing, or one we register being renamed out from under us.
 if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
-    bad "claude binary not found - cannot check the hook event inventory"
+    skip "claude binary not found - the hook event inventory was not examined"
 else
     python3 - "$SPEC" "$CLAUDE_BIN" <<'INVPY' && ok "the event list is the one recorded, and every event we register exists" || bad "the hook event inventory moved - see above"
 import json, re, subprocess, sys
@@ -244,7 +252,7 @@ head_ "Background work (the reason a working session is not green)"
 # work the session is waiting on. That filter is the assumption, not the field, and
 # it lives in the binary where nobody owes us a deprecation.
 if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
-    bad "claude binary not found - cannot check the background-work contract"
+    skip "claude binary not found - the background-work contract was not examined"
 else
     python3 - "$SPEC" "$CLAUDE_BIN" <<'BGPY' && ok "the in-flight list is still filtered the way the column assumes" || bad "the background-work contract moved - see above"
 import json, re, subprocess, sys
@@ -508,8 +516,20 @@ if [ "$MODE" = "live" ] || [ "$MODE" = "record" ]; then
 
         if [ "$MODE" = "record" ]; then
             mkdir -p "$(dirname "$GOLDEN")"
-            cp "$TMP/recording.jsonl" "$GOLDEN"
-            ok "golden baseline written to Contracts/golden/hooks.jsonl"
+            # Scrubbed on the way in, not on the way out. What a probe records is
+            # a real session on a real machine: the first recording carried the
+            # operator's home directory into a public repository and stayed there
+            # for weeks, because the guard meant to catch it was itself broken.
+            # A recorder that writes the truth and trusts somebody to notice is
+            # the same design that failed.
+            python3 - "$TMP/recording.jsonl" "$GOLDEN" <<'SCRUB'
+import re, sys
+source, destination = sys.argv[1], sys.argv[2]
+text = open(source).read()
+text = re.sub(r"/(Users|home)/[A-Za-z0-9][A-Za-z0-9._-]*", r"/\1/dev", text)
+open(destination, "w").write(text)
+SCRUB
+            ok "golden baseline written to Contracts/golden/hooks.jsonl (home directory scrubbed)"
         fi
 
         python3 - "$SPEC" "$TMP/recording.jsonl" <<'PY' && ok "every event carries the fields we read" || bad "the payload contract moved — see above"
@@ -566,13 +586,21 @@ if [ "$CHECKS" = "0" ]; then
     exit 1
 fi
 
-if [ "$FAILURES" = "0" ]; then
+if [ "$FAILURES" = "0" ] && [ "$SKIPS" = "0" ]; then
     echo "✓ $CHECKS checks, all passing."
     [ "$MODE" = "static" ] && echo "  (static only — the semantic drift lives behind --live)"
     exit 0
 fi
 
-echo "✗ $FAILURES of $CHECKS checks failed."
+if [ "$FAILURES" = "0" ]; then
+    echo "⚠ $SKIPS of $CHECKS checks could not look at anything."
+    echo
+    echo "  Nothing above is false, but nothing above was verified either."
+    echo "  Install Claude Code and run this again before trusting the column."
+    exit 3
+fi
+
+echo "✗ $FAILURES of $CHECKS checks failed${SKIPS:+, $SKIPS could not look}."
 echo
 echo "  Each failure above names an assumption. Contracts/assumptions.md says"
 echo "  where the code depends on it and what breaks when it goes away."

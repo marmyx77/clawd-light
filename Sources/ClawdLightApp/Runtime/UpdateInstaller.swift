@@ -263,24 +263,26 @@ enum UpdateInstaller {
     ///
     /// Arguments travel as an array: no shell is involved anywhere in this file,
     /// so a path with a space or a quote in it is a path and never a command.
+    ///
+    /// The deadline is not a detail. Every tool called here is local and quick,
+    /// but `spctl` asks Apple about a signature it has never seen, and
+    /// `hdiutil attach` on a damaged image can sit there for as long as you let
+    /// it — which, before this, was forever. The user had chosen "Install", and
+    /// the only thing that would ever happen was nothing at all.
     @discardableResult
     private static func run(_ tool: String, _ arguments: [String]) throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: tool)
-        process.arguments = arguments
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        let output = String(data: data, encoding: .utf8) ?? ""
-        guard process.terminationStatus == 0 else {
-            throw Failure.failed("\(tool) exited \(process.terminationStatus): \(output.trimmed)")
+        let result: Command.Result
+        do {
+            result = try Command.run(tool, arguments, deadline: AppConfig.updateToolTimeout)
+        } catch let failure as Command.Failure {
+            throw Failure.failed(failure.explanation)
+        } catch {
+            throw Failure.failed("\(tool) could not be run: \(error.localizedDescription)")
         }
-        return output
+
+        guard result.succeeded else {
+            throw Failure.failed("\(tool) exited \(result.status): \(result.output.trimmed)")
+        }
+        return result.output
     }
 }

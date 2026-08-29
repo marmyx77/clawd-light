@@ -1411,3 +1411,80 @@ least able to tell the difference.
 say who holds the port, confirm that it accepts signals, and state plainly that
 the loop test was **not run** — never let silence read as a pass. Covered by two
 end-to-end cases, which run with the panel up and would fail on the old text.
+
+## The guard that had never looked
+
+**Symptom.** None. `check-docs.sh` printed *"✓ no real home directory or private
+VPN address in the tree"* on every run, for weeks, while
+`Contracts/golden/hooks.jsonl` carried a real user name in thirteen places in a
+**public** repository.
+
+**Cause.** The check was one shell pipeline:
+
+```bash
+LEAKS=$(git ls-files -z | xargs -0 grep -nIE '(/Users/(?!dev|you|sam|me)…)' 2>/dev/null | … || true)
+```
+
+`/usr/bin/grep -E` has no lookahead. It answers `repetition-operator operand
+invalid` and exits 2 — every single time. `2>/dev/null` threw the message away,
+`|| true` threw the status away, and an empty `$LEAKS` was read as "nothing
+found". The guard had never examined a file in its life.
+
+Two independent decisions, each defensible on its own, combined into a lie: the
+redirect was there because `xargs` is noisy about binary files, and the `|| true`
+was there because `grep` exits 1 when it finds nothing — which is a *success* for
+this check. Together they made an error indistinguishable from a clean tree.
+
+**Why it is the worst kind.** Every other defect in this catalogue announced
+itself: something did not work, something looked wrong, somebody noticed. This
+one printed a green tick, which is exactly what it printed when it worked. There
+is no observation that separates the two — only an experiment: commit the
+violation and see what happens.
+
+**Correction.** The matching moved into Python, where an error is an error, and
+the guard now **proves itself before it is believed**: the patterns are run
+against strings known to match and known not to, and a pattern that fails its own
+example fails the check with `THE GUARD ITSELF IS BROKEN`. `Scripts/bite.sh`
+plants a home directory, plants a VPN address, and blinds the pattern, demanding
+a red for each. The golden file was scrubbed, and `check-contract.sh --record`
+now scrubs the home directory on the way in rather than trusting somebody to
+notice on the way out.
+
+**Lesson.** A check that cannot fail and a check that cannot run print the same
+character. Ask every guard, once, to catch something.
+
+## The instrument that had stopped measuring
+
+**Symptom.** None, again: `503 tests passed.`
+
+**Cause.** Everything this project believes about itself passes through fifty
+lines in `Sources/TestKit/Assertions.swift`, and nothing checked them. Adding one
+line to `expect` —
+
+```swift
+if true { return }
+```
+
+— made the entire domain suite report success while verifying nothing at all. Not
+a subtle degradation: a full green, no warning, no clue. The same attack had been
+demonstrated on a sister project, where three hundred and thirty-six tests passed
+against a neutralised assertion library.
+
+**Why it matters even without an attacker.** Nobody has to be malicious for this
+to happen. A bad merge in the assertion file, a refactor that moves the wrong
+`guard`, a "let me silence this for a second" that survives the afternoon — the
+result is identical, and the test suite's job is precisely to tell you when
+something has quietly stopped working.
+
+**Correction.** `TestKit/Instrument.swift` calibrates the assertions before
+either suite runs: every assertion is made to fail and must record it, made to
+pass and must stay silent, and a failing run must still reach a non-zero exit
+code. Nineteen proofs, none of them written in the vocabulary being tested — the
+verdicts are plain Swift comparisons. A blunt instrument ends the process with
+**70**, not the 1 of an ordinary failure, because the two mean different things
+and nobody should have to guess which they are looking at. `bite.sh` attacks it
+from outside as well, neutralising `expect`, then the collector, then the exit
+code.
+
+**Lesson.** A measurement is worth exactly what the measuring device is worth,
+and a device that has never been calibrated is not a device, it is a decoration.

@@ -13,10 +13,29 @@
 # answer there and here is the same one — if a document makes a claim a script can
 # verify, a script should verify it.
 #
+# WHY EVERY SEARCH DECLARES WHAT IT EXPECTS TO FIND
+# A checker built out of `findall` loops has a failure mode that looks exactly like
+# success: reword the sentence it hunts for, and the loop runs zero times, reports
+# nothing, and the check goes green. Absence gets mistaken for permission. It was
+# not hypothetical here — the guard against personal paths (below) had never
+# examined a single file, because `/usr/bin/grep -E` rejects the lookahead it was
+# written with, and the error was being swallowed. Ten green runs, zero files read.
+#
+# So every search in this file states how many matches it expects. Finding fewer
+# is a finding: either a sentence was reworded and the check just went blind, or a
+# claim was deliberately removed and the expectation below has to be edited on
+# purpose. Both are things a person should see.
+#
 # WHAT IT DOES NOT DO
 # It does not rewrite the documentation. A number that drifted is usually a sign
 # that the prose around it drifted too, and only a person can tell whether the file
 # grew because it gained a responsibility or because it gained six lines.
+#
+# EXIT CODES
+#   0  every check looked, and every check passed
+#   1  at least one claim is false
+#   3  at least one check could not observe reality — a green with a skip in it
+#      is not a green, so it does not exit 0
 #
 # USAGE
 #   ./Scripts/check-docs.sh
@@ -28,10 +47,24 @@ cd "$ROOT"
 
 CHECKS=0
 FAILURES=0
+SKIPS=0
 ok()   { CHECKS=$((CHECKS+1)); printf '  \033[32m✓\033[0m %s\n' "$1"; }
 bad()  { CHECKS=$((CHECKS+1)); FAILURES=$((FAILURES+1)); printf '  \033[31m✗\033[0m %s\n' "$1"; }
+skip() { CHECKS=$((CHECKS+1)); SKIPS=$((SKIPS+1));   printf '  \033[33m⚠\033[0m %s\n' "$1"; }
 note() { printf '    %s\n' "$1"; }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+# Turns an exit status into one of the three honest outcomes. A checker that only
+# knows "pass" and "fail" has to pretend it looked when it could not, and that
+# pretence is the thing this whole file exists to make impossible.
+#   verdict <status> <passed> <failed> [<could-not-look>]
+verdict() {
+    case "$1" in
+        0) ok "$2" ;;
+        2) skip "${4:-could not verify: $2}" ;;
+        *) bad "$3" ;;
+    esac
+}
 
 MAP="docs/05-code-map.md"
 [ -f "$MAP" ] || { echo "missing $MAP"; exit 2; }
@@ -39,22 +72,46 @@ MAP="docs/05-code-map.md"
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "Figures in the code map"
 
-python3 - "$MAP" <<'PY' && ok "every stated figure matches the repository" || bad "the code map states figures that are no longer true"
+STATUS=0
+python3 - "$MAP" <<'PY' || STATUS=$?
 import glob, os, re, sys
 
 doc = open(sys.argv[1]).read()
 problems = []
+
+# What this document is known to state today. A search that comes back with less
+# than this found nothing because the wording moved, not because the repository
+# is clean — and those two have to be told apart.
+EXPECTED = {
+    "per-target rows": 5,      # one per target in Sources/
+    "per-target case counts": 4,
+    "per-file figures": 60,
+}
 
 def lines_of(path):
     with open(path) as handle:
         return sum(1 for _ in handle)
 
 swift = {os.path.basename(p): p for p in glob.glob("Sources/**/*.swift", recursive=True)}
+if not swift:
+    print("    no Swift sources found — this check cannot observe anything", file=sys.stderr)
+    sys.exit(2)
+
+def declared(name, found):
+    """Reports a search that came back emptier than the document it reads."""
+    wanted = EXPECTED[name]
+    if len(found) < wanted:
+        problems.append(
+            f"expected at least {wanted} {name} in the code map, found {len(found)} — "
+            f"either the wording changed and this check just went blind, or the "
+            f"claims were removed and EXPECTED in check-docs.sh needs editing"
+        )
+    return found
 
 # Per-target totals: "  ClawdLightCore/    4,087 lines · 36 files"
-for target, claimed_lines, claimed_files in re.findall(
+for target, claimed_lines, claimed_files in declared("per-target rows", re.findall(
     r'^\s+(\w+)/\s+([\d,]+) lines · \s*(\d+) files', doc, re.M
-):
+)):
     paths = glob.glob(f"Sources/{target}/**/*.swift", recursive=True)
     if not paths:
         problems.append(f"{target}/ is described but no longer exists")
@@ -87,7 +144,9 @@ else:
         )
 
 # Test-case counts, stated next to the target they belong to.
-for target, claimed in re.findall(r'(ClawdLight(?:Tests|E2E))/.*?(\d+) cases', doc):
+for target, claimed in declared("per-target case counts", re.findall(
+    r'(ClawdLight(?:Tests|E2E))/.*?(\d+) cases', doc
+)):
     actual = sum(
         open(p).read().count("TestCase(")
         for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True)
@@ -96,7 +155,9 @@ for target, claimed in re.findall(r'(ClawdLight(?:Tests|E2E))/.*?(\d+) cases', d
         problems.append(f"{target}/ says {claimed} cases, has {actual}")
 
 # Per-file sizes, from headings "### `X.swift` · 220" and table rows.
-for name, claimed in re.findall(r'`([A-Za-z0-9_]+\.swift)`\s*(?:·|\|)\s*(\d+)', doc):
+for name, claimed in declared("per-file figures", re.findall(
+    r'`([A-Za-z0-9_]+\.swift)`\s*(?:·|\|)\s*(\d+)', doc
+)):
     path = swift.get(name)
     if path is None:
         problems.append(f"{name} is documented but no longer in Sources/")
@@ -110,12 +171,21 @@ for p in problems:
     print(f"    {p}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 PY
+verdict "$STATUS" \
+    "every stated figure matches the repository" \
+    "the code map states figures that are no longer true" \
+    "the code map could not be measured against the sources"
 
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "Links between documents"
 
-python3 - <<'PY' && ok "every relative link resolves" || bad "the documentation links somewhere that is not there"
+STATUS=0
+python3 - <<'PY' || STATUS=$?
 import glob, os, re, sys
+
+# The documentation is known to cross-reference itself heavily. If this number
+# collapses, the links were not fixed — the files stopped being found.
+EXPECTED_LINKS = 90
 
 
 def anchors_of(path):
@@ -130,10 +200,17 @@ def anchors_of(path):
     return slugs
 
 
-FILES = glob.glob("docs/*.md") + ["Contracts/assumptions.md", "README.md"]
+NAMED = ["Contracts/assumptions.md", "README.md"]
+FILES = glob.glob("docs/*.md") + NAMED
 cache = {}
 problems = []
 total = 0
+
+# A file named here that has vanished is not "nothing to check": it is a
+# document this script believes it is guarding and is not.
+for f in NAMED:
+    if not os.path.exists(f):
+        problems.append(f"{f} is checked by this script and no longer exists")
 
 for f in FILES:
     if not os.path.exists(f):
@@ -160,10 +237,18 @@ for f in FILES:
             problems.append(f"{f} -> {target} (no such heading)")
 
 print(f"    {total} links checked, anchors included", file=sys.stderr)
+if total < EXPECTED_LINKS:
+    problems.append(
+        f"expected at least {EXPECTED_LINKS} relative links, found {total} — "
+        f"the documents were not found, or the link syntax this reads has changed"
+    )
 for problem in problems:
     print(f"    broken: {problem}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 PY
+verdict "$STATUS" \
+    "every relative link resolves" \
+    "the documentation links somewhere that is not there"
 
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "Figures stated outside the code map"
@@ -171,31 +256,71 @@ head_ "Figures stated outside the code map"
 # The code map was checked; README, 01-architecture and 06-working-here were not,
 # and all three announced 242 domain tests when there were 416. A checker that
 # looks in one place is a checker with one blind spot per other place.
-python3 - <<'FIGPY' && ok "test counts and the longest-file figure agree everywhere they are stated" || bad "a document outside the code map states a stale figure"
-import glob, re, sys
+STATUS=0
+python3 - <<'FIGPY' || STATUS=$?
+import glob, os, re, sys
+
 def lines_of(p):
     with open(p) as h: return sum(1 for _ in h)
 def cases(target):
     return sum(open(p).read().count("TestCase(") for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True))
+
+sources = glob.glob("Sources/**/*.swift", recursive=True)
+if not sources:
+    print("    no Swift sources found — nothing to compare these figures against", file=sys.stderr)
+    sys.exit(2)
+
 domain, e2e = cases("ClawdLightTests"), cases("ClawdLightE2E")
-longest = max(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
-total = sum(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
+longest = max(lines_of(p) for p in sources)
+total = sum(lines_of(p) for p in sources)
+
+CASES = r"(\d+) (?:cases|domain tests)"
+E2E   = r"(\d+) end-to-end tests"
+LONG  = r"longest today is (\d+)"
+SWIFT = r"~([\d,]+) lines of Swift"
+
+# How many times each document is known to state each figure. Written down so
+# that a rewording turns this check red instead of quietly switching it off:
+# every one of these sentences was, at some point, wrong.
+EXPECTED = {
+    "README.md":               {CASES: 1, E2E: 1, LONG: 0, SWIFT: 0},
+    "docs/01-architecture.md": {CASES: 2, E2E: 0, LONG: 0, SWIFT: 0},
+    "docs/06-working-here.md": {CASES: 2, E2E: 0, LONG: 1, SWIFT: 0},
+    "docs/05-code-map.md":     {CASES: 4, E2E: 0, LONG: 0, SWIFT: 1},
+}
+
 problems = []
-for f in ["README.md", "docs/01-architecture.md", "docs/06-working-here.md", "docs/05-code-map.md"]:
+for f, expectations in EXPECTED.items():
+    if not os.path.exists(f):
+        problems.append(f"{f} is checked for stale figures and no longer exists")
+        continue
     text = open(f).read()
-    for n in set(re.findall(r"(\d+) (?:cases|domain tests)", text)):
+    for pattern, wanted in expectations.items():
+        found = re.findall(pattern, text)
+        if len(found) < wanted:
+            problems.append(
+                f"{f}: expected {wanted} statement(s) matching /{pattern}/, found {len(found)} — "
+                f"a reworded sentence silently removes this check"
+            )
+    for n in set(re.findall(CASES, text)):
         if int(n) not in (domain, e2e):
             problems.append(f"{f} says {n} cases; the suites have {domain} and {e2e}")
-    for n in set(re.findall(r"(\d+) end-to-end tests", text)):
+    for n in set(re.findall(E2E, text)):
         if int(n) != e2e: problems.append(f"{f} says {n} end-to-end tests, there are {e2e}")
-    for n in re.findall(r"longest today is (\d+)", text):
+    for n in re.findall(LONG, text):
         if int(n) != longest: problems.append(f"{f} says the longest file is {n} lines, it is {longest}")
-    for n in re.findall(r"~([\d,]+) lines of Swift", text):
+    for n in re.findall(SWIFT, text):
         n = int(n.replace(",", ""))
         if abs(n - total) > 300: problems.append(f"{f} says ~{n:,} lines of Swift, the total is {total:,}")
+
+print(f"    {domain} domain cases, {e2e} end-to-end, longest {longest} lines, {total:,} total", file=sys.stderr)
 for p in problems: print(f"    {p}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 FIGPY
+verdict "$STATUS" \
+    "test counts and the longest-file figure agree everywhere they are stated" \
+    "a document outside the code map states a stale figure" \
+    "the figures outside the code map could not be compared to anything"
 
 head_ "The status table says how the project stands now"
 
@@ -210,8 +335,9 @@ head_ "The status table says how the project stands now"
 # figures in an entry from August are *correct* precisely because they are old:
 # a rule demanding they be current would fire on every past entry, and a noisy
 # gate stops being read.
-python3 - <<'STATUSPY' && ok "the status table agrees with the repository" || bad "the status table describes a project that has moved"
-import glob, re, sys
+STATUS=0
+python3 - <<'STATUSPY' || STATUS=$?
+import glob, os, re, sys
 
 def lines_of(path):
     with open(path) as handle: return sum(1 for _ in handle)
@@ -219,6 +345,10 @@ def lines_of(path):
 def cases(target):
     return sum(open(p).read().count("TestCase(")
                for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True))
+
+if not os.path.exists("WORKLOG.md"):
+    print("    WORKLOG.md is gone — the status table cannot be read", file=sys.stderr)
+    sys.exit(2)
 
 text = open("WORKLOG.md").read()
 start = text.find("## How the project stands now")
@@ -246,20 +376,112 @@ for claimed, actual, label in [
 for problem in problems: print(f"    {problem}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 STATUSPY
+verdict "$STATUS" \
+    "the status table agrees with the repository" \
+    "the status table describes a project that has moved" \
+    "WORKLOG.md could not be read"
 
 head_ "No personal paths or private addresses in tracked files"
 
-# Generic on purpose: the guard must not contain the very strings it guards
-# against. Fixture homes are /Users/dev, /Users/you, /Users/sam, /Users/me and
-# /home/dev; anything else under /Users or /home is somebody's real machine.
-# 100.64.0.0/10 is the range VPN meshes hand out — a real box, not an example.
-LEAKS=$(git ls-files -z | xargs -0 grep -nIE '(/Users/(?!dev|you|sam|me)[a-z]+|/home/(?!dev)[a-z]+|\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+|[a-z]+@[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)' 2>/dev/null | grep -v "^Scripts/check-docs.sh" || true)
-if [ -z "$LEAKS" ]; then
-    ok "no real home directory or private VPN address in the tree"
-else
-    bad "a tracked file carries what looks like a real path or address:"
-    echo "$LEAKS" | head -8 | sed 's/^/    /'
-fi
+# THE ONE THAT WAS GREEN BECAUSE IT WAS BROKEN.
+#
+# This was a shell pipeline: `git ls-files | xargs grep -nIE '/Users/(?!dev|…)'`,
+# with `2>/dev/null` on the end and `|| true` after it. `/usr/bin/grep -E` has no
+# lookahead — it answers "repetition-operator operand invalid" and exits 2 — so
+# every run threw the error away, produced no matches, and printed a tick. The
+# guard that keeps a real name out of a public repository had never read a file,
+# and there was a real name in `Contracts/golden/hooks.jsonl` the whole time.
+#
+# Rewritten in Python, where the matching is done in this process and an error is
+# an error. And it now proves itself first: the patterns are run against strings
+# that are known to match and known not to, and a pattern that fails its own
+# example fails the check. A guard that cannot demonstrate it still bites is
+# indistinguishable from no guard at all.
+STATUS=0
+python3 - <<'LEAKPY' || STATUS=$?
+import re, subprocess, sys
+
+# Fixture homes, used deliberately throughout the tests and the documentation.
+FIXTURES = {"dev", "you", "sam", "me"}
+
+# A home directory belonging to somebody real.
+HOME = re.compile(r"/(?:Users|home)/([A-Za-z0-9][A-Za-z0-9._-]*)")
+# The range a VPN mesh hands out: a real box, never an example.
+VPN = re.compile(r"\b100\.(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.\d+\.\d+\b")
+# user@address, unless the address is one of the ranges reserved for docs
+# (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 — RFC 5737).
+SSH = re.compile(r"\b[a-z][a-z0-9._-]*@(\d+\.\d+\.\d+\.\d+)\b")
+DOCUMENTATION_NETS = ("192.0.2.", "198.51.100.", "203.0.113.")
+
+# ── The guard proves itself before it is believed ────────────────────────────
+def self_test():
+    broken = []
+    def must(condition, what):
+        if not condition: broken.append(what)
+
+    def group(pattern, text, index=0):
+        """The matched text, or None. Never raises: a self-test that dies before
+        it can report is a self-test that leaves you with a stack trace instead
+        of the one sentence you needed."""
+        found = pattern.search(text)
+        return None if found is None else found.group(index)
+
+    must(group(HOME, "/Users/somebody/x") is not None, "the home pattern no longer matches /Users/somebody")
+    must(group(HOME, "/home/somebody/x") is not None, "the home pattern no longer matches /home/somebody")
+    must(group(HOME, "/Users/dev/x", 1) == "dev", "the home pattern no longer reports the user name")
+    must(group(VPN, "100.101.5.7") is not None, "the VPN pattern no longer matches 100.101.5.7")
+    must(group(VPN, "100.5.5.7") is None, "the VPN pattern matches an address outside the range")
+    must(group(SSH, "node@10.0.0.4") is not None, "the ssh pattern no longer matches user@address")
+    must((group(SSH, "dev@192.0.2.10", 1) or "").startswith(DOCUMENTATION_NETS),
+         "the documentation ranges are no longer recognised")
+    return broken
+
+broken = self_test()
+if broken:
+    print("    THE GUARD ITSELF IS BROKEN — it would pass anything:", file=sys.stderr)
+    for b in broken: print(f"      · {b}", file=sys.stderr)
+    sys.exit(1)
+
+listing = subprocess.run(["git", "ls-files", "-z"], capture_output=True, text=True)
+if listing.returncode != 0:
+    print("    git could not list the tracked files — nothing was examined", file=sys.stderr)
+    sys.exit(2)
+files = [f for f in listing.stdout.split("\0") if f]
+if not files:
+    print("    git lists no tracked files — nothing was examined", file=sys.stderr)
+    sys.exit(2)
+
+hits, read = [], 0
+for path in files:
+    # This file carries the patterns, so it matches itself by construction.
+    if path == "Scripts/check-docs.sh":
+        continue
+    try:
+        text = open(path, encoding="utf-8").read()
+    except (UnicodeDecodeError, OSError):
+        continue  # binary or unreadable: nothing legible to leak
+    read += 1
+    for number, line in enumerate(text.splitlines(), 1):
+        for match in HOME.finditer(line):
+            if match.group(1) not in FIXTURES:
+                hits.append(f"{path}:{number}  {match.group(0)}")
+        for match in VPN.finditer(line):
+            hits.append(f"{path}:{number}  {match.group(0)}")
+        for match in SSH.finditer(line):
+            if not match.group(1).startswith(DOCUMENTATION_NETS):
+                hits.append(f"{path}:{number}  {match.group(0)}")
+
+print(f"    {read} of {len(files)} tracked files read, {len(hits)} matches", file=sys.stderr)
+for hit in hits[:12]:
+    print(f"    {hit}", file=sys.stderr)
+if len(hits) > 12:
+    print(f"    … and {len(hits) - 12} more", file=sys.stderr)
+sys.exit(1 if hits else 0)
+LEAKPY
+verdict "$STATUS" \
+    "no real home directory or private VPN address in the tree" \
+    "a tracked file carries what looks like a real path or address" \
+    "the tracked files could not be listed — nothing was examined"
 
 head_ "The contract knows which events we register"
 
@@ -268,7 +490,8 @@ head_ "The contract knows which events we register"
 # made nine. Nothing looked, because the contract check verifies the inventory
 # against Claude Code's binary — whether an event EXISTS — and never against what
 # this app actually asks for.
-python3 - <<'EVPY' && ok "the spec's registered list matches HookConfigMerger" || bad "the contract and the code disagree about what is registered"
+STATUS=0
+python3 - <<'EVPY' || STATUS=$?
 import json, re, sys
 
 spec = json.load(open("Contracts/required-fields.json"))["hookEventInventory"]
@@ -281,6 +504,10 @@ if match is None:
 code = set(re.findall(r'"([A-Za-z]+)"', match.group(1)))
 declared = set(spec["registered"])
 problems = []
+if not code:
+    problems.append("defaultEvents was found and is empty — this check would pass on anything")
+if not declared:
+    problems.append("the spec's registered list is empty — this check would pass on anything")
 for missing in sorted(code - declared):
     problems.append(f"{missing} is registered by the code and absent from the spec")
 for extra in sorted(declared - code):
@@ -296,52 +523,150 @@ for problem in problems:
     print(f"    {problem}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 EVPY
+verdict "$STATUS" \
+    "the spec's registered list matches HookConfigMerger" \
+    "the contract and the code disagree about what is registered"
 
 # Prose is not machine-checkable, but a stale COUNT in a heading is.
-COUNT=$(python3 -c "
-import json;print(len(json.load(open('Contracts/required-fields.json'))['hookEventInventory']['registered']))")
-WORDS="zero one two three four five six seven eight nine ten eleven twelve"
-NAME=$(echo "$WORDS" | cut -d' ' -f$((COUNT+1)))
+STATUS=0
+python3 - <<'COUNTPY' || STATUS=$?
+import json, os, re, sys
+
+count = len(json.load(open("Contracts/required-fields.json"))["hookEventInventory"]["registered"])
+WORDS = "zero one two three four five six seven eight nine ten eleven twelve".split()
+if count >= len(WORDS):
+    print(f"    {count} registered events, and this check only spells up to {len(WORDS) - 1}", file=sys.stderr)
+    sys.exit(2)
+name = WORDS[count]
+
 # Scoped to the documents that describe the CURRENT state. `docs/07-traps.md` is
 # deliberately excluded: it is a record of what was true when each defect was
 # found, and "the eight events registered at the time" is correct prose there.
 # Rewriting history to satisfy a checker would be a worse failure than the drift
 # this catches.
-STALE=$(grep -lEi "the (two|three|four|five|six|seven|eight|nine|ten) events (clawd-light )?registers?" \
-        docs/02-claude-code.md docs/05-code-map.md README.md \
-        Contracts/assumptions.md 2>/dev/null | while read -r f; do
-    grep -qiE "the $NAME events" "$f" || echo "$f"
-done)
-if [ -z "$STALE" ]; then
-    ok "no document announces a different number of registered events"
-else
-    bad "a document still announces the old count (should be “the $NAME events”):"
-    for f in $STALE; do note "$f"; done
-fi
+FILES = ["docs/02-claude-code.md", "docs/05-code-map.md", "README.md", "Contracts/assumptions.md"]
+STATEMENT = re.compile(r"the (two|three|four|five|six|seven|eight|nine|ten) events (clawd-light )?registers?", re.I)
+
+problems, stating = [], 0
+for f in FILES:
+    if not os.path.exists(f):
+        problems.append(f"{f} is checked for the registered-event count and no longer exists")
+        continue
+    text = open(f).read()
+    found = STATEMENT.findall(text)
+    if not found:
+        continue
+    stating += 1
+    for spelled, _ in found:
+        if spelled.lower() != name:
+            problems.append(f'{f} says "the {spelled} events", there are {count} ("the {name} events")')
+
+# At least one document is supposed to state this. Zero means the sentence was
+# reworded and this check quietly stopped guarding anything.
+if stating == 0:
+    problems.append(
+        f"no document states how many events are registered — the sentence this "
+        f"reads was reworded, and the check went blind rather than green"
+    )
+
+print(f"    {count} registered events, stated in {stating} of {len(FILES)} documents", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+COUNTPY
+verdict "$STATUS" \
+    "no document announces a different number of registered events" \
+    "a document still announces the old count of registered events" \
+    "the registered-event count could not be spelled out"
 
 head_ "Test suites are registered"
 
 # A suite that exists but was never added to the runner is a file nobody executes,
 # which is where three of this project's defects were found.
-python3 - <<'PY' && ok "every suite defined is run" || bad "a suite exists that the runner never calls"
-import glob, re, sys
+STATUS=0
+python3 - <<'SUITEPY' || STATUS=$?
+import glob, os, re, sys
+
+EXPECTED_SUITES = 50   # today: 59. A collapse means the parsing broke, not that
+                       # fifty suites were deleted.
+
+paths = glob.glob("Sources/ClawdLightTests/*.swift")
+if not paths:
+    print("    no test sources found — nothing was examined", file=sys.stderr)
+    sys.exit(2)
 
 defined = set()
-for path in glob.glob("Sources/ClawdLightTests/*.swift"):
+for path in paths:
     defined |= set(re.findall(r'^enum (\w+Suite) \{', open(path).read(), re.M))
 registered = set(re.findall(r'(\w+Suite)\.suite', open("Sources/ClawdLightTests/main.swift").read()))
 
-orphans = sorted(defined - registered)
-for o in orphans:
-    print(f"    {o} is defined but never registered in main.swift", file=sys.stderr)
-sys.exit(1 if orphans else 0)
-PY
+problems = []
+if len(defined) < EXPECTED_SUITES:
+    problems.append(
+        f"expected at least {EXPECTED_SUITES} suites, found {len(defined)} — "
+        f"the declaration this reads has changed shape and the check went blind"
+    )
+for orphan in sorted(defined - registered):
+    problems.append(f"{orphan} is defined but never registered in main.swift")
+
+print(f"    {len(defined)} suites defined, {len(registered)} registered", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+SUITEPY
+verdict "$STATUS" \
+    "every suite defined is run" \
+    "a suite exists that the runner never calls" \
+    "the test sources could not be read"
+
+head_ "Every gate here can be shown to bite"
+
+# The rule that keeps the rest of this file honest: each section above claims to
+# catch something, and `Scripts/bite.sh` breaks the repository on purpose to
+# prove it does. A check added without a bite is a check nobody has ever seen
+# fail, which is the same starting point as the broken grep above.
+STATUS=0
+python3 - <<'BITEPY' || STATUS=$?
+import os, re, sys
+
+if not os.path.exists("Scripts/bite.sh"):
+    print("    Scripts/bite.sh is gone — no gate here can be shown to work", file=sys.stderr)
+    sys.exit(1)
+
+checker = open("Scripts/check-docs.sh").read()
+bite = open("Scripts/bite.sh").read()
+
+# The section titles this script prints, and the ones bite.sh claims to attack.
+sections = set(re.findall(r'^head_ "([^"]+)"', checker, re.M))
+attacked = set(re.findall(r'^\s*gate "([^"]+)"', bite, re.M))
+
+problems = []
+for unproven in sorted(sections - attacked):
+    problems.append(f'"{unproven}" has no mutation in bite.sh — nobody has seen it fail')
+for orphan in sorted(attacked - sections):
+    problems.append(f'bite.sh attacks "{orphan}", which check-docs.sh no longer has')
+
+print(f"    {len(sections)} gates, {len(attacked)} with a mutation that proves them", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+BITEPY
+verdict "$STATUS" \
+    "every gate has a mutation in bite.sh that turns it red" \
+    "a gate here has never been proven to catch anything"
 
 printf '\n%s\n' "────────────────────────────────────────────────────────"
-if [ "$FAILURES" -eq 0 ]; then
+if [ "$FAILURES" -eq 0 ] && [ "$SKIPS" -eq 0 ]; then
     printf '\033[32m✓\033[0m %d checks, all passing.\n' "$CHECKS"
+elif [ "$FAILURES" -eq 0 ]; then
+    printf '\033[33m⚠\033[0m %d of %d checks could not look at anything.\n\n' "$SKIPS" "$CHECKS"
+    printf '  Nothing above is false, but nothing above was verified either.\n'
+    printf '  A green with a skip in it is not a green.\n'
+    exit 3
 else
-    printf '\033[31m✗\033[0m %d of %d checks failed.\n\n' "$FAILURES" "$CHECKS"
+    printf '\033[31m✗\033[0m %d of %d checks failed' "$FAILURES" "$CHECKS"
+    [ "$SKIPS" -gt 0 ] && printf ', %d could not look' "$SKIPS"
+    printf '.\n\n'
     printf '  The documentation is describing a repository that has moved.\n'
     printf '  Each line above names the claim and what is true instead.\n'
     exit 1

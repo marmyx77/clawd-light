@@ -26,13 +26,20 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run ClawdLightTests              # 497 cases, instantaneous
+swift run ClawdLightTests              # 503 cases, instantaneous
 swift run ClawdLightE2E                # 82 cases, about a minute
 swift run ClawdLightTests "Subagents"  # filter by suite or by case
 ```
 
 **`ClawdLightTests`** verifies pure functions. It touches no network and, apart from the mailbox permission cases, which work
 in a temporary root they delete, no filesystem.
+
+Both suites print `Instrument proved: 19 checks, the assertions bite.` before
+anything else. That line is the reason the count under it means something: one
+early `return` added to `expect` once made all 503 cases report success while
+verifying nothing at all, and nothing in the project would have said so. The
+instrument is now calibrated before it is read, and a blunt one ends the run
+with exit 70 rather than the 1 of an ordinary failure.
 
 **`ClawdLightE2E`** launches the production binary against a fake home
 (`CLAWD_LIGHT_HOME`) and talks to it over HTTP. It goes as far as running
@@ -46,6 +53,36 @@ never the real panel's 9877.
 > **Why two.** In this project the worst defects have never been inside a
 > function: they were in the seams. Title matching stayed broken for a whole day
 > **with ten green tests**. See [07 traps](07-traps.md).
+
+## Checking the documentation, and the checks
+
+```bash
+./Scripts/check-docs.sh    # nine gates, half a second
+./Scripts/bite.sh          # breaks the repository on purpose, 26 seconds
+./Scripts/test.sh          # build, both suites, then both of the above
+```
+
+`check-docs.sh` verifies the figures this documentation states — line counts,
+file counts, test counts, the longest file — plus its links, its status table,
+and that no real home directory or private address is committed. It prints three
+things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and ⚠ it
+could not observe what it judges. **A green with a ⚠ in it is not a green**, and
+it exits 3 to say so.
+
+`bite.sh` is the one that judges the others. It commits twenty violations — a
+drifted figure, a broken link, a planted home directory, a suite nobody runs, an
+assertion that has stopped asserting — and fails if any gate does not notice.
+Every mutation is undone afterwards, including on Ctrl-C.
+
+**This is not belt and braces.** One of those gates had never examined a single
+file: it was built on a `grep` pattern this Mac's `grep` rejects, with the error
+redirected away, and it printed a green tick for weeks over a real name sitting
+in a tracked file. A check nobody has watched fail has not been distinguished
+from a broken one.
+
+Adding a gate without adding its mutation is itself a failing check — the two
+lists are compared in both directions. [08 gates](08-gates.md) has the registry:
+what each one claims, which tier it belongs to, and what proves it.
 
 ## Checking the contract with Claude Code
 

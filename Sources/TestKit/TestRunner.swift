@@ -26,8 +26,17 @@ public enum TestRunner {
     }
 
     /// Runs the suites, prints the report and returns the exit code.
+    ///
+    /// - Parameter printing: where the report goes. Injected so that the
+    ///   calibration in `Instrument` can prove this function returns a non-zero
+    ///   code on a failing run without printing a fabricated red suite into the
+    ///   middle of a real one.
     @discardableResult
-    public static func runAndReport(_ suites: [TestSuite], filter: String? = nil) -> Int32 {
+    public static func runAndReport(
+        _ suites: [TestSuite],
+        filter: String? = nil,
+        printing: (String) -> Void = { print($0) }
+    ) -> Int32 {
         let selected = filter.map { needle in
             suites.compactMap { suite -> TestSuite? in
                 if suite.name.localizedCaseInsensitiveContains(needle) { return suite }
@@ -39,7 +48,7 @@ public enum TestRunner {
         } ?? suites
 
         let report = run(selected)
-        print(format(report))
+        printing(format(report))
         return report.allPassed ? 0 : 1
     }
 

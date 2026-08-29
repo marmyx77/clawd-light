@@ -1,15 +1,15 @@
 # Code map
 
-~25,000 lines of Swift across five targets. For each file: what it contains, why
+~25,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,306 lines · 56 files   pure logic, zero AppKit
-  ClawdLightApp/    10,305 lines · 56 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,231 lines · 34 files   497 cases, instantaneous
-  ClawdLightE2E/    1,934 lines ·  9 files   82 cases, the real binary
-  TestKit/            227 lines ·  3 files   minimal assertions
+  ClawdLightCore/   6,454 lines · 57 files   pure logic, zero AppKit
+  ClawdLightApp/    10,307 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,333 lines · 35 files   503 cases, instantaneous
+  ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
+  TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
 No file exceeds 786 lines. The limit the project sets itself is 800.
@@ -344,6 +344,19 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 ### `RemoteInstallScripts.swift` · 216
 The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved.
 
+## `System/`
+
+### `Command.swift` · 135
+Running an outside tool without being taken hostage by it. The obvious three
+lines have two failure modes and both are silence: `waitUntilExit` waits
+forever, so a hung `spctl` took the updater with it and nothing was ever going
+to appear on screen; and a pipe holds about 64 KB, so a tool that says more
+blocks writing while the caller blocks waiting, and neither side is broken and
+neither moves. Reading on another thread makes the deadline the only thing that
+can end the wait. In Core rather than beside its caller so both failures can be
+demonstrated instead of argued about — `CommandSuite` runs a tool that sleeps
+and one that writes two hundred kilobytes.
+
 ## `Workspace/`
 
 ### `RemoteHostList.swift` · 45
@@ -543,7 +556,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 497 cases
+## `ClawdLightTests/` — 503 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -577,14 +590,26 @@ script, before it was split. The most important ones:
 | `WindowTitleMatcherSuite` | the scores |
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
+| `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 
 ## `TestKit/` — the assertions
 
-Three files: `TestSuite` (a name and its cases), `TestRunner` (runs them, filters
-by name, prints the ✓/✗ lines and the final count) and `Assertions` (`expect`,
+Four files: `TestSuite` (a name and its cases), `TestRunner` (runs them, filters
+by name, prints the ✓/✗ lines and the final count), `Assertions` (`expect`,
 `expectEqual`, `expectNil`, `expectNotNil`, `expectThrows`, `expectNoThrow`,
-`fail`). It exists because the Command Line Tools without Xcode ship neither
-XCTest nor a complete swift-testing (D11).
+`fail`) and `Instrument`. It exists because the Command Line Tools without Xcode
+ship neither XCTest nor a complete swift-testing (D11).
+
+### `Instrument.swift` · 133
+Calibrates the assertions before anything is measured with them, and it is the
+reason the number in the heading above means something. Adding one early
+`return` to `expect` made all 503 cases report success while verifying nothing —
+a full green, no warning, no clue. So every assertion is now made to fail on
+purpose and must record it, made to pass and must stay silent, and a failing run
+must still reach a non-zero exit code; nineteen proofs, none of them written in
+the vocabulary they are testing. A blunt instrument ends the process with 70
+rather than the 1 of an ordinary failure, because the two mean different things.
+`Scripts/bite.sh` attacks it from the outside as well.
 
 ## `ClawdLightE2E/` — 82 cases
 

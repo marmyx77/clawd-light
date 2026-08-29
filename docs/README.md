@@ -3,12 +3,12 @@
 This folder exists for a precise reason: **whoever comes next should not have to
 pay again what this project has already paid.**
 
-clawd-light is a two-hundred-and-forty-pixel widget, but it balances on four things that are documented nowhere — the Claude Code hooks,
-the files the VS Code extension leaves on disk, the way macOS decides whether
-you may touch another application's windows, and what each terminal's
-dictionary, CLI or socket will tell you about which tab a process lives in. (and
-"Each of the three has a trap" → "Each of them has a trap") Each of the three has a trap that shows up as "sometimes
-it doesn't work", and each has already swallowed at least a day.
+clawd-light is a two-hundred-and-forty-pixel widget, but it balances on four
+things that are documented nowhere — the Claude Code hooks, the files the VS Code
+extension leaves on disk, the way macOS decides whether you may touch another
+application's windows, and what each terminal's dictionary, CLI or socket will
+tell you about which tab a process lives in. Each of them has a trap that shows
+up as "sometimes it doesn't work", and each has already swallowed at least a day.
 
 ## Where to start
 
@@ -22,6 +22,7 @@ It depends on why you are here.
 | **understand why it's like this** | [04 decisions](04-decisions.md) |
 | **avoid repeating other people's mistakes** | [07 traps](07-traps.md) — if you read one file, read this one |
 | **touch windows, permissions, signing** | [03 macOS](03-macos.md) |
+| **add or trust an automated check** | [08 gates](08-gates.md) |
 
 ## The documents
 
@@ -60,6 +61,11 @@ project has given itself, every one of them derived from a concrete mistake.
 The catalogue of the defects found, each with its symptom, cause, correction and
 lesson. It is the most useful document of the set, because every entry is a day
 of work you won't have to repeat.
+
+**[08 · The gates](08-gates.md)**
+Every automated check, what proves it still works, and which of them are allowed
+to block. Written after a guard that had never examined a single file spent
+weeks printing a green tick.
 
 ## Other documents in the project
 
