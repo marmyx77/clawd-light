@@ -700,8 +700,8 @@ of work I shipped without watching it work.
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
-| Documentation gates | **9**, each with a mutation that proves it fails |
-| Mutations committed by `bite.sh` | **20**, all caught |
+| Documentation gates | **10**, each with a mutation that proves it fails |
+| Mutations committed by `bite.sh` | **22**, all caught |
 | Longest file | 786 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 
 ## 27 August — sessions in a terminal
@@ -1399,3 +1399,37 @@ it. Each glyph also got the rows' own hover treatment — the same rounded white
 wash, overflowing its layout box so the highlight is a target while the glyph
 keeps its column. Measured on the capture: eight points of clear space above the
 ink and eight below.
+
+## 29 August — "is everything documented?"
+
+The answer was no, and the useful part is *which* class of thing had slipped.
+
+**A false claim in the front door.** The README said the slot number "appears next
+to the name". It had not since this morning — the ring took that cell — and the
+figure gates could not see it, because it is not a figure. That is the same class
+as the twenty-one figures that had quietly stopped being true, one layer up:
+prose about the interface, checked by nobody. Corrected, and the ring, the
+tooltip card, the folder glyph and the strip under the rows are now described
+where a stranger would look for them.
+
+**Three files nobody had written a line about.** `UpdateChecker` and
+`UpdateInstaller`, from the update flow of two days ago, and
+`measure-compaction.py`, the script that settles the context denominator. All
+three existed, worked, were referenced from decisions or traps — and were absent
+from the code map, which is where somebody goes to find out what a repository
+contains. `FinderReveal` was on the map but filed under `UI/`, where it does not
+live.
+
+**So the audit became a gate.** *Every file is on the map*: every `.swift` under
+the two shipped targets, by file name or by the type it holds, and every script
+in `Scripts/`. Scoped there deliberately — the tests are left out, because the
+map samples the suites worth naming and a rule demanding all sixty would either
+bloat it or teach people to add a row without a thought. It found the three
+misses, and `bite.sh` now erases a file's row and then a script's to prove it
+still catches them.
+
+The registry gate did its job in the same minute: the new check went in without a
+mutation, and the run went red saying *"Every file is on the map" has no mutation
+in bite.sh — nobody has seen it fail*.
+
+Ten documentation gates now, twenty-two mutations, all caught.

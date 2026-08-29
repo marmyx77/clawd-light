@@ -208,6 +208,27 @@ leaves the panel non-key, so every visit began with a click that only knocked
 `became key` / `resigned key` so that the per-signal log can tell a delivered
 first click from a second one.
 
+### Tooltips do not appear in it, and that is not a bug
+
+`NSToolTipManager` puts a tooltip on screen only when the window under the
+pointer is **key** and the application is **active**. This panel is neither by
+construction — a `nonactivatingPanel` in an accessory app that becomes key for
+the instant of a click — so `.help("…")` on a row compiles, reads correctly and
+displays nothing. Every tooltip in the panel was dead text for weeks, and the
+row's whole second layer with it (07-traps, "The tooltips that were written and
+never shown").
+
+The panel draws its own instead: one borderless window that ignores the mouse,
+never becomes key, and removes itself on any mouse-down — including the
+right-click that opens a context menu over the row it was explaining, which
+SwiftUI's `.contextMenu` gives no notice of. `.help` stays only in the ordinary
+windows — Settings, the conversations, the legend — where it works, because those
+windows do become key.
+
+The size has to be known before the window is shown, and there is no layout to
+supply it: `NSHostingView.fittingSize` on a view with no width lays the text out
+one word per line and answers **358 × 3,332 points**. Decide the width first.
+
 `occlusionState` is **not reliable**: it reports `occluded` even with the window
 in plain sight. Using it as a switch would suppress legitimate alerts; `occlusionState` is **not reliable**: it reports `occluded` even with the window
 in plain sight. It once attenuated notifications together with keyboard

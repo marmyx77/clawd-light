@@ -619,6 +619,65 @@ verdict "$STATUS" \
     "a suite exists that the runner never calls" \
     "the test sources could not be read"
 
+head_ "Every file is on the map"
+
+# The gap this closes was found by hand, once, and by being asked "is everything
+# documented?" — which is not a question anybody asks twice.
+#
+# The other checks here verify what the documents SAY: figures, links, counts. A
+# file that exists and is written about nowhere says nothing, so nothing catches
+# it. Three of them had accumulated: two runtime files from the update flow, and
+# the script that settles the context denominator.
+#
+# Scoped to the two shipped targets and to the scripts. The tests are deliberately
+# left out: the code map samples the suites it considers worth naming, and a rule
+# demanding all sixty would either bloat the map or teach people to add a row
+# without a thought — both worse than the drift.
+STATUS=0
+python3 - <<'MAPPY' || STATUS=$?
+import os, sys
+
+MAP = "docs/05-code-map.md"
+if not os.path.exists(MAP):
+    print("    the code map is gone", file=sys.stderr)
+    sys.exit(1)
+
+mapped = open(MAP).read()
+missing, examined = [], 0
+
+for target in ("Sources/ClawdLightCore", "Sources/ClawdLightApp"):
+    for root, _, files in os.walk(target):
+        for name in sorted(files):
+            if not name.endswith(".swift"):
+                continue
+            examined += 1
+            # By file name or by the type it holds: the map names some files and
+            # describes others by their type, and both are being on the map.
+            if name not in mapped and name[:-6] not in mapped:
+                missing.append(f"{os.path.join(root, name)} is in the tree and not on the map")
+
+for name in sorted(os.listdir("Scripts")):
+    if not name.endswith((".sh", ".py")):
+        continue
+    examined += 1
+    if f"Scripts/{name}" not in mapped:
+        missing.append(f"Scripts/{name} is not in the map's script table")
+
+# A collapse means the walk broke, not that the repository emptied.
+if examined < 80:
+    print(f"    only {examined} files examined — this check went blind", file=sys.stderr)
+    sys.exit(1)
+
+print(f"    {examined} files and scripts, {len(missing)} unaccounted for", file=sys.stderr)
+for problem in missing:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if missing else 0)
+MAPPY
+verdict "$STATUS" \
+    "every shipped file and every script is described somewhere in the code map" \
+    "something in the tree is written about nowhere" \
+    "the tree could not be walked"
+
 head_ "Every gate here can be shown to bite"
 
 # The rule that keeps the rest of this file honest: each section above claims to

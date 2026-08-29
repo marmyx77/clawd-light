@@ -57,7 +57,7 @@ never the real panel's 9877.
 ## Checking the documentation, and the checks
 
 ```bash
-./Scripts/check-docs.sh    # nine gates, half a second
+./Scripts/check-docs.sh    # ten gates, half a second
 ./Scripts/bite.sh          # breaks the repository on purpose, 26 seconds
 ./Scripts/test.sh          # build, both suites, then both of the above
 ```
@@ -69,7 +69,7 @@ things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and 
 could not observe what it judges. **A green with a ⚠ in it is not a green**, and
 it exits 3 to say so.
 
-`bite.sh` is the one that judges the others. It commits twenty violations — a
+`bite.sh` is the one that judges the others. It commits twenty-two violations — a
 drifted figure, a broken link, a planted home directory, a suite nobody runs, an
 assertion that has stopped asserting — and fails if any gate does not notice.
 Every mutation is undone afterwards, including on Ctrl-C.
@@ -87,6 +87,7 @@ what each one claims, which tier it belongs to, and what proves it.
 ## Checking the contract with Claude Code
 
 ```bash
+./Scripts/measure-compaction.py      # where a session really gets compacted, ~25 s
 ./Scripts/check-contract.sh          # static — seconds, free
 ./Scripts/check-contract.sh --live   # also records a real session, ~1 minute
 ./Scripts/check-contract.sh --record # re-record the golden baseline

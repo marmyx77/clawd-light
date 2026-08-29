@@ -501,6 +501,9 @@ there, the hooks are registered — and it names the link that broke.
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
 | `LiveSessionReader.swift` | 90 | reads the live sessions; takes activity from the **transcript**, not the session file |
+| `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
+| `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
+| `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `CLAWD_LIGHT_DEBUG` |
 
 > **`DictationService`** — the ordering in `start()` is load-bearing and
@@ -583,7 +586,6 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `LegendWindowController.swift` | 57 | owns the legend window |
 | `Tooltip.swift` | 243 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32) |
 | `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
-| `FinderReveal.swift` | 27 | opens a Finder window *inside* the folder, not on it (D33) |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
@@ -644,6 +646,7 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
+| `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 
 ## `TestKit/` — the assertions
@@ -693,3 +696,5 @@ the realignment is asynchronous.
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
+| `Scripts/bite.sh` | commits twenty-two violations and demands twenty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

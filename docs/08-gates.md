@@ -70,13 +70,14 @@ Measured on an M-series Mac, 29 August 2026.
 | No personal paths | no real home, VPN address or `user@host` in tracked files | filesystem | `bite.sh` plants a leak, plants an address, **and blinds the guard** | CI, `test.sh` | ” |
 | The registered events | the contract and `HookConfigMerger` agree; prose states the right count | filesystem | `bite.sh` removes an event, ages the prose, rewords it away | CI, `test.sh` | ” |
 | Test suites are registered | no suite exists that the runner never calls | filesystem | `bite.sh` unregisters one | CI, `test.sh` | ” |
+| Every file is on the map | nothing shipped, and no script, is written about nowhere | filesystem | `bite.sh` erases a file's row, then a script's | CI, `test.sh` | ” |
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
 | Model context windows | every window in the table is the one the binary carries | **external** | a window edited in the contract is reported against the binary | with the contract | in the above |
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 
-`bite.sh` commits twenty violations and demands twenty catches. It takes 26
+`bite.sh` commits twenty-two violations and demands twenty-two catches. It takes 26
 seconds.
 
 ## The rule

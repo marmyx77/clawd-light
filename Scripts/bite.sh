@@ -311,6 +311,26 @@ s = open(p).read().replace("    PathNormalizerSuite.suite,\n", "")
 open(p, "w").write(s)
 PY
 
+gate "Every file is on the map"
+
+protect docs/05-code-map.md
+attack "a shipped file that the map stopped mentioning" "is in the tree and not on the map" <<'PY'
+p = "docs/05-code-map.md"
+s = open(p).read()
+# The row that names it, and the name wherever else it appears: the check accepts
+# either the file name or the type, so a bite has to remove both or prove nothing.
+s = s.replace("| `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |\n", "")
+s = s.replace("FinderReveal", "TheFolderOpener")
+open(p, "w").write(s)
+PY
+
+protect docs/05-code-map.md
+attack "a script nobody wrote a line about" "is not in the map's script table" <<'PY'
+p = "docs/05-code-map.md"
+s = open(p).read().replace("`Scripts/measure-compaction.py`", "`Scripts/measure-compaction-py`")
+open(p, "w").write(s)
+PY
+
 gate "Every gate here can be shown to bite"
 
 protect Scripts/check-docs.sh

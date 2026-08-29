@@ -40,6 +40,44 @@ mode too, where there is no text. It sits **below** `ready` because a ready answ
 is consumed at once, whereas there is nothing you can do about a rate limit until
 it expires.
 
+## The ring beside the light
+
+Every row carries a second, smaller ring: the arc is how much of the model's
+context window that session has spent, and the letter in the middle is the model
+family — `O`pus, `S`onnet, `H`aiku, `F`able, `M`ythos, `n` for one this build has
+no window for. Monochrome, deliberately: six states already own the colour here.
+
+Three different silences get three different marks. A **dashed** circle means
+nothing has been read from that session yet. A **paler** arc means the reading is
+a floor — at least this much — because only a reply carries a token count and
+anything loaded since is invisible. A solid circle with a **dimmed letter** and no
+arc means the figure is void: the session was compacted after that reading, so it
+describes a conversation that no longer exists.
+
+The denominator is the whole window, and that was measured rather than assumed —
+see [04-decisions, D30](docs/04-decisions.md) and `Scripts/measure-compaction.py`.
+
+## Hovering a row
+
+The panel draws its own tooltips, because AppKit's only appear in a window that
+is key and this one never is. Resting on a row opens a card: the name, the state,
+the machine and the folder underneath a name you chose, the exact figure with the
+tokens behind it, the model with its version, what the row is waiting on, its
+slot and the command that opens it, and — on a group — what each session in it is
+doing.
+
+While the pointer is on a row, a folder glyph appears between the timestamp and
+the drag handle: it opens a Finder window inside that project. ⇧+click does the
+same, and so does *Show in Finder* in the row's menu. None of the three appears
+on a session that lives on another machine.
+
+## Under the rows
+
+A hairline, then three controls. On the left, in the lights' own column, the one
+that narrows the panel to a strip of lights and widens it again. On the right, in
+the drag handles' column, the legend — what the six colours and the two rings
+mean, with a live count of each — and the menu.
+
 ## The right-hand slot
 
 It doesn't always show the same thing, because the useful information isn't always
@@ -182,8 +220,10 @@ row never slides under the pointer between two clicks.
 
 #### Slots — one key, always the same project
 
-The first nine rows are slots 1 to 9: the number appears next to the name, and
-`clawd-light open 3` raises whatever sits third. Because the column keeps your
+The first nine rows are slots 1 to 9, and `clawd-light open 3` raises whatever
+sits third. The number is not printed on the row — the cell it used to occupy
+now carries the context ring — but the tooltip says it, along with the command
+that opens it. Because the column keeps your
 order, the third row is the same project tomorrow — and a shortcut you press
 without looking has to be right every time. A project with no live session keeps
 its place; its slot is simply empty until it has one.
