@@ -1320,6 +1320,14 @@ The status words moved from `StatusPalette` to `SessionStatus`: the colour is a
 property of the interface, the word is a property of the state, and a summary
 assembled in Core cannot reach into the app to ask what a state is called.
 
+**The folder opens, it does not get pointed at.** The first version used
+`activateFileViewerSelecting`, which reveals the folder *selected inside its
+parent* — the ⌘⇧R gesture. Tried with a synthetic ⇧+click, it opened
+`Development` with a folder highlighted in it, and the answer came back in one
+line: you already know where the project is, you want to be **in** it.
+`NSWorkspace.open` does that. It also moved into a file of its own, because
+adding it took `PanelController` to 787 lines against a self-imposed limit of 800.
+
 **The folder appears under the pointer.** 18 points, measured, is what a
 permanent glyph would take off every name for ever — 100.87 back to 82.87, which
 is exactly where the names were this morning when `aworld-os-platform` read

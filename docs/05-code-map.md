@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   7,292 lines · 61 files   pure logic, zero AppKit
-  ClawdLightApp/    11,408 lines · 62 files   shell: AppKit, network, windows
+  ClawdLightApp/    11,420 lines · 63 files   shell: AppKit, network, windows
   ClawdLightTests/  6,906 lines · 38 files   547 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -572,7 +572,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 784 | holds everything together; row and panel actions |
+| `PanelController.swift` | 768 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 337 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
@@ -583,6 +583,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `LegendWindowController.swift` | 57 | owns the legend window |
 | `Tooltip.swift` | 243 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32) |
 | `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
+| `FinderReveal.swift` | 27 | opens a Finder window *inside* the folder, not on it (D33) |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |

@@ -279,24 +279,8 @@ final class PanelController {
             newConversation: { [weak self] row in self?.newConversation(in: row) },
             openChat: { [weak self] row in self?.openChat(in: row) },
             rename: { [weak self] row in self?.rename(row) },
-            revealInFinder: { row in PanelController.reveal(row.workspace.path) }
+            revealInFinder: { row in FinderReveal.open(row.workspace.path) }
         )
-    }
-
-    /// Opens the Finder on the folder the session is working in.
-    ///
-    /// `activateFileViewerSelecting` rather than `open`: it selects the folder
-    /// inside its parent instead of opening a window onto its contents, which is
-    /// what "show me where this is" means and what ⌘⇧R does everywhere else on
-    /// this machine. Nothing here is guarded by a permission — the Finder opening
-    /// a folder is not an Apple Event.
-    ///
-    /// Never called for a row on another machine: `/home/dev/.notes` exists,
-    /// and it does not exist here. The glyph and the menu entry are both absent
-    /// there rather than disabled.
-    private static func reveal(_ path: String) {
-        guard !path.isEmpty else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 
     /// The projects drawn right now, top to bottom: what a drag or a "move" is

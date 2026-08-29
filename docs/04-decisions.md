@@ -1370,7 +1370,10 @@ appears, is worse than either.
 ## D33 · The folder appears under the pointer, and costs nothing at rest
 
 **Decided.** Hovering a row reveals a small folder glyph between the timestamp
-and the drag handle; clicking it shows the folder in the Finder. ⇧+click does the
+and the drag handle; clicking it opens a Finder window **inside** that folder —
+`NSWorkspace.open`, not `activateFileViewerSelecting`, which reveals it selected
+in its parent instead. You already know where the project is; you want to be in
+it. ⇧+click does the
 same without the glyph, and the row's menu carries "Show in Finder". None of the
 three appears on a row that lives on another machine.
 
