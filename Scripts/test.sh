@@ -26,7 +26,15 @@ swift build -Xswiftc -warnings-as-errors
 
 echo
 echo "▸ Domain tests"
-swift run ClawdLightTests "$@"
+# The built binary, not `swift run`. The build happened two lines above, so
+# `swift run` would re-enter the package manager only to exec something that is
+# already on disk — and on 2026-08-29 that re-entry died with SIGSEGV inside
+# llbuild while other builds were running, reporting a red that had nothing to do
+# with this project. The suite itself ran clean three times immediately after,
+# and the crash report named `swift-package`, not `ClawdLightTests`.
+#
+# The end-to-end line below always did it this way. Now both do.
+.build/debug/ClawdLightTests "$@"
 
 echo
 echo "▸ End-to-end tests (port $PORT)"

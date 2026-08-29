@@ -48,6 +48,9 @@ severity.
 14. **An API that compiles is not an API that runs here.** Every tooltip in the
     panel was written, reviewed and never displayed: AppKit shows them only in a
     key window, and this window is never key on purpose.
+15. **When the suite dies with a signal, read the crash report before reading
+    your code.** The name of the process that died is in it, and twice out of
+    three it is not yours.
 
 ---
 
@@ -1607,3 +1610,40 @@ Settings, the conversations — where it works because those windows do become k
 whole design is "never take the focus" cannot borrow the parts of the toolkit
 that assume focus, and the borrowing fails silently — the call is there, the text
 is right, and the pixels never arrive.
+
+
+---
+
+# A red that was not ours
+
+**Symptom.** `Scripts/test.sh` exited **139** — signal 11, a segmentation fault —
+on a commit that had changed two markdown files and no Swift at all.
+
+**What it was not.** The domain suite. Run directly, three times in a row, it
+answered `547 tests passed` every time.
+
+**What it was.** The crash report settles it in one line, and the useful habit is
+to read that line first:
+
+```
+processo : swift-package
+eccezione: EXC_BAD_ACCESS SIGSEGV
+   llbuild · llb_buildsystem_command_get_description
+   libdispatch.dylib · _dispatch_call_block_and_release
+```
+
+`swift-package`, not `ClawdLightTests`. The crash is inside **llbuild**, SwiftPM's
+build engine, on a dispatch queue, with four other builds running on the machine
+at the time.
+
+**Correction, and it removes the class rather than the instance.** The script
+already built everything two lines earlier, and the end-to-end suite already ran
+its binary directly. Only the domain suite went back through `swift run`, which
+re-enters the whole package manager to exec a file that is already on disk. Both
+now run the built binary. One less moving part between a green and the truth.
+
+**Lesson.** A test runner that can fail for reasons that are not about the code
+teaches people to re-run until it passes, which is the habit that eventually
+hides a real failure. When a suite dies with a signal, `~/Library/Logs/
+DiagnosticReports` names the process that died: read that before reading your
+own code.
