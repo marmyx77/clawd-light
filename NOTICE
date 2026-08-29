@@ -1,0 +1,31 @@
+clawd-light
+Copyright (c) 2026 Marco Armellino
+
+This product is licensed under the MIT License. See LICENSE for the full text.
+
+
+INDEPENDENCE
+
+clawd-light is an independent project by an individual. It is not affiliated
+with, endorsed by, sponsored by, or in any way officially connected to
+Anthropic PBC, OpenAI, Microsoft, or any other maker of the tools it observes.
+
+"Claude" and "Claude Code" are trademarks of Anthropic PBC. Other product and
+company names mentioned in this repository are the property of their respective
+owners. They are used here only descriptively, to say what this software reads
+and works alongside, which is the one thing it cannot describe without naming
+them.
+
+
+WHAT THE LICENSE DOES NOT GRANT
+
+The MIT License above covers the software and its documentation. It grants no
+rights in the project's name, its icon, or any mark associated with it. A fork
+is free, welcome, and should carry a name of its own.
+
+
+THIRD-PARTY CODE
+
+There is none. The package has no external dependencies: every line in
+Sources/ was written for this project, the test framework included. Nothing
+here needs an audit beyond this file.

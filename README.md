@@ -999,4 +999,21 @@ saying "window not found" to both.
 
 ## License
 
-MIT.
+**MIT.** Copyright © 2026 Marco Armellino. The full text is in
+[LICENSE](LICENSE), and it is the canonical MIT text, unmodified.
+
+It covers the software and this documentation. It grants no rights in the
+project's name or its icon: a fork is free and welcome, and should carry a name
+of its own.
+
+There are **no third-party dependencies**. Every line under `Sources/` was
+written for this project, the test framework included, so there is nothing else
+to audit and no other licence to reconcile.
+
+[NOTICE](NOTICE) carries one more statement, and it belongs at the end of a
+document like this rather than in the middle of it: clawd-light is an
+independent project by one person. It is not affiliated with, endorsed by, or
+sponsored by Anthropic PBC or any other maker of the tools it watches. "Claude"
+and "Claude Code" are trademarks of Anthropic PBC, named here descriptively
+because a tool that reads another program's lifecycle events cannot say what it
+does without saying which program.
