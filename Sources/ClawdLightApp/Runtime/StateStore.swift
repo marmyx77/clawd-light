@@ -117,8 +117,13 @@ final class StateStore: ObservableObject {
         titleReadsInFlight.insert(sessionId)
         Task.detached(priority: .utility) { [weak self] in
             let title = SessionTitleReader.title(atPath: path)
+            // Unwrapped here and not inside the hop: weak for the read, which is
+            // the slow part and the reason the reference is weak at all, then a
+            // plain value for the actor. Unwrapping inside `MainActor.run` makes
+            // that closure capture the *variable*, which Swift 6 rejects — the
+            // warning was a compile error waiting for the language mode to move.
+            guard let self else { return }
             await MainActor.run {
-                guard let self else { return }
                 self.titleReadsInFlight.remove(sessionId)
                 if let title { self.apply(.remember(sessionId: sessionId, title: title), now: self.clock()) }
             }

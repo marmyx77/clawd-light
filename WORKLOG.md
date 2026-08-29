@@ -696,11 +696,10 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **242**, instantaneous |
-| End-to-end tests | **66**, about a minute |
+| Domain tests | **497**, instantaneous |
+| End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings |
-| Longest file | 407 lines (limit the project sets itself: 800) |
-| Off-plan defects found and fixed | 9, two of them introduced that day and found by the review |
+| Longest file | 786 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 
 ## 27 August — sessions in a terminal
 
@@ -753,6 +752,29 @@ the script grants nothing else. Both secrets — the identity and the
 notarization profile — are read from the environment: this repository is
 public, and a Team ID is not ours to publish.
 
+## 28 August — three claw marks
+
+The app had no icon, so the disk image showed the generic one. The name carries
+*claw* and the product is a traffic light, and the icon is the point where those
+stop being two things: three marks that **are** the three states, not a claw
+standing next to a semaphore.
+
+Five candidates came out of a generator and the best of them died at 16 px,
+which is the size that decides — the three slashes merged into a coloured smear.
+So it is drawn by arithmetic instead: `Scripts/make-icon.py`, where the rule that
+keeps it legible is a multiplication rather than an intention. The gap between
+two marks is never smaller than a mark is wide, and a redraw cannot quietly lose
+that. The tile follows the Big Sur grid — 824 of 1024, radius 185.4 — which is
+why it sits the same size as its neighbours instead of visibly larger.
+
+The sizes below 32 px are drawn, not shrunk: thicker strokes, no shadow, no
+gloss, because at that scale the ornament lands between pixels and only mutes the
+colour, and colour is the whole of what still reads. Two things the first render
+taught, both now written into the script: a lighter copy of a mark laid over
+itself is a bevel that eats the colour — red came out brown — so the light is
+graded inside the mark's own silhouette; and a mark that reaches past the tile
+looks like a rendering fault, so the group is clipped to the tile by construction.
+
 ## 28 August — the permission that was granted and wasn't
 
 The disk image was the easy half. The install proved the hard half: on a fresh
@@ -792,3 +814,102 @@ and the cure; and on the installed, notarized copy two different rows raise two
 different windows. The wait itself is a value — granted, expired, or neither —
 so the tie can be tested: granted at the last second still wins, because a click
 is not less owed for being answered late.
+
+## 28 August — what an open endpoint is not allowed to do
+
+A security pass before publishing, run as measurements rather than opinions —
+and twice a hypothesis was wrong and the measurement said so.
+
+Two real defects. The diagnostic log was born 0644, holding workspace paths,
+window titles and remote host names: the same information the token on
+`GET /sessions` exists to protect, readable by every other account on the
+machine. And `POST /signal`, which carries no token by design because a hook
+that fails authentication would block a Claude Code turn, accepted any absolute
+`transcript_path`, stored it, and later opened and rendered it. A forged signal
+naming `/etc/passwd` produced a row holding it within a second, and repeating
+the signal kept that row alive indefinitely.
+
+Both closed: the log is created 0600 like the token, and transcript paths are
+accepted only under `~/.claude`, with `..` resolved before the comparison and a
+trailing separator so `.claude-evil` cannot pass as a child of `.claude`.
+
+The two refuted hypotheses are worth as much as the findings, because they stop
+the same ground being dug twice. Header accumulation is already bounded at 512 KB
+in the parser — proven by pushing 2.8 MB with no terminator and watching memory
+*fall*. And a web page cannot reach the endpoint: tried from a real tab, Private
+Network Access blocks it. That is why the transcript rule is defence in depth
+rather than a closed hole — but the browser refusing on our behalf is not a
+boundary we control.
+
+Everything else came out sound and was left alone: loopback binding by
+construction, every acting route behind a constant-time token check, no shell
+anywhere, every AppleScript interpolation allow-listed or escaped, ssh with agent
+and X11 off, and exactly two entitlements in the signed bundle with none of the
+dangerous ones.
+
+## 28 August — the update that waits to be told
+
+An updater is the one component that downloads code and runs it, so everything
+the security pass verified is worth nothing if it accepts the wrong bundle. Here
+it is worse than usual: macOS grants Accessibility to a **signing identity**, so
+a replacement signed with our certificate inherits the run of the machine without
+asking anybody. A wrong update is not a broken app, it is a silent one with the
+keyboard.
+
+So it never installs by itself. *Check for updates…* asks and says one of three
+things; a newer release gets a button and nothing happens until it is pressed.
+Then four things are proved before the running copy is touched: Gatekeeper's own
+assessment of the disk image, the app inside verifying against its own signature,
+its Team ID equal to this copy's — compared against the running app rather than a
+constant, because a constant could be edited by whoever edited the download — and
+its bundle identifier.
+
+Proved end to end rather than declared: a 0.0.9 signed with the real certificate
+was installed, and it updated itself to the published 0.1.0 in eleven seconds,
+came back, and kept its permissions — which is the whole argument for tying
+updates to one identity, and the whole reason they must be asked for.
+
+A hang found on the way, and it looked like patience: `notarytool submit --wait`
+waits for ever, and one submission held for two and a half hours on "initiating
+connection" without ever reaching Apple's queue. It now has a deadline. The thing
+that made anybody look was the panel staying blue — the turn had ended and
+background work had not — which is exactly what that state is for.
+
+## 29 August — the audit that read the diary
+
+The documentation gate had grown seven checks and a habit of being trusted, so
+this file was put through a semantic audit against reality instead of against
+more prose. The gate was green. This file was not.
+
+The table titled **"How the project stands now"** claimed 242 domain tests
+against 497, 66 end-to-end against 82, a longest file of 407 lines against 786,
+and a build free of warnings that had twenty-eight. Four claims, four false, in
+the one place in the repository that says *now*.
+
+The cause is worth more than the findings: `check-docs.sh` never opened
+`WORKLOG.md`. It verified the same figures in the README, the architecture and
+the working notes, and left out the file that reads like a diary — because it is
+one, except for the table of status sitting inside it. A checker that looks in
+one place has one blind spot per other place, which this project had already
+written down once and then repeated.
+
+Now checked, and narrowly: only that table, because the rest is history and the
+figures in an August entry are *correct* precisely for being old. A rule
+demanding they be current would fire on every past entry, and a gate that cries
+wolf stops being read. Proved to bite on three known violations, including
+renaming the heading to slip out from under it.
+
+The warnings turned out to be a lesson of their own. The first count said two,
+measured with a warm build directory; a clean build said twenty-eight — four
+distinct ones emitted seven times each. All four are gone: two redundant `try`s
+on a failable initializer that never threw, and AVFoundation's pre-concurrency
+API, which is what `@preconcurrency` is for. The two that started it were real
+Swift 6 errors in waiting: `self` unwrapped inside the actor hop instead of
+before it, so the closure captured a variable rather than a value.
+
+Two findings left deliberately unmechanized. Four of the day's seven commits had
+no entry here at all — no rule can know which commits deserve prose, so they were
+written instead. And the `v0.1.0` tag points at a commit made thirty-one minutes
+after the published disk image was built: the difference is `Scripts/release.sh`,
+which never enters the app, so the artefact is the right one — but the order for
+next time is tag, then build, then publish.

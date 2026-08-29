@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   6,306 lines · 56 files   pure logic, zero AppKit
-  ClawdLightApp/    10,296 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightApp/    10,305 lines · 56 files   shell: AppKit, network, windows
   ClawdLightTests/  6,231 lines · 34 files   497 cases, instantaneous
   ClawdLightE2E/    1,934 lines ·  9 files   82 cases, the real binary
   TestKit/            227 lines ·  3 files   minimal assertions
@@ -613,4 +613,4 @@ the realignment is asynchronous.
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
-| `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state |
+| `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |

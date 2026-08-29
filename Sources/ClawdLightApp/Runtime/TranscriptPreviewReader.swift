@@ -60,7 +60,7 @@ final class TranscriptPreviewReader {
     // MARK: - Internals
 
     private func read(path: String, size: UInt64) -> TranscriptEntry? {
-        guard let handle = try? FileHandle(forReadingAtPath: path) else { return nil }
+        guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
 
         var slice = UInt64(Self.firstSlice)

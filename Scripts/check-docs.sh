@@ -197,6 +197,56 @@ for p in problems: print(f"    {p}", file=sys.stderr)
 sys.exit(1 if problems else 0)
 FIGPY
 
+head_ "The status table says how the project stands now"
+
+# WORKLOG.md was outside every check above, because it reads like a diary and
+# nobody thought to include one. Inside it sits a table titled "How the project
+# stands now", and it announced 242 domain tests, 66 end-to-end and a longest
+# file of 407 lines while the truth was 497, 82 and 786 — plus a build declared
+# free of warnings that had twenty-eight. Found by a semantic audit, not by this
+# script, which is exactly what a blind spot is.
+#
+# Scoped to that one table on purpose. The rest of the file is history, and the
+# figures in an entry from August are *correct* precisely because they are old:
+# a rule demanding they be current would fire on every past entry, and a noisy
+# gate stops being read.
+python3 - <<'STATUSPY' && ok "the status table agrees with the repository" || bad "the status table describes a project that has moved"
+import glob, re, sys
+
+def lines_of(path):
+    with open(path) as handle: return sum(1 for _ in handle)
+
+def cases(target):
+    return sum(open(p).read().count("TestCase(")
+               for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True))
+
+text = open("WORKLOG.md").read()
+start = text.find("## How the project stands now")
+if start < 0:
+    print("    WORKLOG.md has no status table any more", file=sys.stderr)
+    sys.exit(1)
+# Only as far as the next heading: everything after it is the diary.
+end = text.find("\n## ", start + 1)
+table = text[start:end if end > 0 else len(text)]
+
+domain, e2e = cases("ClawdLightTests"), cases("ClawdLightE2E")
+longest = max(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
+
+problems = []
+for claimed, actual, label in [
+    (re.search(r"Domain tests \| \*\*(\d+)\*\*", table), domain, "domain tests"),
+    (re.search(r"End-to-end tests \| \*\*(\d+)\*\*", table), e2e, "end-to-end tests"),
+    (re.search(r"Longest file \| (\d+) lines", table), longest, "longest file"),
+]:
+    if claimed is None:
+        problems.append(f"the table no longer states the {label}")
+    elif int(claimed.group(1)) != actual:
+        problems.append(f"the table says {claimed.group(1)} {label}, the repository has {actual}")
+
+for problem in problems: print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+STATUSPY
+
 head_ "No personal paths or private addresses in tracked files"
 
 # Generic on purpose: the guard must not contain the very strings it guards

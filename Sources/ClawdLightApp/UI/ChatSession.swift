@@ -153,8 +153,12 @@ final class ChatSession: ObservableObject {
             let entries = reader.readAll()
             let title = reader.title
             let skipped = reader.skippedBytes
+            // Weak across the read — a 466 MB transcript is the reason this is
+            // detached at all — and a plain value once it is over. Unwrapping
+            // inside the hop makes that closure capture the variable, which
+            // Swift 6 rejects outright.
+            guard let self else { return }
             await MainActor.run {
-                guard let self else { return }
                 self.isLoading = false
                 var shown = entries
                 if skipped > 0 {

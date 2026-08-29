@@ -54,7 +54,7 @@ final class TranscriptReader {
 
         guard size > offset else { return [] }
 
-        guard let handle = try? FileHandle(forReadingAtPath: path) else { return [] }
+        guard let handle = FileHandle(forReadingAtPath: path) else { return [] }
         defer { try? handle.close() }
 
         guard (try? handle.seek(toOffset: offset)) != nil,
