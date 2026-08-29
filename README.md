@@ -1,12 +1,28 @@
-# lampboard
+# LampBoard
 
 A floating column of traffic lights that tells you, at a glance, what state your
-Claude Code sessions are in — in VS Code, in a terminal, on another machine. One
-traffic light per project. You click it and you're in that window, or that tab.
+coding sessions are in — Claude Code and Codex, in VS Code, in a terminal, in a
+desktop app, on another machine. One traffic light per project, and beside each
+one a ring saying **how much room that conversation has left**. You click it and
+you're in that window, or that tab.
 
-It comes from a concrete problem: with a dozen VS Code windows open, finding out
+It comes from a concrete problem: with a dozen editor windows open, finding out
 which one is waiting for an answer and which one is still working means going
 through all of them.
+
+The two questions it answers that a list of sessions does not: *how much context
+is left in there*, and *has it really finished* — a turn can hand back control
+while three background agents keep working for another forty minutes.
+
+<img src="docs/images/panel.png" width="240" alt="The panel: six projects, six
+states, and a ring on each row showing how full its context window is.">
+
+Six projects, six states, and a ring on every row. The letter in the ring is the
+model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT family on the Codex row at
+the bottom. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
+runs the real app against a temporary home full of invented projects and captures
+its window, so the image can never contain anybody's real work and never falls
+behind the panel it shows.
 
 > **Need to get your hands dirty?** The complete technical documentation lives in
 > **[docs/](docs/)**. If you only have time for one file, read
@@ -44,8 +60,11 @@ it expires.
 
 Every row carries a second, smaller ring: the arc is how much of the model's
 context window that session has spent, and the letter in the middle is the model
-family — `O`pus, `S`onnet, `H`aiku, `F`able, `M`ythos, `n` for one this build has
-no window for. Monochrome, deliberately: six states already own the colour here.
+family — `O`pus, `S`onnet, `H`aiku, `F`able, `M`ythos, `G` for the GPT family
+Codex runs, `n` for one this build has no window for. Monochrome, deliberately:
+six states already own the colour here. The letter is also what tells two rows in
+the same project apart when one is Claude Code and the other is Codex, which
+costs no pixels and no second glyph.
 
 Three different silences get three different marks. A **dashed** circle means
 nothing has been read from that session yet. A **paler** arc means the reading is
@@ -54,8 +73,62 @@ anything loaded since is invisible. A solid circle with a **dimmed letter** and 
 arc means the figure is void: the session was compacted after that reading, so it
 describes a conversation that no longer exists.
 
-The denominator is the whole window, and that was measured rather than assumed —
-see [04-decisions, D30](docs/04-decisions.md) and `Scripts/measure-compaction.py`.
+The denominator is the whole window, and for Claude Code that was measured rather
+than assumed — see [04-decisions, D30](docs/04-decisions.md) and
+`Scripts/measure-compaction.py`.
+
+For Codex it is not measured at all, and that is a fourth mark: **`declared`**.
+Codex writes `model_context_window` into the same record as the token count, so a
+Codex percentage rests on nothing of ours — no table, no calibration, nothing a
+vendor can invalidate without telling anybody. The card says so.
+
+## Two harnesses, one row
+
+LampBoard watches **Claude Code** and **Codex**. Both get the same row: the same
+dot with the same six meanings, the same ring meaning the same thing, the same
+slot number. What differs is not the drawing — it is what a row is able to
+promise, and the card says so rather than leaving you to find out.
+
+| | Claude Code | Codex |
+|---|---|---|
+| Where its sessions live | `~/.claude` | `~/.codex` |
+| Surfaces it covers | CLI, VS Code extension, the copy inside the desktop app | CLI, VS Code extension, the copy inside the ChatGPT app |
+| Context ring | measured denominator, with a confidence | **window declared by the harness** |
+| Plan allowance | not on disk anywhere | in the card |
+| Amber says *what* is being asked | no — the payload carries only the tool's name | **yes** — `Bash: git push origin main` |
+| Red, when a turn fails | yes | **never**: Codex publishes no error event at all |
+| Blue, while background agents work | yes | yes |
+
+Two of those rows are worth the words.
+
+**Codex has no error event.** Not `StopFailure`, not `Error`, not `TurnFailed` —
+checked against its published event table. A turn that fails simply stops
+emitting hooks, and silence does not distinguish a crash from a model thinking
+for a long time. So a Codex row never turns red, and every card on a Codex row
+carries the line *Codex reports no failures: a turn that fails stops speaking*. A
+limit you are told is a limit; a limit you meet by trusting a green row that was
+never going to turn red is a defect with a good explanation.
+
+**Codex says what it is asking for.** Its `PermissionRequest` carries the tool
+and its arguments, so an amber Codex row reads the command. Claude Code's
+equivalent does not: the shipped binary builds its notification as *Claude needs
+your permission to use Bash* and carries no arguments at all. Only five fields
+are ever shown — `command`, `file_path`, `path`, `url`, `description` — because a
+patch's input carries the contents of the file being written, and this panel
+floats above screens that get shared.
+
+### Installing Codex's hooks
+
+`lampboard install-hooks` installs both, wherever both are present. Then one step
+that cannot be automated:
+
+> **Codex will not run a hook it has not been told to trust — and says nothing
+> when it declines.** Open Codex, run `/hooks`, approve the entry. Until you do,
+> the file is correct, the events never fire, and there is no error anywhere to
+> explain it.
+
+That sentence is printed by the installer for the same reason it is here: finding
+it out cost an hour.
 
 ## Hovering a row
 

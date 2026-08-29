@@ -214,6 +214,7 @@ public enum StateReducer {
             )
 
         let updated = base
+            .with(harness: signal.harness)
             .with(status: newStatus, at: now)
             .with(lastMessage: preview(of: signal.lastAssistantMessage))
             .with(failureReason: newStatus == .failed ? (signal.failureReason ?? .unknown) : nil)

@@ -231,6 +231,19 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         return replacing(context: .some(reading))
     }
 
+    /// Copy belonging to the harness the hook says it does.
+    ///
+    /// A row can be born from the filesystem sweep before any hook arrives, and
+    /// the sweep can only guess — it reads one agent's directory and knows
+    /// nothing of the other. The hook is the authority: it is sent by a script
+    /// this app wrote and installed for one agent. Without this the guess stood
+    /// for the life of the row, and a Codex session adopted as a Claude one read
+    /// its rollout with the wrong parser and drew an empty ring forever.
+    public func with(harness newHarness: Harness) -> SessionState {
+        guard newHarness != harness else { return self }
+        return replacing(harness: newHarness)
+    }
+
     /// Copy carrying — or dropping — the question the session is blocked on.
     public func with(pendingAsk ask: PendingAsk?) -> SessionState {
         guard ask != pendingAsk else { return self }

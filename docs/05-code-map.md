@@ -5,7 +5,7 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,052 lines · 64 files   pure logic, zero AppKit
+  LampBoardCore/   8,066 lines · 64 files   pure logic, zero AppKit
   LampBoardApp/    11,632 lines · 64 files   shell: AppKit, network, windows
   LampBoardTests/  7,221 lines · 39 files   570 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
@@ -735,6 +735,7 @@ the realignment is asynchronous.
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
+| `Scripts/make-screenshots.sh` | the README's images, taken from the real app against a temporary home of invented projects, so they never carry anybody's real work and never fall behind the panel; `screencapture -l` reads the window's backing store, which works with the screen locked |
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
