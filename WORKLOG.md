@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **508**, instantaneous |
+| Domain tests | **516**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1060,3 +1060,43 @@ One rule protects the whole thing: **anything unrecognised counts as work**. The
 mistake is not symmetrical. Calling real work a listener paints green over a busy
 session, which is the lie D22 exists to prevent; calling a listener work only
 shows blue a while longer. The list of listeners is one entry long and closed.
+
+## 29 August — the tunnel that outlived the app
+
+A remote row had gone quiet, and the panel had been saying why once a minute for
+two hours: *"port 31000 is taken there (127.0.0.1); retrying in 60 s"*. It was
+pointing at the wrong machine. The port was held by this app's own
+`ssh -N -R 127.0.0.1:31000:127.0.0.1:9877`, pid 64151, **PPID 1** — orphaned,
+reparented to launchd, and still working: `curl` through it from the other
+machine answered 200.
+
+The cause is not the tunnel. `applicationWillTerminate` stops the polling, the
+server, the presence file and the tunnels, and all of it is correct. None of it
+runs when the process is killed with a signal: a Cocoa app takes SIGTERM's
+default disposition and simply stops. And the way this project tells you to
+restart, printed by its own build script, is `pkill -x clawd-light`. So every
+restart left a tunnel holding the port, the next instance was refused, and the
+refusal was reported against a machine that had done nothing wrong.
+
+SIGTERM and SIGINT now go through `NSApp.terminate`, so the cleanup that already
+existed finally runs. Proven with the real command rather than argued: panel
+1964 with child ssh 3279, `pkill -x clawd-light`, and the child died with it —
+zero orphans, and a `tunnel minisforum: off` in the log that had never appeared
+before.
+
+And when the port is taken anyway — a crash, a `kill -9`, a second panel — the
+message now says whose fault it is. `TunnelRefusal` reads the local process
+table and answers *"port 31000 is held by a tunnel this app left behind (pid
+64151) — `kill 64151` and it will reconnect"*. It matches on the forward
+specification rather than on the word `ssh`, so an `ssh -L` the user set up by
+hand is not accused; and it kills nothing by itself, because a second running
+panel is a legitimate owner of that port.
+
+One correction worth recording, because it nearly shipped. The first version of
+that diagnosis hung off ssh's stderr, which is where the message *seems* to come
+from. It is not: the tunnel asks the remote machine what is bound **before**
+spawning ssh, so in the ordinary case ssh is never started and its stderr never
+exists. The fix was written, tested with eight passing cases, and would have
+been correct and unreachable. What caught it was installing the build and
+watching the old sentence appear anyway — the same lesson as the guard that had
+never read a file, arriving by a different door.

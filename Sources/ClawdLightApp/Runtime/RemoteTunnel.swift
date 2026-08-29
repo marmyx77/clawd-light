@@ -104,6 +104,24 @@ final class RemoteTunnel {
 
         Task.detached(priority: .utility) { [weak self] in
             let prepared = RemoteCommand.runPythonForObject(on: host, script: RemoteInstallScripts.prepareTunnel)
+
+            // The far side has just said the port is taken. Ask this Mac who is
+            // holding it — here, off the main thread, before the hop, because
+            // reading the process table is the kind of thing that must never
+            // happen on the thread that draws the panel.
+            //
+            // This is the branch that actually runs. The tunnel asks the remote
+            // machine what is bound *before* spawning ssh, so in the ordinary
+            // case ssh is never started and its stderr never exists: a diagnosis
+            // hung off that stderr would be correct, tested, and never reached.
+            let localDiagnosis: String? = {
+                guard case .success(let answer) = prepared,
+                      let uid = (answer["uid"] as? NSNumber)?.intValue,
+                      let bound = answer["bound"] as? [String], !bound.isEmpty
+                else { return nil }
+                return Self.localHolder(of: AppConfig.remotePort(forUID: uid))
+            }()
+
             await MainActor.run { [weak self] in
                 guard let self, self.wantsToRun, self.generation == expected else { return }
                 switch prepared {
@@ -120,7 +138,11 @@ final class RemoteTunnel {
                             // connection, another Mac's tunnel, or a stranger.
                             // Asking anyway would fail after the fact; wait instead.
                             self.delay = AppConfig.remoteTunnelRetryMax
-                            self.exited(status: -1, stderr: "port \(port) is taken there (\(bound.joined(separator: ", ")))")
+                            self.exited(
+                                status: -1,
+                                stderr: "port \(port) is taken there (\(bound.joined(separator: ", ")))",
+                                culprit: localDiagnosis
+                            )
                         } else {
                             self.spawn(port: port)
                         }
@@ -150,8 +172,15 @@ final class RemoteTunnel {
 
         ssh.terminationHandler = { [weak self] finished in
             let text = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            // Read here, on the background queue this handler already runs on,
+            // and only when the failure is the one it explains: `ps` on the main
+            // thread would be a freeze in the failure path, and the failure path
+            // is where a freeze is least welcome.
+            let culprit = TunnelRefusal.mentionsBindFailure(text)
+                ? Self.localHolder(of: port)
+                : nil
             Task { @MainActor [weak self] in
-                self?.exited(status: finished.terminationStatus, stderr: text)
+                self?.exited(status: finished.terminationStatus, stderr: text, culprit: culprit)
             }
         }
 
@@ -201,7 +230,17 @@ final class RemoteTunnel {
         }
     }
 
-    private func exited(status: Int32, stderr: String) {
+    /// Who on this Mac is holding that port, if anyone. `nil` when the answer
+    /// is not here.
+    nonisolated private static func localHolder(of port: UInt16) -> String? {
+        guard let listing = try? Command.run(
+            "/bin/ps", ["-ax", "-o", "pid=,ppid=,command="],
+            deadline: AppConfig.focusProbeTimeout
+        ).output else { return nil }
+        return TunnelRefusal.diagnosis(port: port, among: TunnelRefusal.parse(listing))
+    }
+
+    private func exited(status: Int32, stderr: String, culprit: String? = nil) {
         process = nil
         guard wantsToRun else { return }
 
@@ -211,7 +250,9 @@ final class RemoteTunnel {
         // once keeps backing off.
         delay = lasted > 60 ? AppConfig.remoteTunnelRetryMin : min(delay * 2, AppConfig.remoteTunnelRetryMax)
 
-        state = .down(reason: Self.reason(status: status, stderr: stderr), retryIn: delay)
+        // The local answer wins when there is one: "the port could not be bound
+        // there" is true and sends you to the wrong machine.
+        state = .down(reason: culprit ?? Self.reason(status: status, stderr: stderr), retryIn: delay)
 
         retryTimer?.invalidate()
         let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in

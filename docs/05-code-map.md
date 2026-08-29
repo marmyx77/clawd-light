@@ -1,13 +1,13 @@
 # Code map
 
-~25,400 lines of Swift across five targets. For each file: what it contains, why
+~25,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,545 lines · 57 files   pure logic, zero AppKit
-  ClawdLightApp/    10,354 lines · 56 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,400 lines · 35 files   508 cases, instantaneous
+  ClawdLightCore/   6,628 lines · 58 files   pure logic, zero AppKit
+  ClawdLightApp/    10,433 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,498 lines · 36 files   516 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -359,6 +359,16 @@ and one that writes two hundred kilobytes.
 
 ## `Workspace/`
 
+### `TunnelRefusal.swift` · 88
+Which machine is actually at fault when a reverse tunnel cannot bind. ssh says
+*"remote port forwarding failed for listen port 31000"*, which reads as an
+accusation against the other machine; measured once, the port was held by this
+app's own tunnel from a previous run, orphaned by the `pkill` the build script
+itself recommends. Reads the local process table, matches on the forward
+specification rather than on the word `ssh`, and names the pid with the command
+that removes it. Nothing is killed automatically: another running panel is a
+legitimate owner of that port.
+
 ### `RemoteHostList.swift` · 45
 The rules for a remote host's name: `isUsable` is an allow-list because the name
 becomes an argument to `ssh` — one starting with a dash would be read as
@@ -448,7 +458,7 @@ there, the hooks are registered — and it names the link that broke.
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
-| `RemoteTunnel.swift` | 242 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason |
+| `RemoteTunnel.swift` | 283 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac |
 | `RemoteFleet.swift` | 191 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
@@ -556,7 +566,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 508 cases
+## `ClawdLightTests/` — 516 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -603,7 +613,7 @@ ship neither XCTest nor a complete swift-testing (D11).
 ### `Instrument.swift` · 133
 Calibrates the assertions before anything is measured with them, and it is the
 reason the number in the heading above means something. Adding one early
-`return` to `expect` made all 508 cases report success while verifying nothing —
+`return` to `expect` made all 516 cases report success while verifying nothing —
 a full green, no warning, no clue. So every assertion is now made to fail on
 purpose and must record it, made to pass and must stay silent, and a failing run
 must still reach a non-zero exit code; nineteen proofs, none of them written in
