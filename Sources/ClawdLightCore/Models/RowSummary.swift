@@ -128,7 +128,7 @@ public struct RowSummary: Sendable, Equatable {
     private static func reason(for context: ContextReading) -> String {
         switch context.confidence {
         case .unknown:
-            return "compacted since — that reading is void"
+            return "the session was compacted since that reading"
         case .exact, .floor:
             guard let window = context.window else {
                 return "\(context.tokens.formatted()) tokens · no window recorded for this model"

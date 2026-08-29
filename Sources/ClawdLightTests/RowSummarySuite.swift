@@ -127,7 +127,7 @@ enum RowSummarySuite {
             )
             let s = summary(row([session(context: gone)]))
             t.expectEqual(value(s, "context"), "—", "the dash")
-            t.expectEqual(detail(s, "context"), "compacted since — that reading is void", "and why")
+            t.expectEqual(detail(s, "context"), "the session was compacted since that reading", "and why")
             t.expectNil(s.fields.first { $0.label == "context" }?.fill, "and no bar to read it by")
         },
 
