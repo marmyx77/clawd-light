@@ -144,49 +144,65 @@ struct PanelRootView: View {
     /// the other two here. Switching to the strip was a menu entry, and switching
     /// back meant opening a menu inside a panel thirty-five points wide.
     private var footer: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            // The door to the legend, and it is a question mark because that is
-            // the shape of the question: the column has six colours and two rings,
-            // and nothing on screen says what they are. Expanded only — the strip
-            // has room for the two glyphs that get you out of it and into the menu.
-            if !flags.compact {
-                FooterButton(
-                    symbol: "questionmark.circle",
-                    help: "What the lights mean — and how many of each there are right now",
-                    action: actions.openLegend
-                )
+        Group {
+            if flags.compact {
+                // Thirty-five points wide: there is no left and no right down
+                // there, only a middle. The legend stays out — two glyphs is
+                // what the strip can hold without them touching.
+                HStack(spacing: 3) {
+                    sizeButton
+                    menuButton
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                HStack(spacing: 2) {
+                    // Under the lights, in their column: it is the control that
+                    // decides whether the lights are all there is.
+                    sizeButton
+                    Spacer(minLength: 0)
+                    legendButton
+                    menuButton
+                }
+                // The row's own inset, so the gear lands in the drag handles'
+                // column and the width control in the lights'.
+                .padding(.horizontal, Layout.panelPadding + 6)
             }
-
-            // Compact mode used to be reachable only from the menu, and going back
-            // meant finding a menu inside a strip thirty-five points wide. A door
-            // you can see, in both directions.
-            FooterButton(
-                symbol: flags.compact
-                    ? "arrow.up.left.and.arrow.down.right"
-                    : "arrow.down.right.and.arrow.up.left",
-                help: flags.compact
-                    ? "Widen the panel — names, times, context and the drag handles"
-                    : "Traffic lights only — a strip thirty-five points wide",
-                action: actions.toggleCompact
-            )
-
-            FooterButton(
-                symbol: "gearshape",
-                help: "Options and Settings — the same menu as a right-click on the panel's edge",
-                action: openMenuUnderPointer
-            )
-
-            // Centred in compact mode, where there is no "right"; otherwise under
-            // the drag handles, fourteen points from the edge like them.
-            if flags.compact { Spacer(minLength: 0) }
         }
-        .padding(.horizontal, flags.compact ? 0 : Layout.panelPadding + 6)
-        // Three points more below than above: asked for, and right — the glyphs
-        // sit nearer the rows than the edge.
-        .padding(.bottom, 3)
+        .padding(.bottom, Layout.footerLift)
         .frame(height: Layout.footerHeight)
+    }
+
+    private var sizeButton: some View {
+        FooterButton(
+            symbol: flags.compact
+                ? "arrow.up.left.and.arrow.down.right"
+                : "arrow.down.right.and.arrow.up.left",
+            help: flags.compact
+                ? "Widen the panel — names, times, context and the drag handles"
+                : "Traffic lights only — a strip thirty-five points wide",
+            // The width of a light, so the glyph's centre is the lights' centre.
+            width: Layout.dotSize,
+            action: actions.toggleCompact
+        )
+    }
+
+    /// The door to the legend, and it is a question mark because that is the
+    /// shape of the question: the column has six colours and two rings, and
+    /// nothing else on screen says what they are.
+    private var legendButton: some View {
+        FooterButton(
+            symbol: "questionmark.circle",
+            help: "What the lights mean — and how many of each there are right now",
+            action: actions.openLegend
+        )
+    }
+
+    private var menuButton: some View {
+        FooterButton(
+            symbol: "gearshape",
+            help: "Options and Settings — the same menu as a right-click on the panel's edge",
+            action: openMenuUnderPointer
+        )
     }
 
     /// Opens the panel's context menu where the pointer is.
@@ -306,12 +322,18 @@ struct PanelRootView: View {
     }
 }
 
-/// One glyph in the footer: dim at rest, brighter under the pointer, and the
-/// same size as the rows' drag handles so the strip reads as one row of
-/// affordances rather than a toolbar.
+/// One glyph in the footer.
+///
+/// It carries the timestamp's colour rather than a fainter one of its own. The
+/// first version was nine points at 0.32 opacity, which read as a watermark:
+/// reported from use, in the words "troppo piccole e veramente poco visibili".
+/// These are controls, and the panel's own text is the right weight for them.
 private struct FooterButton: View {
     let symbol: String
     let help: String
+    /// Fourteen by default, the drag handles' column. The width control passes
+    /// the width of a light instead, so it centres in the lights' column.
+    var width: CGFloat = 14
     let action: () -> Void
 
     @State private var hovering = false
@@ -319,9 +341,12 @@ private struct FooterButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(Color.primary.opacity(hovering ? 0.65 : 0.32))
-                .frame(width: 14, height: Layout.footerHeight)
+                .font(.system(size: Layout.footerGlyph, weight: .regular))
+                .foregroundStyle(hovering ? Color.primary.opacity(0.95) : StatusPalette.timeColor)
+                // The box is what the strip actually has, minus the gap above
+                // it. Asking for the full height inside a shorter space is how a
+                // glyph ends up cut at the bottom.
+                .frame(width: width, height: Layout.footerHeight - Layout.footerLift)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

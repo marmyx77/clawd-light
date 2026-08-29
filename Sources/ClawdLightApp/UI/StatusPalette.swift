@@ -137,10 +137,23 @@ enum Layout {
         compact ? compactWidth : expandedWidth
     }
 
-    /// The strip under the rows that holds the gear — the visible door to the
-    /// menu a right-click on the margins also opens. Small on purpose: it is a
-    /// hint that the menu exists, not a toolbar.
-    static let footerHeight: CGFloat = 19
+    /// The strip under the rows: the width control on the left, under the lights,
+    /// and the legend and the menu on the right, under the drag handles.
+    ///
+    /// Nineteen points for most of this project's life, with glyphs at nine —
+    /// which was a hint that the controls existed rather than controls. At twelve
+    /// points a glyph needs about fifteen of line, and three of those points are
+    /// spent on the gap between the strip and the rows, so nineteen would have
+    /// clipped the descender of the gear. It has happened once already, when the
+    /// gear was a SwiftUI `Menu` and came out low and cut.
+    static let footerHeight: CGFloat = 22
+    /// The glyphs down there. Same size as the row's name, and the same colour:
+    /// they are part of the panel's text, not a toolbar bolted under it.
+    static let footerGlyph: CGFloat = 12
+    /// The gap between the strip and the rows above it. Taken out of the strip's
+    /// own height, so a button's box is what is left — never more, which is what
+    /// pushes a glyph past its edge.
+    static let footerLift: CGFloat = 3
 
     /// The line that appears only when a click could not raise a window.
     ///

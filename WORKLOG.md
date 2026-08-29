@@ -1351,3 +1351,30 @@ showing no figure, and the folder glyph arriving between the timestamp and the
 handle. The leak guard also earned its keep — the first draft of this work put
 a real remote home directory into a source comment, and it was caught before the
 commit.
+
+## 29 August — the strip under the rows becomes part of the grid
+
+The three glyphs down there were nine points at 0.32 opacity. Reported from use
+in five words: *troppo piccole e veramente poco visibili*. That is what a control
+looks like when it is drawn as a watermark — and two of the three had been added
+only hours earlier, so nobody had ever had to find them before.
+
+Twelve points now, and in the timestamp's colour rather than a fainter one of
+their own: they are part of the panel's text, not a toolbar bolted underneath it.
+The strip grew from 19 points to 22 to hold them, and a button's box is the strip
+minus the gap above it — asking for the full height inside a shorter space is
+exactly how the gear came out low and cut the first time it was a SwiftUI `Menu`.
+
+The arrangement is the part worth keeping. The width control sits on the **left**,
+centred in the lights' own column — it is the control that decides whether the
+lights are all there is. The legend and the menu sit on the **right**, in the drag
+handles' column. Each glyph lands in the column of the thing it acts on, which is
+why the strip now reads as the bottom of the grid instead of a bar underneath it.
+Measured: the lights' centre is 20.5 points from the panel's edge and the handles'
+is 219, and both glyphs are drawn there.
+
+In the strip there is no left and no right, only a middle: two glyphs, centred,
+and the legend stays out — three would touch at thirty-five points wide.
+
+Verified on screen in both modes: nothing clipped, the panel 240 × 192 expanded
+and 35 × 192 as a strip.

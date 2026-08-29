@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   ClawdLightCore/   7,292 lines · 61 files   pure logic, zero AppKit
-  ClawdLightApp/    11,420 lines · 63 files   shell: AppKit, network, windows
+  ClawdLightApp/    11,458 lines · 63 files   shell: AppKit, network, windows
   ClawdLightTests/  6,906 lines · 38 files   547 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -587,7 +587,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 159 | colors and measurements |
+| `StatusPalette.swift` | 172 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |

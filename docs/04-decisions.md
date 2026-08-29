@@ -1312,6 +1312,16 @@ what makes it worth opening twice. The counts come from
 `PanelController.currentRendering`, so a census and a column cannot disagree:
 same renderer, same options, hidden projects left out of both.
 
+**Where the three glyphs sit.** The width control is on the left, centred in the
+lights' own column; the legend and the menu are on the right, in the drag
+handles'. Neither is a toolbar arrangement — each one lands in the column of the
+thing it acts on, so the strip reads as the bottom of the grid rather than as a
+bar bolted under it. At twelve points and in the timestamp's colour, because the
+first version — nine points at 0.32 opacity — was reported as *"troppo piccole e
+veramente poco visibili"*, which is what a control looks like when it is drawn as
+a watermark. The strip grew from 19 points to 22 to hold them: a glyph asking for
+more height than the space it sits in is how the gear came out cut once already.
+
 **Discarded:** a popover off the footer. The panel never takes focus, and a
 popover hung off a non-activating window cannot be scrolled, cannot be left open
 beside the column, and cannot be found again once it has closed itself.
