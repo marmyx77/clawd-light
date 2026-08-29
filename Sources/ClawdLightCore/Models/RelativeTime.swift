@@ -11,9 +11,22 @@ public enum RelativeTime {
     /// Label to show in the row.
     ///
     /// - today → `14:49`
-    /// - yesterday → `yesterday`
-    /// - 2 to 6 days → `2d ago`
+    /// - yesterday → `1d`
+    /// - 2 to 6 days → `2d`
     /// - a week or more → `22/07`
+    ///
+    /// WHY IT IS THIS TERSE
+    /// This field and the project's name share one line of 240 points, and the
+    /// timestamp has `layoutPriority(1)`: every point it takes comes off the name,
+    /// on that row alone. Measured at 11 points: `yesterday` is 49.83 points and
+    /// `1d` is 13.72 — thirty-six points of name, on precisely the rows that had
+    /// nothing to say for a day and could least afford to be called `AWorld…nance`.
+    ///
+    /// The words moved rather than disappearing: `detailedLabel` says "last
+    /// activity yesterday at 22:30" in the tooltip. That trade only became
+    /// available today — until the panel drew its own tooltips (D32) the sentence
+    /// existed and was never once displayed, so the row was the only surface there
+    /// was and had to carry the whole word.
     public static func label(
         for date: Date,
         now: Date,
@@ -30,10 +43,8 @@ public enum RelativeTime {
         switch days {
         case ..<1:
             return time(date, calendar: calendar)
-        case 1:
-            return "yesterday"
-        case 2...6:
-            return "\(days)d ago"
+        case 1...6:
+            return "\(days)d"
         default:
             return shortDate(date, calendar: calendar)
         }
@@ -48,6 +59,11 @@ public enum RelativeTime {
         let days = calendarDaysBetween(date, and: now, calendar: calendar)
         guard days >= 1 else {
             return "last activity at \(time(date, calendar: calendar))"
+        }
+        // The one the row cannot say. `1d` is a count of days; "yesterday" is the
+        // day, and it is the word somebody actually thinks in.
+        if days == 1 {
+            return "last activity yesterday at \(time(date, calendar: calendar))"
         }
         return "last activity \(shortDate(date, calendar: calendar)) at \(time(date, calendar: calendar))"
     }

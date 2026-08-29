@@ -182,7 +182,7 @@ struct TrafficLightColumn: View {
 
             if !compact {
                 Text(filteredOut > 0 ? "none waiting" : "waiting for sessions")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(Color.primary.opacity(0.72))
                     .lineLimit(1)
             }

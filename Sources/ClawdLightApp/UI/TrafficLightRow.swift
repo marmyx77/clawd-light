@@ -84,7 +84,12 @@ struct TrafficLightRow: View {
                 }
 
                 Text(row.displayLabel)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    // Twelve points, not eleven. The point came out of the
+                    // timestamp: `yesterday` was 49.83 points of a field this one
+                    // shares, `1d` is 13.04, and the tooltip says the word. Even
+                    // on the rows that kept the widest label — `14:56`, `22/07` —
+                    // the name loses two points and gains a size.
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -104,7 +109,7 @@ struct TrafficLightRow: View {
                 Spacer(minLength: 4)
 
                 Text(timeLabel)
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
                     // The hierarchy against the name comes from the font weight,
                     // not from fading the color: on a dark vibrant surface
                     // `.tertiary` becomes illegible, and a timestamp you can't

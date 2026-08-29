@@ -36,14 +36,17 @@ enum RelativeTimeSuite {
             t.expectEqual(label(date(29, 16, 10), now: date(29, 16, 10)), "16:10")
         },
 
-        TestCase("The previous day is “yesterday”") { t in
-            t.expectEqual(label(date(28, 22, 30), now: date(29, 10, 0)), "yesterday")
+        // The row says "1d" and not "yesterday" for eighteen points of width: the
+        // word cost 49.83 points against 13.72, on the column's narrowest field,
+        // and the tooltip below says the whole thing in words.
+        TestCase("The previous day is a day, counted") { t in
+            t.expectEqual(label(date(28, 22, 30), now: date(29, 10, 0)), "1d")
         },
 
         // The case an hours-based difference would get wrong: forty minutes pass
         // between the two moments, but the day has changed.
         TestCase("“Yesterday” follows the calendar, not the elapsed hours") { t in
-            t.expectEqual(label(date(28, 23, 50), now: date(29, 0, 30)), "yesterday")
+            t.expectEqual(label(date(28, 23, 50), now: date(29, 0, 30)), "1d")
         },
 
         // And the mirror image: almost 24 hours, but it's still today.
@@ -52,8 +55,8 @@ enum RelativeTimeSuite {
         },
 
         TestCase("From two to six days it counts days") { t in
-            t.expectEqual(label(date(27, 12, 0), now: date(29, 10, 0)), "2d ago")
-            t.expectEqual(label(date(23, 12, 0), now: date(29, 10, 0)), "6d ago")
+            t.expectEqual(label(date(27, 12, 0), now: date(29, 10, 0)), "2d")
+            t.expectEqual(label(date(23, 12, 0), now: date(29, 10, 0)), "6d")
         },
 
         TestCase("From a week onwards it shows the date") { t in
@@ -81,6 +84,20 @@ enum RelativeTimeSuite {
                     for: date(27, 9, 5), now: date(29, 16, 0), calendar: calendar
                 ),
                 "last activity 27/07 at 09:05"
+            )
+        },
+
+        // The pair is the point: the row abbreviates only because the tooltip
+        // spells it out. Before the panel drew its own tooltips (D32) this
+        // sentence was written and never displayed, and the row had to carry the
+        // whole word on its own.
+        TestCase("What the row abbreviates, the tooltip says in words") { t in
+            let moment = date(28, 22, 30), now = date(29, 10, 0)
+            t.expectEqual(label(moment, now: now), "1d", "the row is two characters")
+            t.expectEqual(
+                RelativeTime.detailedLabel(for: moment, now: now, calendar: calendar),
+                "last activity yesterday at 22:30",
+                "and the tooltip is the sentence"
             )
         },
     ])

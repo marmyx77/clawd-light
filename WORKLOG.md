@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **531**, instantaneous |
+| Domain tests | **532**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1262,3 +1262,37 @@ Verified: 531 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
 caught, 10 contract checks; and, for the parts no suite can reach, the on-screen
 window list and two captures — the tooltip at 357 × 140 where it belongs, and six
 rings whose arcs say 33%, 11%, 63%, none, 85% and 63%.
+
+## 29 August — a point of type, bought from the timestamp
+
+The proposal came from use and it was the right trade: shorten the time label and
+spend what it frees on the size of the type.
+
+`yesterday` measured **49.83 points** at eleven, `2d ago` 35.33, against `1d`'s
+13.04 at twelve — and that field shares one line of 240 points with the project's
+name, with `layoutPriority(1)` on the timestamp, so every one of those points came
+off the name of precisely the row that had been silent for a day. The vocabulary
+is now `14:49` today, `1d` to `6d`, `22/07` from a week out; `42m` and `1h25` on
+the live states, unchanged.
+
+The name and the timestamp went from eleven points to twelve. The arithmetic, all
+of it measured rather than estimated:
+
+| label | name before (11 pt) | name now (12 pt) |
+|---|---|---|
+| `14:56` | 102.87 | 100.48 |
+| `yesterday` → `1d` | 83.17 | **119.96** |
+| `2d ago` → `2d` | 97.67 | **119.96** |
+| `22/07` | 101.74 | 99.25 |
+
+Two points lost on the rows that were already fine, thirty-seven gained on the
+ones that were not. On screen: `AWorld Governance` and `aworld-os-platform` now
+fit whole, where an hour ago they were `AWorld…vernance` and `aworl…latform`.
+
+This trade only existed because of the morning's other work. The row can afford to
+say `1d` because the tooltip says "last activity yesterday at 22:30" — and until
+today that sentence was written, tested, and never once shown on a screen.
+
+Verified: 532 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
+caught; and a capture of the panel, because a width argument settled by arithmetic
+alone is how the last one went wrong.

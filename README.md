@@ -49,11 +49,14 @@ the same:
 |---|---|---|
 | `working`, `waiting` | `42m`, `7h` | On a working or waiting session what counts is *how long*: `7h` on a yellow reads in half a second, `08:14` has to be computed |
 | `failed` | `rate limit`, `auth`, `billing` | What counts is *why* it died, not when |
-| the others | `14:49`, `yesterday`, `2d ago`, `22/07` | The time of the last activity |
+| the others | `14:49`, `1d`, `3d`, `22/07` | The time of the last activity |
 
 The time thresholds reason in calendar days: at 00:30 an event from 23:50 is
-"yesterday", not "40 minutes ago". The full timestamp stays in the tooltip in
-every case. The click does not update that timestamp: it records Claude's
+yesterday — `1d` — and not "40 minutes ago". The labels are terse because this
+field and the project's name share one line of 240 points and the timestamp has
+priority: `yesterday` measured 49.83 points against `1d`'s 13.04, all of it taken
+off the name of the row that had least to say. The full sentence — "last activity
+yesterday at 22:30" — is in the tooltip, in every case. The click does not update that timestamp: it records Claude's
 activity, not yours.
 
 With grouping off, the sessions of one project share its place: the most urgent
@@ -899,7 +902,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 531 domain tests, instantaneous
+swift run ClawdLightTests              # 532 domain tests, instantaneous
 swift run ClawdLightE2E                # 82 end-to-end tests, ~1 minute
 swift run ClawdLightTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
