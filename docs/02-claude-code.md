@@ -36,7 +36,7 @@ In `~/.claude/settings.json`, under the `hooks` key, one entry per event:
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/you/.clawd-light/hook.sh",
+            "command": "/Users/you/.lampboard/hook.sh",
             "timeout": 3
           }
         ]
@@ -47,7 +47,7 @@ In `~/.claude/settings.json`, under the `hooks` key, one entry per event:
 ```
 
 The intermediate level (the array of "matcher groups") exists because some events
-support a `matcher` filter. clawd-light doesn't use it: it registers a group with
+support a `matcher` filter. lampboard doesn't use it: it registers a group with
 no matcher, which applies to everything.
 
 **Mind the lifecycle.** Claude Code sessions that are **already open** do not
@@ -55,7 +55,7 @@ re-read `settings.json`: they pick up the new configuration only the next time
 they start. After an `install-hooks`, the sessions in progress carry on with the
 old one — and if you have just added two events, those will never arrive for them.
 
-### The nine events clawd-light registers
+### The nine events lampboard registers
 
 Claude Code exposes around thirty. These are the ones that move a traffic light:
 
@@ -87,7 +87,7 @@ One optional one, behind `--with-tool-events`:
 | `PreToolUse` | **one more process per tool call**, and it cannot release a pending question |
 
 A second optional registration, behind the chat window's *answer from the
-panel* switch: a separate `Stop` entry pointing at `~/.clawd-light/rewake.sh`
+panel* switch: a separate `Stop` entry pointing at `~/.lampboard/rewake.sh`
 with `asyncRewake: true` and deliberately **no** `timeout` — it waits, for
 minutes if need be, for a message left in the mailbox and hands it to the
 session as its next turn (Contracts, `rewake.mechanism`). `install-hooks` adds
@@ -267,7 +267,7 @@ see and fix — instead of hiding one, which stays silent.
 ### `CLAUDE_CLIENT_PRESENCE_FILE`
 
 An environment variable read by Claude Code: if the file it points at **exists**,
-the push notifications to your phone are skipped. clawd-light creates it while you are at the Mac — screen unlocked and something
+the push notifications to your phone are skipped. lampboard creates it while you are at the Mac — screen unlocked and something
 touched in the last two minutes, re-checked every twenty seconds — and deletes
 it when you lock the screen, go idle, or quit the app.
 
@@ -350,7 +350,7 @@ Observed format:
 
 ```
 <context> — <folder> — <profile>
-Build floating Mac traff… — clawd-light — Claude Minimal
+Build floating Mac traff… — lampboard — Claude Minimal
 tsconfig.base.json — os-platform — Claude Minimal
 ```
 
@@ -364,8 +364,8 @@ The default separator is the em dash. `WindowTitleMatcher` accepts six of them
 | **10** | the name appears as a whole word in the title |
 | `nil` | no match |
 
-The word boundary serves a real case: without it, `clawd-light` would capture the
-window of `clawd-light-old`.
+The word boundary serves a real case: without it, `lampboard` would capture the
+window of `lampboard-old`.
 
 ---
 

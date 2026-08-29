@@ -7,7 +7,7 @@ finding out **which one is waiting for you** means going through all of them. Th
 cost is not the time spent looking: it's that you stop looking, and the answers
 just sit there.
 
-clawd-light answers one question — *which window needs me?* — and supports one
+lampboard answers one question — *which window needs me?* — and supports one
 gesture: clicking on it and ending up there.
 
 Everything else in the project follows from that. When a feature doesn't help
@@ -21,7 +21,7 @@ answer that question or make that gesture reliable, it doesn't get in.
  └──────────────────────────┬───────────────────────────────────┘
                             │ runs the registered hook
                             ▼
- ┌─ ~/.clawd-light/hook.sh ─────────────────────────────────────┐
+ ┌─ ~/.lampboard/hook.sh ─────────────────────────────────────┐
  │  reads the JSON on stdin, adds CLAUDE_CODE_ENTRYPOINT        │
  │  as a header, POSTs to localhost, **always exits 0**         │
  └──────────────────────────┬───────────────────────────────────┘
@@ -95,7 +95,7 @@ Taking it literally would empty the column at the first I/O error.
 
 ## The four layers
 
-### `ClawdLightCore` — pure domain
+### `LampBoardCore` — pure domain
 
 No `import AppKit`, no network, no clock: `now` is always a parameter.
 Filesystem access is confined to `Mailbox`, which creates and restricts the
@@ -107,7 +107,7 @@ It is pure not for elegance but because it is the only part that can be verified
 in milliseconds and without opening any windows. Every time a decision slipped
 out of here, it became invisible to the tests.
 
-### `ClawdLightApp` — the shell
+### `LampBoardApp` — the shell
 
 AppKit, SwiftUI, Network.framework, AppleScript, `UserNotifications`.
 It does I/O and draws. It **does not decide**: when logic turns up in here, it
@@ -116,11 +116,11 @@ belongs in Core.
 The practical rule: if a function contains an `if` answering a domain question
 ("does this session deserve a traffic light?"), it is in the wrong place.
 
-### `ClawdLightTests` — domain
+### `LampBoardTests` — domain
 
 551 cases, instantaneous. They verify Core.
 
-### `ClawdLightE2E` — the real chain
+### `LampBoardE2E` — the real chain
 
 82 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
@@ -245,7 +245,7 @@ A session on another machine is heard the same way a local one is: its hooks pos
 reverse ssh tunnel this app opens and keeps open (`RemoteTunnel`) back to its
 own 9877 — and the script installed there
 (`RemoteHookInstaller`, over ssh, with the same merge as the local installer) adds
-an `X-Clawd-Host` header. A signal with a host skips the editor-window lookup: no
+an `X-LampBoard-Host` header. A signal with a host skips the editor-window lookup: no
 lock on this Mac claims `/home/…`, so the session's own folder is its workspace,
 labelled `folder @host`.
 

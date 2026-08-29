@@ -1,4 +1,4 @@
-# clawd-light
+# lampboard
 
 A floating column of traffic lights that tells you, at a glance, what state your
 Claude Code sessions are in — in VS Code, in a terminal, on another machine. One
@@ -182,7 +182,7 @@ a feature you switched on and nothing ever arrived.
 
 ### Keyboard shortcuts
 
-clawd-light does **not** register a global combination, and that is a choice: on
+lampboard does **not** register a global combination, and that is a choice: on
 macOS 26 the only mechanism that requires no extra permissions
 (`RegisterEventHotKey`) registers without errors and **never delivers** the
 events, and the app has no way of noticing. A switch that can lie is worse than a
@@ -191,18 +191,18 @@ switch that isn't there.
 The actions, though, do exist:
 
 ```bash
-clawd-light next       # raise the next waiting session
-clawd-light open 3     # raise whatever holds slot 3
-clawd-light new 3      # open a new conversation in slot 3's project
-clawd-light chat 3     # open the extended view on slot 3
-clawd-light open       # list what the slots address
+lampboard next       # raise the next waiting session
+lampboard open 3     # raise whatever holds slot 3
+lampboard new 3      # open a new conversation in slot 3's project
+lampboard chat 3     # open the extended view on slot 3
+lampboard open       # list what the slots address
 ```
 
 To bind one to a key, using the macOS **Shortcuts** app:
 
 1. Shortcuts → **new shortcut** → the "Run Shell Script" action
 2. paste the full path:
-   `<your-checkout>/dist/ClawdLight.app/Contents/MacOS/clawd-light open 1`
+   `<your-checkout>/dist/LampBoard.app/Contents/MacOS/lampboard open 1`
 3. **Details** panel on the right → "Add Keyboard Shortcut"
 
 It is better than having it inside the app on three counts: you pick the
@@ -220,7 +220,7 @@ row never slides under the pointer between two clicks.
 
 #### Slots — one key, always the same project
 
-The first nine rows are slots 1 to 9, and `clawd-light open 3` raises whatever
+The first nine rows are slots 1 to 9, and `lampboard open 3` raises whatever
 sits third. The number is not printed on the row — the cell it used to occupy
 now carries the context ring — but the tooltip says it, along with the command
 that opens it. Because the column keeps your
@@ -228,7 +228,7 @@ order, the third row is the same project tomorrow — and a shortcut you press
 without looking has to be right every time. A project with no live session keeps
 its place; its slot is simply empty until it has one.
 
-`clawd-light open <n>` answers in three distinct ways, because a key pressed
+`lampboard open <n>` answers in three distinct ways, because a key pressed
 blind has to tell them apart:
 
 | | |
@@ -256,7 +256,7 @@ Three ways in: the panel menu → **Open the conversations…**, **⌘+click** o
 (which lands on that conversation), or:
 
 ```bash
-clawd-light chat 3
+lampboard chat 3
 ```
 
 The list shows, for each project, its light, its slot, and **the last thing
@@ -280,7 +280,7 @@ With it on, there is a composer, and it writes into the session you are looking 
 one, running in VS Code, that you have been talking to all along.
 
 ```
-you type  →  a file in ~/.clawd-light/inbox
+you type  →  a file in ~/.lampboard/inbox
           →  a second `Stop` hook, spawned detached, picks it up
           →  its stdout is the message, its exit code 2 is the send
           →  a full turn starts: reasoning, tools, answer
@@ -336,7 +336,7 @@ result is not one notification too many but a notification **lost**. To make it
 work:
 
 ```bash
-export CLAUDE_CLIENT_PRESENCE_FILE="$HOME/.clawd-light/presence"
+export CLAUDE_CLIENT_PRESENCE_FILE="$HOME/.lampboard/presence"
 ```
 
 ## Sessions on other machines
@@ -349,16 +349,16 @@ gave rows that never changed colour and that a click could not open.
 
 Now the machine's hooks **reach this Mac**. Right-click the panel → **Settings…**,
 add the machine under the name ssh knows it by, and press **Install hooks**:
-clawd-light writes the hook script and registers it in that machine's
+lampboard writes the hook script and registers it in that machine's
 `~/.claude/settings.json` (dated backup, atomic write, refused if the file changed
 in between), and keeps a reverse ssh tunnel open so that a loopback port *of your
 own over there* — derived from your uid, and checked after every connect to be
 bound to loopback and nothing else — is this app. From a terminal:
 
 ```bash
-clawd-light remote add node         # a name ssh understands; key login only
-clawd-light remote install node     # two ssh round trips, nothing else installed
-clawd-light remote check node       # python, curl, hooks, and whether the tunnel answers
+lampboard remote add node         # a name ssh understands; key login only
+lampboard remote install node     # two ssh round trips, nothing else installed
+lampboard remote check node       # python, curl, hooks, and whether the tunnel answers
 ```
 
 A remote session gets its row when it **speaks** — its first hook arrives through
@@ -370,13 +370,13 @@ where the session is. The chat window cannot open a remote transcript.
 The machine needs ssh key login (no password prompt is possible), `python3` and
 `curl`. The tunnel is restarted with backoff when the machine sleeps or the VPN
 drops; the Settings window shows its state and the outcome of every operation.
-Hosts were read from `~/.clawd-light/remotes` before; that file is imported once
+Hosts were read from `~/.lampboard/remotes` before; that file is imported once
 and no longer consulted. See
 [D24](docs/04-decisions.md#d24--other-machines-are-heard-through-a-tunnel-we-open).
 
 ## Sessions in a terminal
 
-Off by default. `Show terminal sessions` (panel menu, Settings, or `clawd-light
+Off by default. `Show terminal sessions` (panel menu, Settings, or `lampboard
 terminal on`) gives a row to every `claude` started by hand in a folder no editor
 window has open — Terminal, iTerm2, Ghostty, a tmux or zellij pane. The row is
 named by its conversation title, carries a small terminal glyph, and is anchored
@@ -405,7 +405,7 @@ its click raises the VS Code window. And a `claude` started from a shell that a
 Claude Code session opened (a nested one) writes no session file, so it gets no
 row.
 
-Rows can be **renamed** (right-click → Rename…, or `clawd-light rename <folder>
+Rows can be **renamed** (right-click → Rename…, or `lampboard rename <folder>
 [name]`): the name is what the panel shows, by folder, and nothing else changes —
 the window is still found by its title, `/sessions` still says the folder. Leave
 the name empty to go back to the original.
@@ -419,23 +419,25 @@ required.
 
 ```bash
 ./Scripts/build-app.sh
-open dist/ClawdLight.app
+open dist/LampBoard.app
 ```
 
 The icon is drawn by [`Scripts/make-icon.py`](Scripts/make-icon.py) and committed
-as `Resources/ClawdLight.icns`, so the build needs no Python. Three claw marks —
-the name carries *claw*, the product is a traffic light, and the marks are its
-three states. It is generated rather than drawn because the rule that keeps it
-readable at 16 px is arithmetic: the gap between two marks is never smaller than
-a mark is wide. The sizes below 32 px are not the large one shrunk — they carry
-thicker strokes and no shadow, because at that scale ornament only mutes the
-colour, and colour is all that is left doing the work.
+as `Resources/LampBoard.icns`, so the build needs no Python. Three pilot lamps in
+a row on a dark panel — the object the name comes from, and the product itself:
+one row of lights you read at a glance, never a control you operate. It is
+generated rather than drawn because the rule that keeps it readable at 16 px is
+arithmetic, and here it is an `assert` rather than a habit: the space between two
+lamps is never narrower than a bezel is thick, below which the two glows meet and
+three lit lamps read as one smear of colour. The sizes below 128 px are not the
+large one shrunk — they get bare discs, drawn larger, because a bezel one pixel
+wide turns the lamp the colour of the board and the highlight eats its centre.
 
 On first launch the app offers to register the hooks in
 `~/.claude/settings.json`. You can also do it from a terminal:
 
 ```bash
-dist/ClawdLight.app/Contents/MacOS/clawd-light install-hooks
+dist/LampBoard.app/Contents/MacOS/lampboard install-hooks
 ```
 
 Existing hooks are preserved and a dated backup copy of the file is created.
@@ -451,7 +453,7 @@ what the app does is a permission you have no reason to grant.
 
 | What | What it is used for | If you refuse |
 |---|---|---|
-| **Nine lines in `~/.claude/settings.json`** | Claude Code tells the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks from Claude Code* in the menu, or `clawd-light uninstall-hooks`. |
+| **Nine lines in `~/.claude/settings.json`** | Claude Code tells the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks from Claude Code* in the menu, or `lampboard uninstall-hooks`. |
 | **Accessibility** | macOS calls it "controlling your computer". It is used for one thing: bringing the editor window of the row you clicked to the front. | The click still activates the editor, but cannot choose which window — you land wherever you were last. |
 | **Automation** | Reading window titles, to tell your projects apart. One entry per application it has to ask: System Events for editors, plus a terminal application for its own tabs. | Same as above: the application comes forward, the right window does not. |
 | **Notifications** *(optional)* | Alerting you when a session blocks while you are elsewhere. | The panel still shows it; nothing pops up. |
@@ -459,7 +461,7 @@ what the app does is a permission you have no reason to grant.
 
 Everything stays on this Mac. The panel's server listens on `127.0.0.1` and is
 never exposed; nothing is sent anywhere. Every switch above can be turned off
-again in the same place, and clawd-light keeps working with less precision
+again in the same place, and lampboard keeps working with less precision
 rather than failing.
 
 When a click cannot raise a window, the panel says so **on itself** — a line
@@ -473,9 +475,9 @@ On the first click on a traffic light, macOS asks for **two distinct
 authorizations**, granted in two different panes:
 
 - **Privacy & Security › Accessibility** — to raise the exact VS Code window
-- **Privacy & Security › Automation › clawd-light › System Events** — to read the
+- **Privacy & Security › Automation › lampboard › System Events** — to read the
   window titles
-- **Privacy & Security › Automation › clawd-light › Terminal / iTerm2 / Ghostty**
+- **Privacy & Security › Automation › lampboard › Terminal / iTerm2 / Ghostty**
   — one entry per terminal application, asked at the first click on a row of
   a session running there (only with *Show terminal sessions* on). WezTerm and
   kitty are driven through their own CLIs and ask for nothing.
@@ -483,7 +485,7 @@ authorizations**, granted in two different panes:
 Both of the first two are needed. Without them the click falls back to `open -b`: VS Code still comes to the
 front, but the right window is not raised.
 
-> **If clawd-light is already in the list with the switch on and the click still
+> **If lampboard is already in the list with the switch on and the click still
 > doesn't work**, macOS is remembering an older copy. These authorizations are
 > keyed on the signature, not the name, so a build from source and a release
 > leave separate records — measured on one machine: four of them for the same
@@ -491,9 +493,9 @@ front, but the right window is not raised.
 > app held nothing. Removing the visible row is not enough:
 >
 > ```bash
-> tccutil reset Accessibility com.clawdlight.app
-> tccutil reset AppleEvents com.clawdlight.app
-> pkill -x clawd-light && open -a ClawdLight
+> tccutil reset Accessibility com.lampboard.app
+> tccutil reset AppleEvents com.lampboard.app
+> pkill -x lampboard && open -a LampBoard
 > ```
 >
 > The relaunch is not optional: `tccutil` clears the records, but macOS keeps the
@@ -506,7 +508,7 @@ front, but the right window is not raised.
 > and the signature changes on every build: macOS considers it a different app and
 > the previous authorization no longer counts, while still showing the switch as
 > on. If the app is already listed but the permission doesn't work, select it,
-> press "−", and add it back from `dist/ClawdLight.app`.
+> press "−", and add it back from `dist/LampBoard.app`.
 
 **To never do that again**, once and for all:
 
@@ -522,12 +524,12 @@ bottom of the script there is how to undo everything. It is also the prerequisit
 for launch at login, which with an ad-hoc signature stays **blocked** — it would
 leave an orphaned record in Settings on every build.
 
-`clawd-light status` shows the state of the two permissions separately.
+`lampboard status` shows the state of the two permissions separately.
 
 ### Giving it to somebody else
 
 ```bash
-./Scripts/release.sh            # dist/ClawdLight-<version>.dmg
+./Scripts/release.sh            # dist/LampBoard-<version>.dmg
 ```
 
 The version comes from the git tag, so a disk image cannot carry a number no
@@ -545,16 +547,16 @@ the **Developer ID Application** certificate, and a notarization profile in the
 keychain, built from an app-specific password made at appleid.apple.com.
 
 ```bash
-xcrun notarytool store-credentials clawd-light \
+xcrun notarytool store-credentials lampboard \
     --apple-id you@example.com --team-id TEAMID --password <app-specific>
 
-export CLAWD_LIGHT_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'
-export CLAWD_LIGHT_NOTARY_PROFILE='clawd-light'
+export LAMPBOARD_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'
+export LAMPBOARD_NOTARY_PROFILE='lampboard'
 ```
 
 Neither belongs in this repository, so the script reads both from the
 environment; with a single Developer ID in the keychain it finds it on its own.
-The bundle it signs is a **copy**, never `dist/ClawdLight.app`: macOS grants
+The bundle it signs is a **copy**, never `dist/LampBoard.app`: macOS grants
 Accessibility and Automation to a signing identity, so signing the daily app
 with a different one would silently revoke the permissions of the panel you are
 running while you release.
@@ -566,7 +568,7 @@ back, and nothing else.
 > If the click stops working, the first thing to check isn't the permission: it is
 > **how long the app has been running**. A new bundle does not replace the process
 > already running, and a build that is an hour old is indistinguishable from a
-> revoked permission. `pkill -x clawd-light; open dist/ClawdLight.app`
+> revoked permission. `pkill -x lampboard; open dist/LampBoard.app`
 
 ### Updating it
 
@@ -600,11 +602,11 @@ comes back: the permissions survive, because the certificate is the same one.
 In this order, because the second step needs the app to still be there:
 
 ```bash
-pkill -x clawd-light
-/Applications/ClawdLight.app/Contents/MacOS/clawd-light uninstall-hooks
-rm -rf ~/.clawd-light "~/Library/Application Support/clawd-light"
-tccutil reset Accessibility com.clawdlight.app
-tccutil reset AppleEvents com.clawdlight.app
+pkill -x lampboard
+/Applications/LampBoard.app/Contents/MacOS/lampboard uninstall-hooks
+rm -rf ~/.lampboard "~/Library/Application Support/lampboard"
+tccutil reset Accessibility com.lampboard.app
+tccutil reset AppleEvents com.lampboard.app
 ```
 
 Then drag the app to the Trash. `uninstall-hooks` removes only the registrations
@@ -788,7 +790,7 @@ but they don't report the subagent's *work*, they report that the subagent
 **exists**, and that is a fact about the parent's turn.
 
 **The panel is `nonactivating`.** Without it, clicking a traffic light would
-activate clawd-light and take the focus away from VS Code an instant before giving
+activate lampboard and take the focus away from VS Code an instant before giving
 it back, with a visible flicker on every click.
 
 **The server listens only on 127.0.0.1, and the constraint is explicit.** For a
@@ -818,24 +820,24 @@ editor window open on that folder, or a live session file.
 ## Commands
 
 ```
-clawd-light                          start the panel
-clawd-light install-hooks            register the hooks in ~/.claude/settings.json
-clawd-light install-hooks --with-tool-events
-clawd-light uninstall-hooks          remove the registrations (the script stays on disk)
-clawd-light status                   configuration and detected sessions
-clawd-light selftest                 check the whole chain and report what's missing
-clawd-light sessions                 the column as the running app sees it
-clawd-light terminal on|off|status   rows for claude started in a terminal
-clawd-light rename <folder> [name]   the panel's word for a row; no name restores it
-clawd-light remote [list|add|install|check|uninstall|remove] [host]   another machine's sessions (see above)
-clawd-light next                     raise the next waiting session
-clawd-light open <n>                 raise the project bound to slot n
-clawd-light open                     list what the slots address
-clawd-light new <n>                  open a new conversation in slot n's project
-clawd-light chat <n>                 open the extended view on slot n
-clawd-light focus <workspace>        reproduce the click and explain what happens
-clawd-light focus <workspace> --dry-run    diagnose without activating anything
-clawd-light help
+lampboard                          start the panel
+lampboard install-hooks            register the hooks in ~/.claude/settings.json
+lampboard install-hooks --with-tool-events
+lampboard uninstall-hooks          remove the registrations (the script stays on disk)
+lampboard status                   configuration and detected sessions
+lampboard selftest                 check the whole chain and report what's missing
+lampboard sessions                 the column as the running app sees it
+lampboard terminal on|off|status   rows for claude started in a terminal
+lampboard rename <folder> [name]   the panel's word for a row; no name restores it
+lampboard remote [list|add|install|check|uninstall|remove] [host]   another machine's sessions (see above)
+lampboard next                     raise the next waiting session
+lampboard open <n>                 raise the project bound to slot n
+lampboard open                     list what the slots address
+lampboard new <n>                  open a new conversation in slot n's project
+lampboard chat <n>                 open the extended view on slot n
+lampboard focus <workspace>        reproduce the click and explain what happens
+lampboard focus <workspace> --dry-run    diagnose without activating anything
+lampboard help
 ```
 
 Options: `--port N` (default 9877), `--skip-setup-prompt` (useful if you launch
@@ -847,14 +849,14 @@ answer instead of a plausible reconstruction.
 
 The panel can be dragged and remembers its position.
 
-With `CLAWD_LIGHT_DEBUG=1` the app writes `~/.clawd-light/debug.log`.
-`CLAWD_LIGHT_HOME` moves every path under a different root — the end-to-end tests
+With `LAMPBOARD_DEBUG=1` the app writes `~/.lampboard/debug.log`.
+`LAMPBOARD_HOME` moves every path under a different root — the end-to-end tests
 use it so they never touch the real `~/.claude`.
 
 ### The read endpoint
 
 ```bash
-curl -H "X-Clawd-Token: $(cat ~/.clawd-light/token)" \
+curl -H "X-LampBoard-Token: $(cat ~/.lampboard/token)" \
      http://127.0.0.1:9877/sessions
 ```
 
@@ -867,29 +869,29 @@ conversation `title` once there is one, and the `label` — what the panel calls
 the row: the name you gave it, or the title of a lone terminal row, or the
 folder. The slot and the label are in the contract because no outside reader
 could work them out: the order and the names are yours, and they live in the
-preferences. The token lives in `~/.clawd-light/token`
+preferences. The token lives in `~/.lampboard/token`
 with mode `0600`; if the app finds the permissions any wider it **regenerates** the
 token instead of narrowing them: a secret that has been readable by others must be
 considered burned.
 
 ## When something's wrong
 
-`clawd-light selftest` checks, in order: the server opens the port, a signal
+`lampboard selftest` checks, in order: the server opens the port, a signal
 crosses HTTP, it gets decoded, the current folder resolves to a workspace, the
 Accessibility permission is there, the Automation permission for System Events
 is there, the hooks are registered. It says which link
 broke instead of leaving you staring at an unlit dot.
 
-`clawd-light status` reports how many sessions have a live process, how many
+`lampboard status` reports how many sessions have a live process, how many
 deserve a traffic light and how many resolve to a recognized workspace — the last
 number is how many sessions you should see (grouped, there will be fewer rows).
 
-`clawd-light sessions` shows the column as the running app sees it. If `status`
+`lampboard sessions` shows the column as the running app sees it. If `status`
 counts rows that `sessions` doesn't list, the problem sits between the filesystem
 read and the state machine; if both list them but the panel is empty, it's in the
 drawing.
 
-`clawd-light focus <workspace>` reproduces the click and prints the window titles
+`lampboard focus <workspace>` reproduces the click and prints the window titles
 read from System Events, with an arrow on the chosen one. If the read comes back
 empty you see it at once, instead of inferring it from a click that does nothing.
 With `--dry-run` it diagnoses without moving any windows.
@@ -922,7 +924,7 @@ longer true, which is the one failure you cannot see.
 
 ```
 Sources/
-  ClawdLightCore/     pure logic — parsing, workspace, state machine
+  LampBoardCore/     pure logic — parsing, workspace, state machine
     Models/           states, signals, durations, column composition
     Parsing/          decoding and validation of the hook payloads
     Reducer/          (state, action) -> new state
@@ -934,17 +936,17 @@ Sources/
     Chat/             the mailbox files and the dictation locale
     Markdown/         parsing of the answers the extended view draws
     Config/           AppConfig — ports, paths, thresholds
-  ClawdLightApp/      AppKit/SwiftUI shell — panel, server, focus, seats, notifications
-  ClawdLightTests/    domain suite, instantaneous
-  ClawdLightE2E/      end-to-end run: launches the real binary
+  LampBoardApp/      AppKit/SwiftUI shell — panel, server, focus, seats, notifications
+  LampBoardTests/    domain suite, instantaneous
+  LampBoardE2E/      end-to-end run: launches the real binary
   TestKit/            minimal assertions
 ```
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run ClawdLightTests              # 551 domain tests, instantaneous
-swift run ClawdLightE2E                # 82 end-to-end tests, ~1 minute
-swift run ClawdLightTests "Subagents"  # filter by suite or case
+swift run LampBoardTests              # 551 domain tests, instantaneous
+swift run LampBoardE2E                # 82 end-to-end tests, ~1 minute
+swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
 ./Scripts/build-app.sh                 # bundle into dist/
@@ -955,15 +957,15 @@ python3 Scripts/make-icon.py --preview # redraw the icon, with a size check
 The Command Line Tools without Xcode provide neither XCTest nor the complete
 swift-testing, hence `TestKit`: a couple of hundred lines covering what's needed
 to verify pure functions. All the logic that decides a traffic light's color lives
-in `ClawdLightCore` and never touches AppKit, precisely so it stays under test.
+in `LampBoardCore` and never touches AppKit, precisely so it stays under test.
 
 ### Why there are two suites
 
-`ClawdLightTests` verifies pure functions: it is instantaneous and precise, and it
+`LampBoardTests` verifies pure functions: it is instantaneous and precise, and it
 touches neither network nor filesystem.
 
-`ClawdLightE2E` launches **the real binary** against a fake home
-(`CLAWD_LIGHT_HOME`) and talks to it over HTTP, the way the hooks do. It goes as
+`LampBoardE2E` launches **the real binary** against a fake home
+(`LAMPBOARD_HOME`) and talks to it over HTTP, the way the hooks do. It goes as
 far as running the generated `hook.sh` script with the payload on stdin: in
 between sit bash, `curl`, the socket, the HTTP parser, the decoder and the
 reducer — the complete chain. It touches neither `~/.claude` nor the preferences,
@@ -1011,7 +1013,7 @@ written for this project, the test framework included, so there is nothing else
 to audit and no other licence to reconcile.
 
 [NOTICE](NOTICE) carries one more statement, and it belongs at the end of a
-document like this rather than in the middle of it: clawd-light is an
+document like this rather than in the middle of it: lampboard is an
 independent project by one person. It is not affiliated with, endorsed by, or
 sponsored by Anthropic PBC or any other maker of the tools it watches. "Claude"
 and "Claude Code" are trademarks of Anthropic PBC, named here descriptively

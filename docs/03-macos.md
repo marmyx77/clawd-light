@@ -16,7 +16,7 @@ ninety seconds that save a day.
 | Permission | What it's for | Where it's granted |
 |---|---|---|
 | **Accessibility** | reading and manipulating other apps' windows | Privacy & Security › Accessibility |
-| **Automation** | sending Apple Events to System Events | Privacy & Security › Automation › clawd-light › System Events |
+| **Automation** | sending Apple Events to System Events | Privacy & Security › Automation › lampboard › System Events |
 
 **Both** are needed to raise a window. Confusing them sends you off to check a
 switch that is already on, and that has already happened.
@@ -44,7 +44,7 @@ is also what makes the prompt appear.
 > ```bash
 > # This does NOT tell you whether the app has the permissions.
 > # It tells you whether Terminal has them.
-> dist/ClawdLight.app/Contents/MacOS/clawd-light status
+> dist/LampBoard.app/Contents/MacOS/lampboard status
 > ```
 >
 > This project fell for it: `focus` from a terminal answered `✓ window raised`,
@@ -54,9 +54,9 @@ is also what makes the prompt appear.
 >
 > **How to verify for real**: make the app itself write down what it sees.
 > ```bash
-> pkill -x clawd-light
-> CLAWD_LIGHT_DEBUG=1 open dist/ClawdLight.app
-> grep "accessibility=" ~/.clawd-light/debug.log
+> pkill -x lampboard
+> LAMPBOARD_DEBUG=1 open dist/LampBoard.app
+> grep "accessibility=" ~/.lampboard/debug.log
 > ```
 
 ### The AppleScript error codes that matter
@@ -72,7 +72,7 @@ is also what makes the prompt appear.
 
 ### One Automation entry per application
 
-The permission is granted per *target* application: "clawd-light → System
+The permission is granted per *target* application: "lampboard → System
 Events" lets the panel raise editor windows, and says nothing about Terminal.
 Selecting a tab in Terminal.app or iTerm2 sends an Apple Event to that
 application, so the first click on a terminal row shows a second prompt naming
@@ -188,7 +188,7 @@ sendEvent(_:) // makes the panel key before a mouse-down is dispatched
 ```
 
 `nonactivatingPanel` is what makes the widget usable: without it, clicking a
-traffic light would activate clawd-light and take the focus away from the editor
+traffic light would activate lampboard and take the focus away from the editor
 an instant before giving it back, with a flicker on every click.
 
 `mouseDownCanMoveWindow` is what decides whether a drag moves the panel or a
@@ -251,15 +251,15 @@ rounds of diagnosis.
 With a stable certificate the requirement hooks onto the **identity**:
 
 ```
-designated => identifier "com.clawdlight.app" and
+designated => identifier "com.lampboard.app" and
               certificate leaf = H"4dff44990eb2166d5a002f5969ea5f6a88559a48"
 ```
 
 **How to verify it** — two builds in a row must produce the same requirement:
 
 ```bash
-./Scripts/build-app.sh && codesign -d --requirements - dist/ClawdLight.app 2>&1 | tail -1
-./Scripts/build-app.sh && codesign -d --requirements - dist/ClawdLight.app 2>&1 | tail -1
+./Scripts/build-app.sh && codesign -d --requirements - dist/LampBoard.app 2>&1 | tail -1
+./Scripts/build-app.sh && codesign -d --requirements - dist/LampBoard.app 2>&1 | tail -1
 ```
 
 ### Creating the identity: three traps
@@ -333,7 +333,7 @@ guard Bundle.main.bundleIdentifier != nil else { return }
 ```
 
 **Including assigning the delegate**, which is a use like any other and not an
-exception. Forgetting it there crashes `swift run ClawdLightApp` at startup,
+exception. Forgetting it there crashes `swift run LampBoardApp` at startup,
 before the panel even appears.
 
 Authorization must be requested **when the user turns the feature on** — and at
@@ -364,7 +364,7 @@ between "registered and working" and "registered and mute": that is what made
 the feature indefensible, not the malfunction itself.
 
 The workaround that does work is the macOS Shortcuts app, bound to
-`clawd-light next` — see the [README](../README.md).
+`lampboard next` — see the [README](../README.md).
 
 ---
 
@@ -392,7 +392,7 @@ When in doubt it assumes ad-hoc: of the two, that's the harmless failure.
 from the environment**: rewriting `$HOME` isolates nothing and creates the
 opposite illusion.
 
-Hence `AppConfig.homeDirectory`, which honors `CLAWD_LIGHT_HOME`. With that
+Hence `AppConfig.homeDirectory`, which honors `LAMPBOARD_HOME`. With that
 variable set, `Preferences` also uses a separate `UserDefaults` domain, otherwise
 a test that switched a notification on would leave it on afterwards.
 
@@ -411,8 +411,8 @@ lsof -nP -iTCP:9877 -sTCP:LISTEN
 CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
 
 # how a bundle is signed
-codesign -dvv dist/ClawdLight.app
-codesign -d --requirements - dist/ClawdLight.app
+codesign -dvv dist/LampBoard.app
+codesign -d --requirements - dist/LampBoard.app
 
 # available signing identities
 security find-identity -p codesigning

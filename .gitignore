@@ -10,5 +10,5 @@ dist/
 .DS_Store
 
 # Anything the app writes at runtime, in case someone points
-# CLAWD_LIGHT_HOME at the checkout while testing.
-.clawd-light/
+# LAMPBOARD_HOME at the checkout while testing.
+.lampboard/

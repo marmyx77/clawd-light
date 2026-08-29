@@ -14,12 +14,12 @@
 #
 # Both secrets come from the environment, because this file is public:
 #
-#   export CLAWD_LIGHT_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'
-#   export CLAWD_LIGHT_NOTARY_PROFILE='clawd-light'
+#   export LAMPBOARD_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'
+#   export LAMPBOARD_NOTARY_PROFILE='lampboard'
 #
 # The notarization profile is created once, and lives in the keychain:
 #
-#   xcrun notarytool store-credentials clawd-light \
+#   xcrun notarytool store-credentials lampboard \
 #       --apple-id you@example.com --team-id TEAMID --password <app-specific>
 #
 # An app-specific password is made at appleid.apple.com in two minutes and is
@@ -29,7 +29,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="ClawdLight"
+APP_NAME="LampBoard"
 
 # The bundle that gets released is a copy, never the one in dist/. A Developer
 # ID signature is a different identity from the local one, and macOS grants
@@ -47,8 +47,8 @@ fi
 VERSION="${VERSION:-0.1.0}"
 
 DMG="$ROOT/dist/$APP_NAME-$VERSION.dmg"
-IDENTITY="${CLAWD_LIGHT_SIGNING_IDENTITY:-}"
-NOTARY_PROFILE="${CLAWD_LIGHT_NOTARY_PROFILE:-}"
+IDENTITY="${LAMPBOARD_SIGNING_IDENTITY:-}"
+NOTARY_PROFILE="${LAMPBOARD_NOTARY_PROFILE:-}"
 
 # How long Apple gets before we call it a failure.
 #
@@ -58,7 +58,7 @@ NOTARY_PROFILE="${CLAWD_LIGHT_NOTARY_PROFILE:-}"
 # never reaching the queue — the submission does not even appear in
 # `notarytool history`. Notarization normally takes one to five minutes, so
 # twenty is generous and a hang stops looking like patience.
-NOTARY_DEADLINE="${CLAWD_LIGHT_NOTARY_TIMEOUT:-20m}"
+NOTARY_DEADLINE="${LAMPBOARD_NOTARY_TIMEOUT:-20m}"
 
 # One Developer ID in the keychain is unambiguous, so we use it without being
 # told. Several are a choice that belongs to the person releasing, not to us.
@@ -72,15 +72,15 @@ if [ -z "$IDENTITY" ]; then
         echo "▸ Several Developer ID certificates are installed:"
         printf '%s\n' "$MATCHES"
         echo
-        echo "  Say which one:  export CLAWD_LIGHT_SIGNING_IDENTITY='Developer ID Application: …'"
+        echo "  Say which one:  export LAMPBOARD_SIGNING_IDENTITY='Developer ID Application: …'"
         exit 1
     fi
 fi
 
-echo "▸ clawd-light $VERSION"
+echo "▸ lampboard $VERSION"
 echo
 
-CLAWD_LIGHT_VERSION="$VERSION" "$ROOT/Scripts/build-app.sh" release >/dev/null
+LAMPBOARD_VERSION="$VERSION" "$ROOT/Scripts/build-app.sh" release >/dev/null
 rm -rf "$ROOT/.build/release-app"
 mkdir -p "$ROOT/.build/release-app"
 cp -R "$BUILT" "$APP_DIR"
@@ -93,7 +93,7 @@ echo "▸ Bundle built and copied aside."
 # Two entitlements, and no more. The hardened runtime is what notarization
 # requires, and by default it takes away exactly the two things this app does
 # for a living: talking to other applications and listening to the microphone.
-ENTITLEMENTS="$ROOT/.build/clawd-light.entitlements"
+ENTITLEMENTS="$ROOT/.build/lampboard.entitlements"
 cat > "$ENTITLEMENTS" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -184,16 +184,16 @@ echo "✓ $DMG"
 echo
 if [ "$NOTARIZED" = "1" ]; then
     echo "  Notarized and stapled: it opens with a double click on any Mac."
-    echo "  Publish:  gh release create v$VERSION '$DMG' --title 'clawd-light $VERSION'"
+    echo "  Publish:  gh release create v$VERSION '$DMG' --title 'lampboard $VERSION'"
 elif [ -n "$IDENTITY" ]; then
     echo "  Signed but not notarized: on a Mac that has never seen it, macOS"
     echo "  will still refuse the first launch. Set the profile and run again:"
-    echo "    export CLAWD_LIGHT_NOTARY_PROFILE='clawd-light'"
+    echo "    export LAMPBOARD_NOTARY_PROFILE='lampboard'"
 else
     echo "  Signed locally only. On somebody else's Mac this image is refused;"
     echo "  the way through, for a tester who accepts it knowingly, is"
     echo "  right-click on the app › Open, then Open again in the dialog."
     echo "  For a public release you need a Developer ID certificate:"
-    echo "    export CLAWD_LIGHT_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'"
+    echo "    export LAMPBOARD_SIGNING_IDENTITY='Developer ID Application: … (TEAMID)'"
 fi
 echo

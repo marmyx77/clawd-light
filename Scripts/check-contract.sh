@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Checks that the assumptions clawd-light makes about Claude Code still hold.
+# Checks that the assumptions lampboard makes about Claude Code still hold.
 #
 # WHY THIS EXISTS
 # This project balances on things nobody promised: hook event names and payload
@@ -87,7 +87,7 @@ fi
 head_ "Hook registration"
 
 SETTINGS="$HOME/.claude/settings.json"
-SCRIPT_PATH="$HOME/.clawd-light/hook.sh"
+SCRIPT_PATH="$HOME/.lampboard/hook.sh"
 
 if [ ! -f "$SETTINGS" ]; then
     bad "no ~/.claude/settings.json"
@@ -112,7 +112,7 @@ PY
         ok "every event the contract needs is registered"
     else
         bad "events not registered: $MISSING"
-        note "fix: clawd-light install-hooks"
+        note "fix: lampboard install-hooks"
     fi
 fi
 

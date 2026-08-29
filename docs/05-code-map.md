@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   7,341 lines · 61 files   pure logic, zero AppKit
-  ClawdLightApp/    11,509 lines · 63 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,953 lines · 38 files   551 cases, instantaneous
-  ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
+  LampBoardCore/   7,390 lines · 61 files   pure logic, zero AppKit
+  LampBoardApp/    11,542 lines · 63 files   shell: AppKit, network, windows
+  LampBoardTests/  6,953 lines · 38 files   551 cases, instantaneous
+  LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -16,7 +16,7 @@ No file exceeds 786 lines. The limit the project sets itself is 800.
 
 ---
 
-# ClawdLightCore
+# LampBoardCore
 
 No `import AppKit`, no I/O, no implicit clock: `now` is always a parameter.
 Everything that **decides** lives here.
@@ -26,7 +26,7 @@ Everything that **decides** lives here.
 ### `AppConfig.swift` · 376
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
-`homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
+`homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
 is what makes the e2e tests possible without touching the real `~/.claude`.
 
 > **Touching here** changes behavior everywhere. `sessionStaleAfter` (12 h) and
@@ -408,7 +408,7 @@ legitimate owner of that port.
 ### `RemoteHostList.swift` · 45
 The rules for a remote host's name: `isUsable` is an allow-list because the name
 becomes an argument to `ssh` — one starting with a dash would be read as
-*options* — and `parse` reads the old `~/.clawd-light/remotes` file, imported
+*options* — and `parse` reads the old `~/.lampboard/remotes` file, imported
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
@@ -451,7 +451,7 @@ escaping of titles inside a script.
 
 ---
 
-# ClawdLightApp
+# LampBoardApp
 
 It does I/O and draws. **It does not decide.**
 
@@ -473,7 +473,7 @@ because a bare `open` lists the assignments, which is a different command wearin
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
 ### `SelfTest.swift` · 240
-`clawd-light selftest`: the whole chain, link by link — the port opens, a signal
+`lampboard selftest`: the whole chain, link by link — the port opens, a signal
 crosses HTTP, decodes, resolves to a workspace, the Accessibility permission is
 there, the hooks are registered — and it names the link that broke.
 
@@ -482,7 +482,7 @@ there, the hooks are registered — and it names the link that broke.
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 587 | `@MainActor`, `@Published`, periodic realignment |
-| `Preferences.swift` | 294 | `UserDefaults`, separate domain under `CLAWD_LIGHT_HOME` |
+| `Preferences.swift` | 294 | `UserDefaults`, separate domain under `LAMPBOARD_HOME` |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
@@ -504,7 +504,7 @@ there, the hooks are registered — and it names the link that broke.
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
-| `Diagnostics.swift` | | file log, active only with `CLAWD_LIGHT_DEBUG` |
+| `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
 
 > **`DictationService`** — the ordering in `start()` is load-bearing and
 > commented at length. `SpeechAnalyzer.start(inputSequence:)` is the pump, not the
@@ -611,7 +611,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 551 cases
+## `LampBoardTests/` — 551 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -668,7 +668,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `ClawdLightE2E/` — 82 cases
+## `LampBoardE2E/` — 82 cases
 
 | Suite | Covers |
 |---|---|
@@ -691,7 +691,7 @@ the realignment is asynchronous.
 |---|---|
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
-| `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/ClawdLight.icns`; `--preview` adds the small-size contact sheet |
+| `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |

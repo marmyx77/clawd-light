@@ -1,9 +1,9 @@
-# clawd-light documentation
+# lampboard documentation
 
 This folder exists for a precise reason: **whoever comes next should not have to
 pay again what this project has already paid.**
 
-clawd-light is a two-hundred-and-forty-pixel widget, but it balances on four
+lampboard is a two-hundred-and-forty-pixel widget, but it balances on four
 things that are documented nowhere — the Claude Code hooks, the files the VS Code
 extension leaves on disk, the way macOS decides whether you may touch another
 application's windows, and what each terminal's dictionary, CLI or socket will

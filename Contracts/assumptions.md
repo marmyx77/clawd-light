@@ -1,6 +1,6 @@
 # The assumptions
 
-clawd-light depends on things nobody promised. This file names every one of them,
+lampboard depends on things nobody promised. This file names every one of them,
 says **where the code leans on it** and **what breaks when it goes away**.
 
 It exists so that "Claude Code updated and something is off" becomes a ten-minute
@@ -29,8 +29,8 @@ How to read a record:
 `StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop`, `PostToolUse` are
 delivered to a registered command hook.
 
-**Depends at** [HookConfigMerger.swift:21](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L21) ·
-[StateReducer.swift](../Sources/ClawdLightCore/Reducer/StateReducer.swift)
+**Depends at** [HookConfigMerger.swift:21](../Sources/LampBoardCore/Setup/HookConfigMerger.swift#L21) ·
+[StateReducer.swift](../Sources/LampBoardCore/Reducer/StateReducer.swift)
 
 **How verified** — `probe`. Seven of the nine recorded live; `Notification` and
 `StopFailure` need conditions a probe can't force cheaply and stay on recorded
@@ -89,7 +89,7 @@ just stops moving. This is the assumption the live probe exists for.
 
 ## hook.payload.core · every payload carries session_id, hook_event_name, cwd
 
-**Depends at** [HookPayloadDecoder.swift:66](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L66)
+**Depends at** [HookPayloadDecoder.swift:66](../Sources/LampBoardCore/Parsing/HookPayloadDecoder.swift#L66)
 
 **How verified** — `probe`.
 
@@ -100,7 +100,7 @@ answers 400. You would see it in the panel's error note.
 
 ## hook.stop.message · Stop carries last_assistant_message
 
-**Depends at** [HookPayloadDecoder.swift:86](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L86)
+**Depends at** [HookPayloadDecoder.swift:86](../Sources/LampBoardCore/Parsing/HookPayloadDecoder.swift#L86)
 
 **How verified** — `probe`. Recorded as `"pong"` from a session asked to reply
 with exactly that.
@@ -112,8 +112,8 @@ else depends on it.
 
 ## hook.subagent.shape · SubagentStart/Stop carry agent_id and agent_type
 
-**Depends at** [HookSignal.swift:23](../Sources/ClawdLightCore/Models/HookSignal.swift#L23) ·
-[SessionState.swift:129](../Sources/ClawdLightCore/Models/SessionState.swift#L129)
+**Depends at** [HookSignal.swift:23](../Sources/LampBoardCore/Models/HookSignal.swift#L23) ·
+[SessionState.swift:129](../Sources/LampBoardCore/Models/SessionState.swift#L129)
 
 **How verified** — `probe`. A session was made to launch one general-purpose
 agent; both events recorded, with `agent_id`, `agent_type`, and on the stop also
@@ -131,7 +131,7 @@ expensive lie the column can tell.
 
 **We assume** the parent turn can return control while its agents keep working.
 
-**Depends at** [SessionState.swift:129](../Sources/ClawdLightCore/Models/SessionState.swift#L129)
+**Depends at** [SessionState.swift:129](../Sources/LampBoardCore/Models/SessionState.swift#L129)
 — the reason `status` is computed rather than stored.
 
 **How verified** — `runtime`, on real background workflows. The probe records the
@@ -146,7 +146,7 @@ not if it changes.
 
 ## hook.sessionstart.source · SessionStart carries source, and `compact` fires mid-turn
 
-**Depends at** [StateReducer.swift:250](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L250)
+**Depends at** [StateReducer.swift:250](../Sources/LampBoardCore/Reducer/StateReducer.swift#L250)
 
 **How verified** — `probe` for the field (`source: startup`); `binary` for the
 `compact` value.
@@ -162,7 +162,7 @@ it to the bottom of the column.
 **We assume** `CLAUDE_CODE_ENTRYPOINT` exists only in the environment, which is why
 the hook script copies it into a header.
 
-**Depends at** [HookScriptBuilder.swift:28](../Sources/ClawdLightCore/Setup/HookScriptBuilder.swift#L28)
+**Depends at** [HookScriptBuilder.swift:28](../Sources/LampBoardCore/Setup/HookScriptBuilder.swift#L28)
 
 **How verified** — `probe`. No recorded payload contains it.
 
@@ -176,7 +176,7 @@ A deny-list that admits too much shows rows, it doesn't hide them.
 **We assume** `sdk`, `sdk-cli`, `sdk-ts`, `sdk-py`, `print` are sessions nobody is
 watching, and everything else deserves a row.
 
-**Depends at** [AppConfig.swift:175](../Sources/ClawdLightCore/Config/AppConfig.swift#L175)
+**Depends at** [AppConfig.swift:175](../Sources/LampBoardCore/Config/AppConfig.swift#L175)
 
 **How verified** — `probe` + `binary`. **This record is the reason the harness
 exists.** The list had been written from the documentation and was missing
@@ -203,8 +203,8 @@ deny-list and not an allow-list.
 `sessionId`, `cwd`, `kind`, `entrypoint`; and that the files survive the process,
 so liveness needs `kill(pid, 0)`.
 
-**Depends at** [LiveSession.swift:82](../Sources/ClawdLightCore/Workspace/LiveSession.swift#L82) ·
-[LiveSessionReader.swift:58](../Sources/ClawdLightApp/Runtime/LiveSessionReader.swift#L58)
+**Depends at** [LiveSession.swift:82](../Sources/LampBoardCore/Workspace/LiveSession.swift#L82) ·
+[LiveSessionReader.swift:58](../Sources/LampBoardApp/Runtime/LiveSessionReader.swift#L58)
 
 **How verified** — `runtime`, continuously: it is one of the two sources the column
 is built from.
@@ -223,8 +223,8 @@ own); that `pid` is the **editor's** process and therefore does not identify a
 window on its own — every window of one VS Code shares it; and that the file is
 written **once**, when the window connects, and never touched again.
 
-**Depends at** [IDEWindow.swift:43](../Sources/ClawdLightCore/Workspace/IDEWindow.swift#L43)
-· [IDEWindowReader.swift:29](../Sources/ClawdLightApp/Runtime/IDEWindowReader.swift#L29)
+**Depends at** [IDEWindow.swift:43](../Sources/LampBoardCore/Workspace/IDEWindow.swift#L43)
+· [IDEWindowReader.swift:29](../Sources/LampBoardApp/Runtime/IDEWindowReader.swift#L29)
 
 **How verified** — `runtime`. The write-once property was measured the hard way:
 locks 7.98 days old belonging to a VS Code that had been running continuously.
@@ -247,7 +247,7 @@ difference between reading a line and bisecting the app.
 **We assume** `~/.claude/sessions/<pid>.json` is written when the session starts
 and **never rewritten**, so its modification time is not a sign of activity.
 
-**Depends at** [LiveSessionReader.swift:52](../Sources/ClawdLightApp/Runtime/LiveSessionReader.swift#L52)
+**Depends at** [LiveSessionReader.swift:52](../Sources/LampBoardApp/Runtime/LiveSessionReader.swift#L52)
 — which is why activity is read from the transcript instead.
 
 **How verified** — `runtime`, by measuring both at once on a session that was
@@ -264,7 +264,7 @@ nothing breaks: the reader takes the **later** of the two timestamps.
 
 ## extension.deeplink · vscode://Anthropic.claude-code/open reads session
 
-**Depends at** [SessionDeepLink.swift:26](../Sources/ClawdLightCore/Workspace/SessionDeepLink.swift#L26)
+**Depends at** [SessionDeepLink.swift:26](../Sources/LampBoardCore/Workspace/SessionDeepLink.swift#L26)
 
 **How verified** — `binary`, in `extension.js`.
 
@@ -285,7 +285,7 @@ code:
 
 > `"Session is already open. Your prompt was not applied — enter it manually."`
 
-**Why this record exists** — it is the answer to "can clawd-light send a command to
+**Why this record exists** — it is the answer to "can lampboard send a command to
 a running agent", and the answer is no, through this channel. The one case where
 it would be useful — a session that is open and waiting — is exactly the case the
 extension refuses. See decision N7.
@@ -302,8 +302,8 @@ of the refusal is reported as an opening rather than a breakage.
 and that a `prompt` given alongside it is **prefilled into the composer, not
 submitted**.
 
-**Depends at** [SessionDeepLink.swift](../Sources/ClawdLightCore/Workspace/SessionDeepLink.swift)
-— the new-conversation URL, reached from the row menu and from `clawd-light new`.
+**Depends at** [SessionDeepLink.swift](../Sources/LampBoardCore/Workspace/SessionDeepLink.swift)
+— the new-conversation URL, reached from the row menu and from `lampboard new`.
 
 **How verified** — `binary`, followed all the way through the extension:
 
@@ -317,10 +317,10 @@ URI /open → primaryEditor.open → createPanel(session, prompt)
 **Why this record exists** — it settles the second half of the N7 question. The
 prompt channel is not merely restricted to new conversations; even there it only
 puts text in the box. A key that opens a tab with text you must then confirm is
-not a command key, which is why `clawd-light new` sends no prompt at all.
+not a command key, which is why `lampboard new` sends no prompt at all.
 
 **Failure mode** — none in the direction that matters. If a future version started
-*submitting* the prompt, an unchanged clawd-light would keep opening empty
+*submitting* the prompt, an unchanged lampboard would keep opening empty
 conversations, which is the same behavior it has today.
 
 ---
@@ -332,8 +332,8 @@ conversations, which is the same behavior it has today.
 `cache_read_input_tokens`, that their sum is the context at that moment, and
 that `message.model` names the model that produced it.
 
-**Depends at** [ContextScanner.swift](../Sources/ClawdLightCore/Transcript/ContextScanner.swift)
-· [ContextReading.swift](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+**Depends at** [ContextScanner.swift](../Sources/LampBoardCore/Transcript/ContextScanner.swift)
+· [ContextReading.swift](../Sources/LampBoardCore/Transcript/ContextReading.swift)
 
 **How verified** — `probe`. A `statusLine` command was configured in a throwaway
 project and its stdin captured: for a live session it reported
@@ -354,7 +354,7 @@ becoming wrong.
 `modelContextWindows` and re-read from the installed binary on every run of
 `check-contract.sh`.
 
-**Depends at** [ContextWindows](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+**Depends at** [ContextWindows](../Sources/LampBoardCore/Transcript/ContextReading.swift)
 · [required-fields.json](required-fields.json)
 
 **How verified** — `binary`, on 2.1.251: sixteen models, each with a `window:`
@@ -380,7 +380,7 @@ All unset on this machine when this was written; undetectable the day one is set
 over the **whole** window of its model — not over Claude Code's auto-compaction
 threshold, which is a different quantity measured on a different numerator.
 
-**Depends at** [ContextReading.percent](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+**Depends at** [ContextReading.percent](../Sources/LampBoardCore/Transcript/ContextReading.swift)
 · [measure-compaction.py](../Scripts/measure-compaction.py)
 
 **How verified** — `transcripts`, and this one earned its own script. Claude Code
@@ -418,8 +418,8 @@ small; it cannot prove it is not slightly too large.
 still in flight at the end of the turn, **already filtered** by Claude Code to the
 things the session is waiting on.
 
-**Depends at** [HookPayloadDecoder.swift:135](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L135)
-· [StateReducer.swift:259](../Sources/ClawdLightCore/Reducer/StateReducer.swift#L259)
+**Depends at** [HookPayloadDecoder.swift:135](../Sources/LampBoardCore/Parsing/HookPayloadDecoder.swift#L135)
+· [StateReducer.swift:259](../Sources/LampBoardCore/Reducer/StateReducer.swift#L259)
 
 **How verified** — `probe`, then `binary`. A session told to run `sleep 45` in the
 background produced, on `Stop`:
@@ -522,7 +522,7 @@ feature reduces to a badge nobody asked for.
 **We assume** each hook payload carries `transcript_path`, pointing at the
 session's JSONL transcript.
 
-**Depends at** [HookPayloadDecoder.swift:88](../Sources/ClawdLightCore/Parsing/HookPayloadDecoder.swift#L88)
+**Depends at** [HookPayloadDecoder.swift:88](../Sources/LampBoardCore/Parsing/HookPayloadDecoder.swift#L88)
 
 **How verified** — `probe`. Present on all 12 invocations in the golden recording,
 across all 8 event types.
@@ -539,7 +539,7 @@ the column is the product, the chat window is a feature.
 **We assume** a transcript record was typed by a person **if and only if** it
 carries `origin: {"kind": "human"}`.
 
-**Depends at** [TranscriptDecoder.swift:63](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L63)
+**Depends at** [TranscriptDecoder.swift:63](../Sources/LampBoardCore/Transcript/TranscriptDecoder.swift#L63)
 
 **How verified** — `runtime`, at scale: 7042 transcripts scanned. `origin.kind`
 takes three shapes — `human`, `task-notification`, absent.
@@ -563,12 +563,12 @@ of the first case and the best available proxy for the second.
 **We assume** a session's transcript lives at
 `~/.claude/projects/<cwd, every non-alphanumeric character replaced by "-">/<session-id>.jsonl`.
 
-**Depends at** [TranscriptLocator.swift:35](../Sources/ClawdLightCore/Transcript/TranscriptLocator.swift#L35)
+**Depends at** [TranscriptLocator.swift:35](../Sources/LampBoardCore/Transcript/TranscriptLocator.swift#L35)
 
 **How verified** — `runtime`: **7065 of 7066** transcripts on the machine matched.
 
 **Why it exists** — sessions adopted from `~/.claude/sessions/` carry no
-transcript path, and after a restart of clawd-light that is every session. Without
+transcript path, and after a restart of lampboard that is every session. Without
 this the chat window would stay empty until the next prompt.
 
 **The one exception, and why it is handled** — a session running in a git worktree
@@ -590,7 +590,7 @@ being wrong harmless.
 `text` / `tool_use` on the assistant side and `text` / `tool_result` / `image` /
 `document` on the user side cover what needs rendering.
 
-**Depends at** [TranscriptDecoder.swift:151](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L151)
+**Depends at** [TranscriptDecoder.swift:151](../Sources/LampBoardCore/Transcript/TranscriptDecoder.swift#L151)
 
 **How verified** — `runtime`, 40 transcripts sampled by the static check on every
 run. New block types are **reported, not failed**: an unknown block is skipped (only `image` and `document` draw a placeholder), so
@@ -608,8 +608,8 @@ The check names it on the next run.
 with code **2** its stdout is enqueued as the session's next turn. The message
 arrives wrapped in `<task-notification>` with `rewakeMessage` as its preamble.
 
-**Depends at** [RewakeScriptBuilder.swift:60](../Sources/ClawdLightCore/Setup/RewakeScriptBuilder.swift#L60)
-· [HookConfigMerger.swift:180](../Sources/ClawdLightCore/Setup/HookConfigMerger.swift#L180)
+**Depends at** [RewakeScriptBuilder.swift:60](../Sources/LampBoardCore/Setup/RewakeScriptBuilder.swift#L60)
+· [HookConfigMerger.swift:180](../Sources/LampBoardCore/Setup/HookConfigMerger.swift#L180)
 
 **How verified** — `runtime`, by reproduction on 2026-08-01. Three times, twice
 through the shipped scripts: a session idle for thirty seconds, a message written
@@ -639,7 +639,7 @@ that state rather than spinning.
 record with `origin.kind == "task-notification"`, its `message.content` a **bare
 string** containing our `rewakeMessage` preamble followed by the text.
 
-**Depends at** [TranscriptDecoder.swift:75](../Sources/ClawdLightCore/Transcript/TranscriptDecoder.swift#L75)
+**Depends at** [TranscriptDecoder.swift:75](../Sources/LampBoardCore/Transcript/TranscriptDecoder.swift#L75)
 
 **How verified** — `runtime`, recorded verbatim in `golden/delivered-message.json`
 and asserted by `DeliveredMessageSuite`.
@@ -663,7 +663,7 @@ imagination.
 
 ## presence.file · CLAUDE_CLIENT_PRESENCE_FILE suppresses phone push notifications
 
-**Depends at** [PresenceFile.swift:23](../Sources/ClawdLightApp/Runtime/PresenceFile.swift#L23)
+**Depends at** [PresenceFile.swift:23](../Sources/LampBoardApp/Runtime/PresenceFile.swift#L23)
 
 **How verified** — `binary` only. **Never verified at runtime**, and the feature
 ships off by default partly for that reason. Inspection also turned up a
@@ -684,9 +684,9 @@ too many but a notification **lost**, and lost notifications go unnoticed.
 clock ticks — and, being Linux, exposes that same start time as field 22 of
 `/proc/<pid>/stat`.
 
-**Depends at** [RemoteProbeScript.swift](../Sources/ClawdLightCore/Workspace/RemoteProbeScript.swift)
-· [RemoteSessionsDecoder.swift](../Sources/ClawdLightCore/Workspace/RemoteSessionsDecoder.swift)
-· [StateStore.swift](../Sources/ClawdLightApp/Runtime/StateStore.swift) (`poll`)
+**Depends at** [RemoteProbeScript.swift](../Sources/LampBoardCore/Workspace/RemoteProbeScript.swift)
+· [RemoteSessionsDecoder.swift](../Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift)
+· [StateStore.swift](../Sources/LampBoardApp/Runtime/StateStore.swift) (`poll`)
 
 **What the probe is for, since D24.** Confirmation, not discovery. A remote row is
 created by the hooks (below); the probe answers *is this pid still alive*, so a
@@ -702,7 +702,7 @@ that comparison a pid reused after a reboot keeps a dead session's row alive.
 cannot be reached is logged by name and keeps its previous rows. But a host whose
 file shape changed would return well-formed JSON with missing fields, every record
 would be skipped, and every remote row on it would be pruned on the next pass as
-"not listed". `clawd-light status` and `clawd-light remote check` print each host
+"not listed". `lampboard status` and `lampboard remote check` print each host
 and what it said for exactly this reason.
 
 **Not assumed** — that the remote transcript can be read from here. It cannot: a remote signal's transcript path is dropped at the decoder, and the
@@ -723,15 +723,15 @@ whose daemon forwards as root; it honoured `-R 127.0.0.1:<port>` (measured in
 why the transport is a port. And one thing about VS Code on this Mac: a
 Remote-SSH window's title ends in `[SSH: <what the user typed to connect>]`.
 
-**Depends at** [RemoteInstallScripts.swift](../Sources/ClawdLightCore/Setup/RemoteInstallScripts.swift)
-· [HookScriptBuilder.swift](../Sources/ClawdLightCore/Setup/HookScriptBuilder.swift) (`host:`)
-· [RemoteTunnel.swift](../Sources/ClawdLightApp/Runtime/RemoteTunnel.swift)
-· [WindowTitleMatcher.swift](../Sources/ClawdLightCore/Workspace/WindowTitleMatcher.swift) (`bestRemoteMatch`)
+**Depends at** [RemoteInstallScripts.swift](../Sources/LampBoardCore/Setup/RemoteInstallScripts.swift)
+· [HookScriptBuilder.swift](../Sources/LampBoardCore/Setup/HookScriptBuilder.swift) (`host:`)
+· [RemoteTunnel.swift](../Sources/LampBoardApp/Runtime/RemoteTunnel.swift)
+· [WindowTitleMatcher.swift](../Sources/LampBoardCore/Workspace/WindowTitleMatcher.swift) (`bestRemoteMatch`)
 
 **How verified** — against the same node on 27 Aug 2026: `settings.json` there had
-no `hooks` key; after `clawd-light remote install` it registered the nine events
-with the script at `~/.clawd-light/hook.sh`, a dated backup was written, and a
-`curl` **from the node** to `127.0.0.1:<per-user port>/signal` — the port `remotePort(forUID:)` derives and `remote install` prints — with the `X-Clawd-Host` header
+no `hooks` key; after `lampboard remote install` it registered the nine events
+with the script at `~/.lampboard/hook.sh`, a dated backup was written, and a
+`curl` **from the node** to `127.0.0.1:<per-user port>/signal` — the port `remotePort(forUID:)` derives and `remote install` prints — with the `X-LampBoard-Host` header
 produced `absent -> working host=minisforum` here. Two Remote-SSH windows were
 open on this Mac at the time, titled `resume — <folder> [SSH: 100.x.x.x]` and
 `<folder> [SSH: <alias>]` — the label is whatever was typed, hence the matcher
@@ -741,7 +741,7 @@ addresses.
 **Failure mode** — a port already bound is seen before the connect and waited
 out; a bind refused ends the tunnel at once (`ExitOnForwardFailure`) with a
 reason in the log and the Settings window; a bind on anything but loopback
-closes the tunnel with "exposed on <address>" and no retry; a `~/.clawd-light`
+closes the tunnel with "exposed on <address>" and no retry; a `~/.lampboard`
 there that is a symlink or another user's is refused
 before anything is written, as is a missing `curl`; a settings file that changed
 between the read and the write is left alone and the operation says so; a title
@@ -767,7 +767,7 @@ Claude Code moves with the Bash tool's persistent `cd` — not the folder the
 session started in. Measured on one session: 16,170 transcript records at the
 project root, 29 under `docs/`, after a single `cd docs`.
 
-**Depends at** [StateStore.swift:82](../Sources/ClawdLightApp/Runtime/StateStore.swift#L82) —
+**Depends at** [StateStore.swift:82](../Sources/LampBoardApp/Runtime/StateStore.swift#L82) —
 a terminal row is anchored on the session **file's** `cwd`, written once.
 
 **How verified** — `runtime`, by reading the transcript's `cwd` fields.
@@ -787,8 +787,8 @@ seen is the title. Claude Code writes the same text into the terminal's title ba
 prefixed `✳` — and `✳ Claude Code` before any title exists. That mark is what
 tells a Ghostty terminal running `claude` from one running a shell.
 
-**Depends at** [TranscriptTitleScanner.swift:15](../Sources/ClawdLightCore/Transcript/TranscriptTitleScanner.swift#L15) ·
-[TranscriptTail.swift:38](../Sources/ClawdLightCore/Transcript/TranscriptTail.swift#L38)
+**Depends at** [TranscriptTitleScanner.swift:15](../Sources/LampBoardCore/Transcript/TranscriptTitleScanner.swift#L15) ·
+[TranscriptTail.swift:38](../Sources/LampBoardCore/Transcript/TranscriptTail.swift#L38)
 
 **How verified** — `runtime`: the chat window's header and the terminal rows'
 names come from it.
@@ -805,8 +805,8 @@ ticks since boot on Linux (`"5480393"`), and on macOS a ctime string **in UTC
 with no zone marker** at second resolution — `"Wed Aug 26 17:07:24 2026"` for a
 process `ps -o lstart` shows at `19:07:24` local. Measured on two live sessions.
 
-**Depends at** [ProcStart.swift:22](../Sources/ClawdLightCore/Seat/ProcStart.swift#L22) ·
-[SeatResolver.swift:34](../Sources/ClawdLightApp/Focus/SeatResolver.swift#L34)
+**Depends at** [ProcStart.swift:22](../Sources/LampBoardCore/Seat/ProcStart.swift#L22) ·
+[SeatResolver.swift:34](../Sources/LampBoardApp/Focus/SeatResolver.swift#L34)
 
 **How verified** — `runtime`, against the kernel's `p_starttime` for the same pid.
 
@@ -826,9 +826,9 @@ that kitty and WezTerm have no dictionary and answer through `kitten @` (over
 a socket, remote control permitting) and `wezterm cli` (panes with `tty_name`,
 no pid). Read with `sdef <app>` and the CLIs' `--help`, then exercised live.
 
-**Depends at** [TerminalScripts.swift:15](../Sources/ClawdLightCore/Seat/TerminalScripts.swift#L15) ·
-[TerminalListings.swift:9](../Sources/ClawdLightCore/Seat/TerminalListings.swift#L9) ·
-[TerminalFocuser.swift:30](../Sources/ClawdLightApp/Focus/TerminalFocuser.swift#L30)
+**Depends at** [TerminalScripts.swift:15](../Sources/LampBoardCore/Seat/TerminalScripts.swift#L15) ·
+[TerminalListings.swift:9](../Sources/LampBoardCore/Seat/TerminalListings.swift#L9) ·
+[TerminalFocuser.swift:30](../Sources/LampBoardApp/Focus/TerminalFocuser.swift#L30)
 
 **How verified** — `runtime`, one click per host on a real `claude` inside it.
 
@@ -845,8 +845,8 @@ the session name as the socket's last path component, and that `lsof -nP -U`
 prints a socket's own kernel address in `DEVICE` and its peer as `->0x…` in
 `NAME` — which pairs a client with its server. zellij 0.45, macOS 26.
 
-**Depends at** [SeatClassifier.swift:62](../Sources/ClawdLightCore/Seat/SeatClassifier.swift#L62) ·
-[MultiplexerListings.swift:24](../Sources/ClawdLightCore/Seat/MultiplexerListings.swift#L24)
+**Depends at** [SeatClassifier.swift:62](../Sources/LampBoardCore/Seat/SeatClassifier.swift#L62) ·
+[MultiplexerListings.swift:24](../Sources/LampBoardCore/Seat/MultiplexerListings.swift#L24)
 
 **How verified** — `runtime`, on the zellij session in daily use.
 

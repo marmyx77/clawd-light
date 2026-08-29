@@ -17,7 +17,7 @@ cd "$ROOT"
 
 # A dedicated port: never the default one, or a test session would collide with
 # the panel you have open.
-PORT="${CLAWD_LIGHT_TEST_PORT:-9899}"
+PORT="${LAMPBOARD_TEST_PORT:-9899}"
 
 # Warnings as errors, the same way CI does it: a warning that only appears on a
 # build machine is a warning that gets discovered by whoever is trying to ship.
@@ -31,14 +31,14 @@ echo "▸ Domain tests"
 # already on disk — and on 2026-08-29 that re-entry died with SIGSEGV inside
 # llbuild while other builds were running, reporting a red that had nothing to do
 # with this project. The suite itself ran clean three times immediately after,
-# and the crash report named `swift-package`, not `ClawdLightTests`.
+# and the crash report named `swift-package`, not `LampBoardTests`.
 #
 # The end-to-end line below always did it this way. Now both do.
-.build/debug/ClawdLightTests "$@"
+.build/debug/LampBoardTests "$@"
 
 echo
 echo "▸ End-to-end tests (port $PORT)"
-.build/debug/ClawdLightE2E --port "$PORT" "$@"
+.build/debug/LampBoardE2E --port "$PORT" "$@"
 
 # Third, because documentation that states figures is documentation that can be
 # wrong, and nothing else in this repository would ever notice. Twenty-one of the

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Builds ClawdLight.app from the SwiftPM executable.
+# Builds LampBoard.app from the SwiftPM executable.
 #
 # The bundle isn't an affectation: macOS grants the Accessibility and Automation
 # permissions to a bundle identity, not to a bare binary. Without a signed .app
@@ -10,11 +10,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION="${1:-release}"
-APP_NAME="ClawdLight"
-BUNDLE_ID="com.clawdlight.app"
+APP_NAME="LampBoard"
+BUNDLE_ID="com.lampboard.app"
 # The version comes from the release script when there is one, so a disk
 # image cannot carry a number no tag ever had.
-VERSION="${CLAWD_LIGHT_VERSION:-0.1.0}"
+VERSION="${LAMPBOARD_VERSION:-0.1.0}"
 
 BUILD_DIR="$ROOT/.build/$CONFIGURATION"
 APP_DIR="$ROOT/dist/$APP_NAME.app"
@@ -23,13 +23,13 @@ RESOURCES_DIR="$APP_DIR/Contents/Resources"
 
 echo "▸ Building ($CONFIGURATION)…"
 cd "$ROOT"
-swift build -c "$CONFIGURATION" --product ClawdLightApp
+swift build -c "$CONFIGURATION" --product LampBoardApp
 
 echo "▸ Assembling the bundle…"
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
-cp "$BUILD_DIR/ClawdLightApp" "$MACOS_DIR/clawd-light"
+cp "$BUILD_DIR/LampBoardApp" "$MACOS_DIR/lampboard"
 
 # The icon is committed, not generated here: a build should not depend on
 # Python being present. Scripts/make-icon.py redraws it when the design changes.
@@ -51,7 +51,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key>
     <string>$APP_NAME</string>
     <key>CFBundleExecutable</key>
-    <string>clawd-light</string>
+    <string>lampboard</string>
     <key>CFBundleIconFile</key>
     <string>$APP_NAME</string>
     <key>CFBundleIconName</key>
@@ -74,14 +74,14 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <!-- Required to drive System Events and bring the VS Code window to the
          front. Without this key macOS blocks the AppleScript. -->
     <key>NSMicrophoneUsageDescription</key>
-    <string>clawd-light uses the microphone only while you hold the dictation button, to turn what you say into the message you are writing. Nothing is recorded and nothing leaves the Mac.</string>
+    <string>lampboard uses the microphone only while you hold the dictation button, to turn what you say into the message you are writing. Nothing is recorded and nothing leaves the Mac.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>clawd-light transcribes your dictation on this Mac, using the on-device speech model. No audio is sent anywhere.</string>
+    <string>lampboard transcribes your dictation on this Mac, using the on-device speech model. No audio is sent anywhere.</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>clawd-light uses system events to bring the Visual Studio Code window matching the traffic light you clicked to the front.</string>
+    <string>lampboard uses system events to bring the Visual Studio Code window matching the traffic light you clicked to the front.</string>
 
     <key>NSHumanReadableCopyright</key>
-    <string>clawd-light</string>
+    <string>lampboard</string>
 </dict>
 </plist>
 PLIST
@@ -90,7 +90,7 @@ PLIST
 # rebuilds, because the requirement hooks onto the identity and not onto the
 # binary's hash. Otherwise fall back to the ad-hoc signature, which invalidates
 # the permissions on every build (see Scripts/create-signing-identity.sh).
-SIGNING_IDENTITY="clawd-light Local Signing"
+SIGNING_IDENTITY="lampboard Local Signing"
 
 SIGNED_STABLY=0
 
@@ -131,7 +131,7 @@ echo
 echo "✓ $APP_DIR"
 echo
 echo "  Launch:         open '$APP_DIR'"
-echo "  From terminal:  '$MACOS_DIR/clawd-light' help"
+echo "  From terminal:  '$MACOS_DIR/lampboard' help"
 echo
 if [ "$SIGNED_STABLY" = "1" ]; then
     echo "  Stable signature: the Accessibility and Automation authorizations"
@@ -142,15 +142,15 @@ else
     echo "  If clicking the traffic lights stops raising the right window:"
     echo
     echo "    System Settings › Privacy & Security › Accessibility"
-    echo "      → select clawd-light, press '−', then add it back from dist/"
+    echo "      → select lampboard, press '−', then add it back from dist/"
     echo "    System Settings › Privacy & Security › Automation"
-    echo "      → clawd-light → System Events"
+    echo "      → lampboard → System Events"
     echo
     echo "  To never do this again:  ./Scripts/create-signing-identity.sh"
 fi
 echo
 echo "  Remember to restart the app: a new bundle does not replace the process"
 echo "  that is already running."
-echo "    pkill -x clawd-light; sleep 1; open '$APP_DIR'"
+echo "    pkill -x lampboard; sleep 1; open '$APP_DIR'"
 echo
-echo "  Check:  '$MACOS_DIR/clawd-light' status"
+echo "  Check:  '$MACOS_DIR/lampboard' status"

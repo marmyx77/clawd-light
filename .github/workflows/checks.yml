@@ -52,13 +52,13 @@ jobs:
       # clause in the assertion library made 497 tests report success while
       # verifying nothing, so the instrument is calibrated before it is read.
       - name: Domain tests
-        run: .build/debug/ClawdLightTests
+        run: .build/debug/LampBoardTests
 
       # Launches the real binary against a fake home and talks to it over HTTP.
       # This is where the project's worst defects have always been: in the seams
       # between parts that each work.
       - name: End-to-end tests
-        run: .build/debug/ClawdLightE2E --port 9899
+        run: .build/debug/LampBoardE2E --port 9899
 
       - name: Documentation describes this repository
         run: ./Scripts/check-docs.sh

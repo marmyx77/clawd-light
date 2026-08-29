@@ -108,7 +108,7 @@ def declared(name, found):
         )
     return found
 
-# Per-target totals: "  ClawdLightCore/    4,087 lines · 36 files"
+# Per-target totals: "  LampBoardCore/    4,087 lines · 36 files"
 for target, claimed_lines, claimed_files in declared("per-target rows", re.findall(
     r'^\s+(\w+)/\s+([\d,]+) lines · \s*(\d+) files', doc, re.M
 )):
@@ -145,7 +145,7 @@ else:
 
 # Test-case counts, stated next to the target they belong to.
 for target, claimed in declared("per-target case counts", re.findall(
-    r'(ClawdLight(?:Tests|E2E))/.*?(\d+) cases', doc
+    r'(LampBoard(?:Tests|E2E))/.*?(\d+) cases', doc
 )):
     actual = sum(
         open(p).read().count("TestCase(")
@@ -270,7 +270,7 @@ if not sources:
     print("    no Swift sources found — nothing to compare these figures against", file=sys.stderr)
     sys.exit(2)
 
-domain, e2e = cases("ClawdLightTests"), cases("ClawdLightE2E")
+domain, e2e = cases("LampBoardTests"), cases("LampBoardE2E")
 longest = max(lines_of(p) for p in sources)
 total = sum(lines_of(p) for p in sources)
 
@@ -359,7 +359,7 @@ if start < 0:
 end = text.find("\n## ", start + 1)
 table = text[start:end if end > 0 else len(text)]
 
-domain, e2e = cases("ClawdLightTests"), cases("ClawdLightE2E")
+domain, e2e = cases("LampBoardTests"), cases("LampBoardE2E")
 longest = max(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
 
 problems = []
@@ -495,7 +495,7 @@ python3 - <<'EVPY' || STATUS=$?
 import json, re, sys
 
 spec = json.load(open("Contracts/required-fields.json"))["hookEventInventory"]
-source = open("Sources/ClawdLightCore/Setup/HookConfigMerger.swift").read()
+source = open("Sources/LampBoardCore/Setup/HookConfigMerger.swift").read()
 match = re.search(r"defaultEvents = \[(.*?)\n    \]", source, re.S)
 if match is None:
     print("    could not find defaultEvents in HookConfigMerger.swift", file=sys.stderr)
@@ -545,7 +545,7 @@ name = WORDS[count]
 # Rewriting history to satisfy a checker would be a worse failure than the drift
 # this catches.
 FILES = ["docs/02-claude-code.md", "docs/05-code-map.md", "README.md", "Contracts/assumptions.md"]
-STATEMENT = re.compile(r"the (two|three|four|five|six|seven|eight|nine|ten) events (clawd-light )?registers?", re.I)
+STATEMENT = re.compile(r"the (two|three|four|five|six|seven|eight|nine|ten) events (lampboard )?registers?", re.I)
 
 problems, stating = [], 0
 for f in FILES:
@@ -590,7 +590,7 @@ import glob, os, re, sys
 EXPECTED_SUITES = 50   # today: 59. A collapse means the parsing broke, not that
                        # fifty suites were deleted.
 
-paths = glob.glob("Sources/ClawdLightTests/*.swift")
+paths = glob.glob("Sources/LampBoardTests/*.swift")
 if not paths:
     print("    no test sources found — nothing was examined", file=sys.stderr)
     sys.exit(2)
@@ -598,7 +598,7 @@ if not paths:
 defined = set()
 for path in paths:
     defined |= set(re.findall(r'^enum (\w+Suite) \{', open(path).read(), re.M))
-registered = set(re.findall(r'(\w+Suite)\.suite', open("Sources/ClawdLightTests/main.swift").read()))
+registered = set(re.findall(r'(\w+Suite)\.suite', open("Sources/LampBoardTests/main.swift").read()))
 
 problems = []
 if len(defined) < EXPECTED_SUITES:
@@ -645,7 +645,7 @@ if not os.path.exists(MAP):
 mapped = open(MAP).read()
 missing, examined = [], 0
 
-for target in ("Sources/ClawdLightCore", "Sources/ClawdLightApp"):
+for target in ("Sources/LampBoardCore", "Sources/LampBoardApp"):
     for root, _, files in os.walk(target):
         for name in sorted(files):
             if not name.endswith(".swift"):

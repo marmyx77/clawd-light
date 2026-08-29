@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """Draws the application icon, at every size macOS asks for.
 
-The icon is three claw slashes — the name carries *claw*, the product is a
-traffic light, and the three marks are the three states. It is generated
-rather than drawn by hand for one reason: the rule that keeps it legible at
-16 px is arithmetic, not taste. The gap between two slashes is never smaller
-than a slash is wide, and here that is a line of code instead of something a
-redraw can quietly lose.
+The icon is a lamp board: three pilot lamps in a row on a dark panel, red then
+amber then green. That is the product — one row of lights you read at a glance,
+never a control you operate — and it is the object the name comes from, the
+annunciator panel of a signal box or a control room.
 
-    python3 Scripts/make-icon.py            # Resources/ClawdLight.icns
+It is generated rather than drawn by hand for one reason: the rule that keeps it
+legible at 16 px is arithmetic, not taste. The gap between two lamps is never
+smaller than a bezel is thick, and here that is a line of code with an assertion
+under it instead of something a redraw can quietly lose.
+
+    python3 Scripts/make-icon.py            # Resources/LampBoard.icns
     python3 Scripts/make-icon.py --preview  # plus a legibility contact sheet
 
-The small sizes are not the large one shrunk. Below 32 px the shadow and the
-edge highlight land on nothing and the strokes go thin and grey, so those
-sizes get thicker strokes and no ornament — the compensation a designer makes
-by hand, written down.
+The small sizes are not the large one shrunk. Below 64 px the bezel, the glass
+and the specular highlight land on fractions of a pixel: the bezel turns the
+lamp grey, the highlight eats its centre, and three lit lamps become three
+smudges. Those sizes get bare discs, drawn slightly larger — the compensation a
+designer makes by hand, written down.
 """
 
-import math
 import os
 import shutil
 import subprocess
@@ -41,38 +44,74 @@ GREEN = (48, 209, 88)
 TILE_TOP = (54, 54, 61)
 TILE_BOTTOM = (23, 23, 27)
 
-ANGLE_DEG = 30.0        # from the vertical: a swipe, not a stack
-STROKE_RATIO = 0.072    # stroke width, as a fraction of the tile side
-GAP_FACTOR = 2.8        # centre-to-centre = 2.8 × width → edge gap = 1.8 × width
-LENGTH_RATIO = 0.66     # slash length, as a fraction of the tile side
-STAGGER_RATIO = 0.060   # how far each slash slides along its own direction
-OPTICAL_LIFT = 0.018    # the group sits above the geometric centre
+# The board the lamps are seated in: a shade darker than the plate, never a
+# different colour. It exists to say "these three belong together", and a
+# board that announces itself competes with the lamps for the same glance.
+BOARD_DARK = (16, 16, 19)
+
+BEZEL_DARK = (12, 12, 14)
+BEZEL_LIGHT = (86, 86, 94)
+
+GLASS_RATIO = 0.164     # lamp glass diameter, as a fraction of the tile side
+BEZEL_RATIO = 0.024     # bezel thickness, same units
+PITCH_FACTOR = 1.34     # centre-to-centre = 1.34 × outer diameter
+OPTICAL_LIFT = 0.012    # the row sits above the geometric centre
+BOARD_PAD = 0.048       # how far the board extends past the outer bezels
 
 
-def lens(length, width, samples=220):
-    """One claw mark: a lens with sharp tips, centred on the origin.
+def lamp_geometry(tile, glass_ratio=GLASS_RATIO, bezel_ratio=BEZEL_RATIO,
+                  pitch_factor=PITCH_FACTOR):
+    """Diameters and spacing, with the legibility rule asserted rather than hoped.
 
-    A rounded rectangle reads as a bar; the sharp tip is the whole reason
-    this reads as a claw. The profile is (1 - t²), which reaches zero with a
-    finite slope — a point, not a blunt end — and the slight bias moves the
-    fullest part off centre so the mark looks struck rather than drawn.
+    The rule: the space between two lamps is never narrower than a bezel. Below
+    that the two glows meet, and at 16 px three lit lamps read as one wide
+    smear of colour — the failure that is invisible at 1024 and fatal in the Dock.
     """
-    points = []
-    for side in (1, -1):
-        for i in range(samples + 1):
-            t = -1.0 + 2.0 * i / samples
-            if side < 0:
-                t = -t
-            half = 0.5 * width * (1.0 - t * t) * (1.0 + 0.10 * t)
-            points.append((side * max(half, 0.0), t * length / 2.0))
-    return points
+    glass = tile * glass_ratio
+    bezel = tile * bezel_ratio
+    outer = glass + 2 * bezel
+    pitch = outer * pitch_factor
+    gap = pitch - outer
+    assert gap >= bezel, (
+        f"lamps {gap:.2f} apart with a {bezel:.2f} bezel: they will merge when small"
+    )
+    return glass, bezel, outer, pitch
 
 
-def placed(points, centre, angle_rad):
-    cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
-    cx, cy = centre
-    return [(cx + x * cos_a - y * sin_a, cy + x * sin_a + y * cos_a)
-            for x, y in points]
+def radial_glass(diameter, colour, resolution=192):
+    """One lit lamp face: bright off-centre, deepening to the rim.
+
+    Built small and scaled up. The gradient is smooth by nature, so the
+    resampling costs nothing visible and saves computing a quarter of a million
+    pixels in Python at 2048.
+
+    The light is placed up and to the left, where every other lens on the screen
+    is lit from, and the colour deepens *into itself* rather than towards black:
+    a lamp shaded towards black reads as a switched-off lamp with a reflection.
+    """
+    n = resolution
+    lighter = tuple(min(255, int(c + (255 - c) * 0.20)) for c in colour)
+    deeper = tuple(max(0, int(c * 0.74)) for c in colour)
+
+    face = Image.new("RGB", (n, n))
+    pixels = face.load()
+    cx, cy = n * 0.38, n * 0.34          # the highlight's centre, not the disc's
+    reach = n * 0.92
+    for y in range(n):
+        dy = (y - cy) / reach
+        for x in range(n):
+            dx = (x - cx) / reach
+            t = min(1.0, (dx * dx + dy * dy) ** 0.5)
+            t = t * t                     # slow near the centre, quick at the rim
+            pixels[x, y] = tuple(
+                round(lighter[i] + (deeper[i] - lighter[i]) * t) for i in range(3)
+            )
+
+    face = face.resize((diameter, diameter), Image.LANCZOS).convert("RGBA")
+    mask = Image.new("L", (diameter, diameter), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, diameter - 1, diameter - 1], fill=255)
+    face.putalpha(mask)
+    return face
 
 
 def vertical_gradient(size, top, bottom):
@@ -91,8 +130,15 @@ def tile_mask(size, radius):
     return mask
 
 
-def draw(size, ornament=True, stroke_ratio=STROKE_RATIO,
-         length_ratio=LENGTH_RATIO, supersample=4):
+def _expanded(mask, size, origin):
+    """Puts the tile mask back on the full canvas, so nothing spills outside."""
+    full = Image.new("L", (size, size), 0)
+    full.paste(mask, (origin, origin))
+    return full
+
+
+def draw(size, ornament=True, glass_ratio=GLASS_RATIO, bezel_ratio=BEZEL_RATIO,
+         pitch_factor=PITCH_FACTOR, supersample=4):
     """Renders the icon at `size` pixels."""
     S = size * supersample
     canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
@@ -119,63 +165,72 @@ def draw(size, ornament=True, stroke_ratio=STROKE_RATIO,
 
     canvas.alpha_composite(plate, (origin, origin))
 
-    angle = math.radians(ANGLE_DEG)
-    width = tile * stroke_ratio
-    length = tile * length_ratio
-    gap = width * GAP_FACTOR
-    stagger = tile * STAGGER_RATIO
-
-    # Perpendicular to the slash, so the gap is measured across them; and
-    # along the slash, so they stagger like a swipe instead of a stack.
-    across = (math.cos(angle), math.sin(angle))
-    along = (-math.sin(angle), math.cos(angle))
-
+    glass, bezel, outer, pitch = lamp_geometry(
+        tile, glass_ratio, bezel_ratio, pitch_factor
+    )
     centre_x = S / 2.0
     centre_y = S / 2.0 - tile * OPTICAL_LIFT
-
-    lengths = (0.94, 1.0, 0.94)
-    slides = (1.0, 0.0, -1.0)
+    centres = [(centre_x + (i - 1) * pitch, centre_y) for i in range(3)]
     colours = (RED, AMBER, GREEN)
 
-    marks = []
-    for i, (colour, k, slide) in enumerate(zip(colours, lengths, slides)):
-        offset = (i - 1) * gap
-        cx = centre_x + across[0] * offset + along[0] * slide * stagger
-        cy = centre_y + across[1] * offset + along[1] * slide * stagger
-        marks.append((colour, placed(lens(length * k, width), (cx, cy), angle)))
+    inside = _expanded(tile_mask(tile, radius), S, origin)
 
     if ornament:
-        # A tight dark shadow, never a coloured glow: at 16 px a glow bleeds
-        # from one slash into the next and the three colours turn to mud.
-        shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-        pen = ImageDraw.Draw(shadow)
-        for _, polygon in marks:
-            pen.polygon([(x + S * 0.006, y + S * 0.008) for x, y in polygon],
-                        fill=(0, 0, 0, 130))
-        shadow = shadow.filter(ImageFilter.GaussianBlur(S * 0.010))
-        # Clipped to the tile, so the blur does not smudge past the corners.
-        inside = _expanded(tile_mask(tile, radius), S, origin)
-        shadow.putalpha(Image.composite(shadow.getchannel("A"),
-                                        Image.new("L", (S, S), 0), inside))
-        canvas.alpha_composite(shadow)
+        # The board: what turns three lights into one instrument. Ornament only,
+        # because at 32 px it is four pixels of near-black behind the lamps and
+        # all it does there is dull the plate.
+        pad = tile * BOARD_PAD
+        half_w = pitch + outer / 2.0 + pad
+        half_h = outer / 2.0 + pad
+        board = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        ImageDraw.Draw(board).rounded_rectangle(
+            [centre_x - half_w, centre_y - half_h,
+             centre_x + half_w, centre_y + half_h],
+            radius=half_h * 0.42, fill=BOARD_DARK + (150,))
+        board = board.filter(ImageFilter.GaussianBlur(S * 0.002))
+        board.putalpha(Image.composite(board.getchannel("A"),
+                                       Image.new("L", (S, S), 0), inside))
+        canvas.alpha_composite(board)
 
     layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    for colour, polygon in marks:
+    pen = ImageDraw.Draw(layer)
+
+    for (cx, cy), colour in zip(centres, colours):
         if ornament:
-            # Light along the mark, not a bevel on top of it: the colour is
-            # graded from its own lighter self at the tip to its own deeper
-            # self at the foot, inside the mark's own silhouette. A second
-            # lighter copy laid over the first is what turned red into brown.
-            lighter = tuple(min(255, c + 38) for c in colour)
-            deeper = tuple(max(0, int(c * 0.80)) for c in colour)
-            body = vertical_gradient(S, lighter, deeper).convert("RGBA")
+            # The bezel is a ring lit from the top, so the lamp sits *in* the
+            # board instead of on it: light above, shadow below, one ellipse each.
+            r_out = outer / 2.0
+            pen.ellipse([cx - r_out, cy - r_out, cx + r_out, cy + r_out],
+                        fill=BEZEL_DARK + (255,))
+            pen.arc([cx - r_out, cy - r_out, cx + r_out, cy + r_out],
+                    start=185, end=355, fill=BEZEL_LIGHT + (110,),
+                    width=max(1, int(bezel * 0.30)))
+
+        r_glass = glass / 2.0 if ornament else outer / 2.0
+        d = max(2, int(round(r_glass * 2)))
+        if ornament:
+            face = radial_glass(d, colour)
         else:
-            body = Image.new("RGBA", (S, S), colour + (255,))
-        shape = Image.new("L", (S, S), 0)
-        ImageDraw.Draw(shape).polygon(polygon, fill=255)
-        body.putalpha(shape)
-        layer.alpha_composite(body)
-    inside = _expanded(tile_mask(tile, radius), S, origin)
+            # No gradient, no bezel: at 16 px the disc *is* the lamp, and the
+            # only thing that has to survive is the hue.
+            face = Image.new("RGBA", (d, d), colour + (255,))
+            mask = Image.new("L", (d, d), 0)
+            ImageDraw.Draw(mask).ellipse([0, 0, d - 1, d - 1], fill=255)
+            face.putalpha(mask)
+        layer.alpha_composite(face, (int(round(cx - d / 2)), int(round(cy - d / 2))))
+
+        if ornament:
+            # One small specular, up and left, on its own so it is never blurred
+            # into the glass gradient underneath.
+            hl = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+            hw, hh = glass * 0.30, glass * 0.20
+            hx, hy = cx - glass * 0.13, cy - glass * 0.23
+            ImageDraw.Draw(hl).ellipse([hx - hw / 2, hy - hh / 2,
+                                        hx + hw / 2, hy + hh / 2],
+                                       fill=(255, 255, 255, 82))
+            hl = hl.filter(ImageFilter.GaussianBlur(glass * 0.045))
+            layer.alpha_composite(hl)
+
     layer.putalpha(Image.composite(layer.getchannel("A"),
                                    Image.new("L", (S, S), 0), inside))
     canvas.alpha_composite(layer)
@@ -183,19 +238,15 @@ def draw(size, ornament=True, stroke_ratio=STROKE_RATIO,
     return canvas.resize((size, size), Image.LANCZOS)
 
 
-def _expanded(mask, size, origin):
-    """Puts the tile mask back on the full canvas, so nothing spills outside."""
-    full = Image.new("L", (size, size), 0)
-    full.paste(mask, (origin, origin))
-    return full
-
-
-# 16 and 32 are drawn, not shrunk: fatter strokes, no ornament. Below that
-# size the shadow and the gloss fall between pixels and only mute the colour.
+# 16, 32 and 64 are drawn, not shrunk: bare discs, drawn larger. Below 128 the
+# bezel is a grey ring a pixel wide that turns the lamp the colour of the board.
 SIZES = [
-    (16, dict(ornament=False, stroke_ratio=0.132, length_ratio=0.70, supersample=16)),
-    (32, dict(ornament=False, stroke_ratio=0.108, length_ratio=0.68, supersample=12)),
-    (64, dict(ornament=True, stroke_ratio=0.092, length_ratio=0.67, supersample=8)),
+    (16, dict(ornament=False, glass_ratio=0.215, bezel_ratio=0.026,
+              pitch_factor=1.28, supersample=16)),
+    (32, dict(ornament=False, glass_ratio=0.208, bezel_ratio=0.026,
+              pitch_factor=1.30, supersample=12)),
+    (64, dict(ornament=False, glass_ratio=0.196, bezel_ratio=0.024,
+              pitch_factor=1.32, supersample=8)),
     (128, dict(supersample=6)),
     (256, dict(supersample=4)),
     (512, dict(supersample=3)),
@@ -208,7 +259,7 @@ def render_all():
 
 
 def build_icns(images, destination):
-    iconset = os.path.join(ROOT, ".build", "ClawdLight.iconset")
+    iconset = os.path.join(ROOT, ".build", "LampBoard.iconset")
     shutil.rmtree(iconset, ignore_errors=True)
     os.makedirs(iconset)
 
@@ -246,7 +297,7 @@ def contact_sheet(images, destination):
 
 if __name__ == "__main__":
     rendered = render_all()
-    icns = build_icns(rendered, os.path.join(ROOT, "Resources", "ClawdLight.icns"))
+    icns = build_icns(rendered, os.path.join(ROOT, "Resources", "LampBoard.icns"))
     print(f"✓ {icns}")
     if "--preview" in sys.argv:
         out = os.path.join(ROOT, ".build", "icon-preview.png")

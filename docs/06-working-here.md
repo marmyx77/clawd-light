@@ -16,7 +16,7 @@ swift build                    # compile
 ./Scripts/test.sh              # both suites, then the documentation checks
 ./Scripts/build-app.sh         # bundle into dist/
 ./Scripts/release.sh           # only to hand it to somebody else
-pkill -x clawd-light; sleep 1; open dist/ClawdLight.app
+pkill -x lampboard; sleep 1; open dist/LampBoard.app
 ```
 
 **The last line is not optional.** A new bundle does not replace the running
@@ -26,12 +26,12 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run ClawdLightTests              # 551 cases, instantaneous
-swift run ClawdLightE2E                # 82 cases, about a minute
-swift run ClawdLightTests "Subagents"  # filter by suite or by case
+swift run LampBoardTests              # 551 cases, instantaneous
+swift run LampBoardE2E                # 82 cases, about a minute
+swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
 
-**`ClawdLightTests`** verifies pure functions. It touches no network and, apart from the mailbox permission cases, which work
+**`LampBoardTests`** verifies pure functions. It touches no network and, apart from the mailbox permission cases, which work
 in a temporary root they delete, no filesystem.
 
 Both suites print `Instrument proved: 19 checks, the assertions bite.` before
@@ -41,8 +41,8 @@ verifying nothing at all, and nothing in the project would have said so. The
 instrument is now calibrated before it is read, and a blunt one ends the run
 with exit 70 rather than the 1 of an ordinary failure.
 
-**`ClawdLightE2E`** launches the production binary against a fake home
-(`CLAWD_LIGHT_HOME`) and talks to it over HTTP. It goes as far as running
+**`LampBoardE2E`** launches the production binary against a fake home
+(`LAMPBOARD_HOME`) and talks to it over HTTP. It goes as far as running
 `hook.sh` with the payload on stdin: in between sit bash, `curl`, the socket, the
 HTTP parser, the decoder and the reducer.
 
@@ -115,10 +115,10 @@ of from an observation.
 ## Diagnosing
 
 ```bash
-clawd-light status                     # configuration, sessions, permissions
-clawd-light selftest                   # the whole chain, says which link broke
-clawd-light sessions                   # the column as the running app sees it
-clawd-light focus <project> --dry-run  # recognition without moving any windows
+lampboard status                     # configuration, sessions, permissions
+lampboard selftest                   # the whole chain, says which link broke
+lampboard sessions                   # the column as the running app sees it
+lampboard focus <project> --dry-run  # recognition without moving any windows
 ```
 
 `sessions` and `next` talk to the **running instance**: the terminal process
@@ -128,9 +128,9 @@ true answer instead of a plausible reconstruction.
 ### The log
 
 ```bash
-pkill -x clawd-light
-CLAWD_LIGHT_DEBUG=1 open dist/ClawdLight.app
-tail -f ~/.clawd-light/debug.log
+pkill -x lampboard
+LAMPBOARD_DEBUG=1 open dist/LampBoard.app
+tail -f ~/.lampboard/debug.log
 ```
 
 At startup it records the signature and the Accessibility permission **as the app
@@ -140,7 +140,7 @@ click it records which title it chose and, if it fell back, why.
 ### The endpoint
 
 ```bash
-curl -H "X-Clawd-Token: $(cat ~/.clawd-light/token)" \
+curl -H "X-LampBoard-Token: $(cat ~/.lampboard/token)" \
      http://127.0.0.1:9877/sessions | python3 -m json.tool
 ```
 
@@ -159,12 +159,12 @@ re-running after touching `TerminalFocuser` or a script: start a `claude` inside
 the host in a folder no editor has open — from a shell **without** a Claude Code
 session's environment (`env -u CLAUDECODE -u CLAUDE_CODE_CHILD_SESSION … claude`,
 or a nested `claude` writes no session file and gets no row); turn terminal
-sessions on; from another application run `clawd-light open <slot>`; expect the
+sessions on; from another application run `lampboard open <slot>`; expect the
 host in front with that tab selected, and in the log `seat of …: <host> …` then
 `seat: … raised`. `open -a Terminal some.command` opens a Terminal tab running
 a script with no permission at all, which is how the tmux check attached a
-client. Launch the panel through LaunchServices (`open dist/ClawdLight.app
---env CLAWD_LIGHT_DEBUG=1`), never from a shell — see 07-traps, *The
+client. Launch the panel through LaunchServices (`open dist/LampBoard.app
+--env LAMPBOARD_DEBUG=1`), never from a shell — see 07-traps, *The
 permission that belonged to VS Code*.
 
 ## 1. Verify with the medium the app actually uses
@@ -239,7 +239,7 @@ If you ship something you haven't watched work, that's the piece that will break
 
 ## Where new code goes
 
-**If it decides something, it goes in `ClawdLightCore`.** The practical rule: if
+**If it decides something, it goes in `LampBoardCore`.** The practical rule: if
 a function contains an `if` answering a domain question — "does this session
 deserve a traffic light?", "which window matches?" — it is in the wrong place if
 it lives in the app.

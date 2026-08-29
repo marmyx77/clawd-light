@@ -150,7 +150,7 @@ attack_swift() {
         return
     fi
 
-    .build/debug/ClawdLightTests > "$log" 2>&1
+    .build/debug/LampBoardTests > "$log" 2>&1
     status=$?
     restore
 
@@ -175,7 +175,7 @@ p = "docs/05-code-map.md"
 # Whatever the number is today. A mutation that names it would need editing
 # every time the figure legitimately moves, and a bite nobody maintains is a
 # bite that quietly stops proving anything.
-s = re.sub(r"(ClawdLightCore/\s+)[\d,]+( lines)", r"\g<1>9,999\g<2>", open(p).read(), count=1)
+s = re.sub(r"(LampBoardCore/\s+)[\d,]+( lines)", r"\g<1>9,999\g<2>", open(p).read(), count=1)
 open(p, "w").write(s)
 PY
 
@@ -285,17 +285,17 @@ attack "prose left behind on the old count" 'events", there are' <<'PY'
 import re
 p = "docs/02-claude-code.md"
 text = open(p).read()
-spelled = re.search(r"The (\w+) events clawd-light registers", text).group(1)
+spelled = re.search(r"The (\w+) events lampboard registers", text).group(1)
 # Any word but the right one; which wrong word it is does not matter.
 wrong = "eight" if spelled != "eight" else "seven"
-s = text.replace(f"The {spelled} events clawd-light registers", f"The {wrong} events clawd-light registers")
+s = text.replace(f"The {spelled} events lampboard registers", f"The {wrong} events lampboard registers")
 open(p, "w").write(s)
 PY
 
 protect docs/02-claude-code.md docs/05-code-map.md
 attack "every statement of the count reworded away" "no document states how many events are registered" <<'PY'
 for p, old, new in [
-    ("docs/02-claude-code.md", "events clawd-light registers", "hook events wired up here"),
+    ("docs/02-claude-code.md", "events lampboard registers", "hook events wired up here"),
     ("docs/05-code-map.md", "events registered by default", "hooks wired up by default"),
 ]:
     s = open(p).read().replace(old, new)
@@ -304,9 +304,9 @@ PY
 
 gate "Test suites are registered"
 
-protect Sources/ClawdLightTests/main.swift
+protect Sources/LampBoardTests/main.swift
 attack "a suite that exists and is never run" "is defined but never registered" <<'PY'
-p = "Sources/ClawdLightTests/main.swift"
+p = "Sources/LampBoardTests/main.swift"
 s = open(p).read().replace("    PathNormalizerSuite.suite,\n", "")
 open(p, "w").write(s)
 PY
@@ -392,9 +392,9 @@ chapter "A real defect reaches the exit code"
 # The whole chain, once, end to end: break a rule the domain tests cover and the
 # process must exit 1 — not print a complaint and exit 0, which is how a suite
 # ends up running in CI for a year without ever being able to fail it.
-protect Sources/ClawdLightCore/Update/ReleaseVersion.swift
+protect Sources/LampBoardCore/Update/ReleaseVersion.swift
 attack_swift "a broken comparison the suite catches" "0.10.0" 1 <<'PY'
-p = "Sources/ClawdLightCore/Update/ReleaseVersion.swift"
+p = "Sources/LampBoardCore/Update/ReleaseVersion.swift"
 s = open(p).read().replace(
     "        (lhs.major, lhs.minor, lhs.patch) < (rhs.major, rhs.minor, rhs.patch)",
     "        (lhs.major, lhs.minor, lhs.patch) > (rhs.major, rhs.minor, rhs.patch)",

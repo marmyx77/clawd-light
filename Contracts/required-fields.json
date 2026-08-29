@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "What clawd-light consumes from Claude Code, as data.",
+    "What lampboard consumes from Claude Code, as data.",
     "",
     "One entry per hook event, listing the payload fields the app actually reads.",
     "The check asserts PRESENCE of what we consume, never absence of what we don't:",
@@ -306,7 +306,7 @@
       ]
     },
     "decisionHooks": {
-      "_why": "These do not observe, they answer. Their output schema carries a verdict — PermissionRequest returns decision.behavior allow|deny, Elicitation returns action accept|decline|cancel — so a hook registered here sits inside the approval path. Measured in the binary's output schema; NOT measured live, because a non-interactive `claude -p` never reaches an approval prompt. Registering one changes clawd-light from something that watches into something that can decide, and that is a posture change, not a fix.",
+      "_why": "These do not observe, they answer. Their output schema carries a verdict — PermissionRequest returns decision.behavior allow|deny, Elicitation returns action accept|decline|cancel — so a hook registered here sits inside the approval path. Measured in the binary's output schema; NOT measured live, because a non-interactive `claude -p` never reaches an approval prompt. Registering one changes lampboard from something that watches into something that can decide, and that is a posture change, not a fix.",
       "events": [
         "PermissionRequest",
         "PermissionDenied",

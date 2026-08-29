@@ -210,7 +210,7 @@ which prints the titles actually read.
 
 ## "I have the permissions", said by Terminal
 
-**Symptom.** `clawd-light focus clawd-light` from a terminal answered
+**Symptom.** `lampboard focus lampboard` from a terminal answered
 `✓ window raised`. The clicked panel did something else.
 
 **Cause.** When you launch a binary from a terminal, macOS does **not** attribute
@@ -240,7 +240,7 @@ and actually says "this network link only" — that is, the Wi-Fi the Mac is
 attached to.
 
 ```
-clawd-lig 32486 dev 4u IPv6 ... TCP *:9877 (LISTEN)
+lampboard 32486 dev 4u IPv6 ... TCP *:9877 (LISTEN)
 ```
 
 Anyone who got there could inject signals and drive the panel; with the read
@@ -335,7 +335,7 @@ writing it out explicitly is worth more than not repeating yourself.
 ## The test script that ran nothing and said it passed
 
 **Symptom.** None. `./Scripts/test.sh` printed `0 tests passed` for the
-end-to-end suite and exited 0. Running `swift run ClawdLightE2E` by hand gave 66.
+end-to-end suite and exited 0. Running `swift run LampBoardE2E` by hand gave 66.
 
 **Cause.** The runner picked the filter as "the first argument not starting with
 `--`". The script invokes it as `--port 9899`, so `9899` became the filter, no
@@ -714,7 +714,7 @@ was "does a row appear", not "does the row do anything".
 
 **Correction.** D24. The node's hooks reach this Mac through a reverse ssh tunnel
 the app keeps open — the far end bound to the node's loopback, so nothing on any
-network can post — and clawd-light installs those hooks on the node itself, over
+network can post — and lampboard installs those hooks on the node itself, over
 ssh, with the same merge the local installer uses. A remote row is born when the
 session speaks and confirmed alive by the probe, whose pid check now also
 compares `procStart` with `/proc/<pid>/stat`. A click raises the Remote-SSH
@@ -723,7 +723,7 @@ window of the folder. Hosts moved from a hidden file to a Settings window and a
 
 **Verified.** From the node, `curl` to `127.0.0.1:9877/signal` with the host
 header: `absent -> working host=minisforum`, `working -> ready`, and the row
-carried the message; `clawd-light remote check` reports python, curl, hooks and
+carried the message; `lampboard remote check` reports python, curl, hooks and
 whether the tunnel answers — asked *from* the node, the only place the question
 means anything.
 
@@ -1038,12 +1038,12 @@ resumption.
 
 ## The crash the e2e suite couldn't see
 
-**Symptom.** `swift run ClawdLightApp` died at startup.
+**Symptom.** `swift run LampBoardApp` died at startup.
 
 ```
 *** Terminating app due to uncaught exception 'NSInternalInconsistencyException',
     reason: 'bundleProxyForCurrentProcess is nil'
-8  ClawdLightApp  AppDelegate.startNotifier(for:)
+8  LampBoardApp  AppDelegate.startNotifier(for:)
 ```
 
 **Cause.** `UNUserNotificationCenter.current()` outside a `.app` bundle **does not
@@ -1122,7 +1122,7 @@ appeared.
 
 ## The window that read the whole file
 
-**Symptom.** ⌘+click on a row — or `clawd-light chat n` — showed the beachball
+**Symptom.** ⌘+click on a row — or `lampboard chat n` — showed the beachball
 for ten to thirty seconds before the extended view opened. It had been
 instantaneous; the defect had been there for two days, and nobody had changed
 the chat code in those two days.
@@ -1159,13 +1159,13 @@ you can name.
 missing*. No prompt had appeared, and none would.
 
 **Cause.** The panel had been relaunched from the shell of this very session:
-`nohup dist/ClawdLight.app/Contents/MacOS/clawd-light &`. macOS attributes
+`nohup dist/LampBoard.app/Contents/MacOS/lampboard &`. macOS attributes
 Automation to the **responsible process**, and for a binary started from a
 terminal that is the terminal's owner — here VS Code. Earlier in the day an
 `osascript` from the same shell had been denied Terminal, and that denial was
 recorded for VS Code → Terminal. The panel inherited it.
 
-**Correction.** Launch through LaunchServices — `open dist/ClawdLight.app`, with
+**Correction.** Launch through LaunchServices — `open dist/LampBoard.app`, with
 `--env` for the debug variable — so the bundle is responsible for itself. The
 prompt then appeared, and the tab came to the front.
 
@@ -1266,7 +1266,7 @@ sure way to make something that works look broken.
 
 ## `String(format:)` ignoring the width
 
-**Symptom.** Columns jammed together in `clawd-light sessions`.
+**Symptom.** Columns jammed together in `lampboard sessions`.
 
 **Cause.** `String(format:)` honors a width on C's numeric and textual
 placeholders, but **ignores** it on `%@`.
@@ -1350,7 +1350,7 @@ authorizations lapse **while still showing the switch as on**.
 
 **Symptom.** A fresh install from the notarized disk image. macOS asks for
 nothing. Clicking a row activates the editor but never raises the right window.
-System Settings › Privacy & Security › Accessibility lists **clawd-light with
+System Settings › Privacy & Security › Accessibility lists **lampboard with
 the switch on**.
 
 **Cause.** These authorizations are keyed on the code signature, not on the
@@ -1358,7 +1358,7 @@ name. The same bundle identifier signed differently — ad-hoc, a local
 certificate, a Developer ID — is a different subject to macOS, and each leaves
 its own record. The list collapses them into one row bearing one name, and shows
 one of them. `tccutil reset` on the real machine reported success four times for
-`com.clawdlight.app`: four separate records, one visible.
+`com.lampboard.app`: four separate records, one visible.
 
 So the pane said yes while `AXIsProcessTrusted()` said no, and the app was
 right. The advice the README used to give — remove the row with "−" and add it
@@ -1369,8 +1369,8 @@ appear to change nothing.
 remembered:
 
 ```bash
-tccutil reset Accessibility com.clawdlight.app
-tccutil reset AppleEvents com.clawdlight.app
+tccutil reset Accessibility com.lampboard.app
+tccutil reset AppleEvents com.lampboard.app
 ```
 
 **And the cure has its own trap.** `tccutil reset` does not revoke anything from
@@ -1381,7 +1381,7 @@ reset did nothing". It had done exactly what it says; the running app was simply
 still holding what it had been granted. The command has to be followed by
 
 ```bash
-pkill -x clawd-light && open -a ClawdLight
+pkill -x lampboard && open -a LampBoard
 ```
 
 or the next check will be about a state nobody is in any more. It is the same
@@ -1401,7 +1401,7 @@ waiting to be clicked again.
 
 ## The self-test that invented a failure
 
-**Symptom.** `clawd-light selftest`, run while the panel was up, reported *"the
+**Symptom.** `lampboard selftest`, run while the panel was up, reported *"the
 signal never reached the handler"* on a chain that was working perfectly.
 
 **Cause.** `SignalServer.start()` returns before its listener is ready. With the
@@ -1632,7 +1632,7 @@ eccezione: EXC_BAD_ACCESS SIGSEGV
    libdispatch.dylib · _dispatch_call_block_and_release
 ```
 
-`swift-package`, not `ClawdLightTests`. The crash is inside **llbuild**, SwiftPM's
+`swift-package`, not `LampBoardTests`. The crash is inside **llbuild**, SwiftPM's
 build engine, on a dispatch queue, with four other builds running on the machine
 at the time.
 

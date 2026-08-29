@@ -230,7 +230,7 @@ silence, a note, an alert.
 complete swift-testing. This is not a preference: the alternative was having no
 tests.
 
-**Consequence:** the tests are executables (`swift run ClawdLightTests`), not a
+**Consequence:** the tests are executables (`swift run LampBoardTests`), not a
 test target. That's fine: it makes running them anywhere trivial, even inside
 another process.
 
@@ -238,7 +238,7 @@ another process.
 
 ## D12 · Two suites, not one
 
-**Decided.** `ClawdLightTests` for the domain, `ClawdLightE2E` for the chain.
+**Decided.** `LampBoardTests` for the domain, `LampBoardE2E` for the chain.
 
 **Why.** In this project the worst defects have never been inside a function:
 they were in the **seams**. Title matching stayed broken for a whole day with ten
@@ -262,7 +262,7 @@ no longer holds: the column keeps the user's order, and a slot is now simply a
 position in it. Kept as written, for what it teaches about addresses.
 
 **Decided.** Pinning a project binds it to the next free slot, 1 to 9.
-`clawd-light open 3` raises whatever holds slot 3. Pinned rows sit at the top of
+`lampboard open 3` raises whatever holds slot 3. Pinned rows sit at the top of
 the column **in slot order**.
 
 **Why not just number the rows.** The column reorders by urgency continuously —
@@ -306,7 +306,7 @@ focus. The **extended window** is separate and opens on request: conversations o
 the left, the selected one on the right. Close it and you are back to the lights.
 
 Three ways in: the panel menu, ⌘+click on a row (which lands on that
-conversation), and `clawd-light chat <n>`.
+conversation), and `lampboard chat <n>`.
 
 **Why the panel could not simply grow.** It is a non-activating `FloatingPanel`,
 and that is the whole reason it works: it sits beside the editor you are typing in
@@ -334,7 +334,7 @@ the list.
 **Discarded: embedding the real VS Code panel.** macOS does not let one
 application host another's window; the ways round it are private SkyLight APIs and
 a weakened SIP. What *is* reachable — positioning detached VS Code windows behind
-our sidebar and raising the one you want — turns clawd-light into a window
+our sidebar and raising the one you want — turns lampboard into a window
 manager, and window managers die on Spaces, full screen and multiple displays.
 Left as an experiment, not a plan. Note in passing that VS Code already ships the
 useful half: **Claude Code: Open in New Window** detaches the chat into a bare
@@ -546,7 +546,7 @@ hour with tests rather than ten minutes without.
 
 ## D20 · The traffic light does not answer questions
 
-**Decided.** clawd-light registers only hooks that **observe**. The four that
+**Decided.** lampboard registers only hooks that **observe**. The four that
 **decide** — `PermissionRequest`, `PermissionDenied`, `Elicitation`,
 `ElicitationResult` — stay unregistered, and this is a standing rule rather than
 a to-do item.
@@ -605,7 +605,7 @@ how a row is *born*: a row nobody can click and that never changes colour turned
 out to be noise, and the tunnel D24 opens is not the network exposure this entry
 refused. Kept as written for the reasoning about `/signal`, which still holds.
 
-**Decided.** Sessions on another machine appear in the column because clawd-light
+**Decided.** Sessions on another machine appear in the column because lampboard
 **asks that machine over ssh**, on a slow timer. The alternative — installing the
 hook there and letting it post here — stays closed.
 
@@ -651,7 +651,7 @@ for the local pass. `BatchMode=yes` so a host wanting a password fails in a seco
 instead of waiting for a prompt nobody will see, and a hard kill at twice the
 timeout so a half-open connection to a sleeping node cannot hold the poll.
 
-**Off unless asked.** Hosts came from `~/.clawd-light/remotes`, one per line — since D24 they are set in the Settings window or with `clawd-light remote add`, and that file is only imported once on upgrade.
+**Off unless asked.** Hosts came from `~/.lampboard/remotes`, one per line — since D24 they are set in the Settings window or with `lampboard remote add`, and that file is only imported once on upgrade.
 Absent or empty means off, which is the default: reading another machine is an
 outbound connection this app would otherwise never make. Names are checked against
 an allow-list before reaching ssh — a name starting with a dash would be read as
@@ -761,18 +761,18 @@ the top, in slot order, and everything else below as it is seen.
 ## D24 · Other machines are heard through a tunnel we open
 
 **Decided.** A remote machine's Claude Code hooks reach this Mac through a reverse
-ssh tunnel clawd-light opens and keeps open: `ssh -N -R
+ssh tunnel lampboard opens and keeps open: `ssh -N -R
 127.0.0.1:<port>:127.0.0.1:9877 host`, where `<port>` is **derived from the
 user's uid over there** (`30000 + uid % 20000`). On the node, that loopback port
-*is* this app, so the hook script installed there — by clawd-light, over ssh, with
+*is* this app, so the hook script installed there — by lampboard, over ssh, with
 the same merge the local installer uses — posts to it and adds one header,
-`X-Clawd-Host`, naming the machine; the header is believed only for a host this
+`X-LampBoard-Host`, naming the machine; the header is believed only for a host this
 app was told about. After every connect the node is asked, from `/proc/net/tcp`,
 **where the port is actually bound**: anything but loopback closes the tunnel
 and says so. A remote row is **born when the session speaks** and **dies when
 the node's probe no longer lists its pid** (or on `SessionEnd`). Clicking it
 raises the Remote-SSH window of its folder, if one is open here. Hosts are
-configured in the Settings window (or `clawd-light remote add`), not in a file.
+configured in the Settings window (or `lampboard remote add`), not in a file.
 
 **What was wrong with D21, measured.** Reading alone produced rows that never
 changed colour — no hook ever reached this machine — and that a click could not
@@ -831,7 +831,7 @@ the node's loopback, by any account on it while the tunnel is up; the token is
 now doing the network-facing work it was sized for, and the residual risk — on a
 machine with several accounts, a squatter on the user's port while the tunnel is
 down would receive hook payloads — is stated here rather than engineered away.
-Installing the hooks means clawd-light writes
+Installing the hooks means lampboard writes
 `~/.claude/settings.json` on another machine — with a dated backup that keeps the
 file's mode, atomically, through Python fed on stdin so no shell ever sees the
 data, and **only if the file is still the one that was read** (sha256): Claude
@@ -876,7 +876,7 @@ answer first the reason they were excluded.
 
 The `PermissionRequest` hook exists in binary 2.1.220 and can decide the outcome.
 
-**Why not.** The hook **blocks the turn** until it answers. If clawd-light isn't
+**Why not.** The hook **blocks the turn** until it answers. If lampboard isn't
 running or has crashed, **every permission request hangs** — a decorative widget
 would become a breaking point for the real work.
 
@@ -937,7 +937,7 @@ The app **cannot notice** that it doesn't work, so it cannot say so. It is the
 activating, and the script that said "✓ created" after a failed import. A switch
 that can lie is worse than a switch that isn't there.
 
-**In its place**: `clawd-light next` exists and works, and binding a combination
+**In its place**: `lampboard next` exists and works, and binding a combination
 to that command is what the macOS Shortcuts app is for. It isn't a fallback — it
 is better on three counts: the user picks the combination, the interface says
 whether it is already taken, and when it doesn't work you can see it.
@@ -951,7 +951,7 @@ combination with verifiable delivery.
 
 OpenAI's Codex Micro (July 2026) puts *command keys* on a macropad: accept, reject,
 push-to-talk, branch, new chat — all acting on the agent thread that is currently
-running. The question was whether clawd-light could do the software equivalent.
+running. The question was whether lampboard could do the software equivalent.
 
 **Why not.** Every one of those reduces to the same primitive: *send text to that
 specific session*. The channel looked available — the extension's `/open` URI
@@ -969,16 +969,16 @@ than steering work in flight. That is not the feature.
 **What was worth taking anyway.** Two things, both of which needed an address
 rather than a channel — see [D13](#d13--a-keyboard-slot-is-a-pin-not-a-row-number):
 
-- **Agent Keys** → `clawd-light open <n>`, raise the project in slot n.
+- **Agent Keys** → `lampboard open <n>`, raise the project in slot n.
 - **"Start new chat"**, which is one of their command keys and the only one that
   survives, because it creates a **new** panel instead of touching a running one
-  → `clawd-light new <n>`.
+  → `lampboard new <n>`.
 
 **And the half-measure that was left out.** The `prompt` parameter does work on a
 new conversation — but following it into the webview shows it ends at
 `setInputText`, which **prefills the composer and does not submit**. A key that
 opens a tab with text you still have to confirm is not a command key, so
-`clawd-light new` sends no prompt. It is recorded in
+`lampboard new` sends no prompt. It is recorded in
 `Contracts/assumptions.md` under `extension.newconversation`, because "we already
 checked, and here is how far it goes" is the part that stops the question being
 reopened from scratch.
@@ -1000,7 +1000,7 @@ place where the contract checker watches for good news.
 ## D25 · A folder nobody claims is a place too
 
 **Decided.** With "Show terminal sessions" on (panel menu, Settings, or
-`clawd-light terminal on`), a local interactive session whose folder no editor
+`lampboard terminal on`), a local interactive session whose folder no editor
 window claims gets a row of its own, with **the folder its session file names**
 as its workspace. It is born when the session speaks or is adopted from the
 session file, like an editor session; it exists only while a **live local
@@ -1016,7 +1016,7 @@ noticed, because a subfolder still resolves to the window's folder. A terminal
 row anchored on the hook's `cwd` would have moved on every `cd`. The session
 file's `cwd` is written once, at startup.
 
-**Why the file at all.** A signal whose `X-Clawd-Host` names a host the app was
+**Why the file at all.** A signal whose `X-LampBoard-Host` names a host the app was
 never told about is treated as local (D24), and so is any process on loopback
 that speaks the protocol. Requiring a live session file for the id is the one
 condition that keeps a forged header, a foreign path and a dead process out of
@@ -1084,7 +1084,7 @@ that rewrite is its own change.
 
 ## D26 · A row can be renamed, and the name is only a name
 
-**Decided.** Right-click → *Rename…* (or `clawd-light rename <folder> [name]`)
+**Decided.** Right-click → *Rename…* (or `lampboard rename <folder> [name]`)
 gives a row the name the user wants to read. It changes what the panel, its
 tooltip, the notification, `open n`, `next` and `/sessions.label` **show** —
 nothing else. The window is still found by its title, the transcript by its

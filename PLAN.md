@@ -159,7 +159,7 @@ locks**. Seven workspaces produce more than one. The column draws 22 rows for 12
 raisable windows.
 
 Group by workspace: the dot shows the group's most urgent state, an `×4` says how
-many there are, the tooltip lists them by `name` (`clawd-light-d9`, a field already
+many there are, the tooltip lists them by `name` (`lampboard-d9`, a field already
 present in the session files).
 
 **Serious risk**: granularity is lost. If in one window one session is green and
@@ -295,7 +295,7 @@ temptation.
 The `PermissionRequest` hook exists in binary 2.1.220 and can decide the outcome.
 
 **Two serious risks.** The hook **blocks the turn** until it answers: if
-clawd-light isn't running or has crashed, every permission request hangs. And a
+lampboard isn't running or has crashed, every permission request hangs. And a
 widget that grants permissions to Claude Code is an attack surface on a local HTTP
 endpoint that today is unauthenticated.
 
@@ -312,10 +312,10 @@ serializable value.
 
 **Security prerequisite**: the endpoint would be readable by any local process,
 including the Claude Code sessions themselves, and the workspace names are
-information. It needs a token in `~/.clawd-light/` with mode `0600`, read by the
+information. It needs a token in `~/.lampboard/` with mode `0600`, read by the
 hook script — which already runs as the user.
 
-### 5.2 `clawd-light next` · M
+### 5.2 `lampboard next` · M
 
 Raises the next waiting session. The CLI process knows nothing about the column's
 state, so it has to **talk to the running instance**: a route that raises windows,

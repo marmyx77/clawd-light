@@ -28,7 +28,7 @@ I ran `install-hooks`. The operation is additive — two extra events pointing a
 the same already-registered script — it creates a dated backup, and it is undone
 with `uninstall-hooks`. Verified afterwards by comparing the file with the earlier
 copy: no key lost, no key modified outside `hooks`, no third-party hook touched.
-Backup at `~/.claude/settings.json.clawd-light-backup-20260729-195635`.
+Backup at `~/.claude/settings.json.lampboard-backup-20260729-195635`.
 
 All the automated test runs go through a fake home regardless.
 
@@ -36,7 +36,7 @@ All the automated test runs go through a fake home regardless.
 
 ## Phase 0 — Foundations
 
-### F0.1 · Path isolation — `CLAWD_LIGHT_HOME`
+### F0.1 · Path isolation — `LAMPBOARD_HOME`
 
 `AppConfig` derived every path from `homeDirectoryForCurrentUser`. Convenient, but
 it makes an honest end-to-end test impossible: either you touch the user's real
@@ -44,7 +44,7 @@ it makes an honest end-to-end test impossible: either you touch the user's real
 what actually runs.
 
 Now every path descends from `AppConfig.homeDirectory`, which honors the
-`CLAWD_LIGHT_HOME` variable.
+`LAMPBOARD_HOME` variable.
 
 A detail worth remembering: **rewriting `$HOME` would not have been enough**.
 `homeDirectoryForCurrentUser` reads from `getpwuid`, not from the environment, and
@@ -99,7 +99,7 @@ outside there are no e2e tests.
   `SessionState`, so an internal refactor doesn't break its consumers
 - ISO 8601 dates — a numeric timestamp forces every reader to guess the unit, and
   whoever guesses wrong doesn't find out
-- a 24-byte token in `~/.clawd-light/token`, mode `0600`
+- a 24-byte token in `~/.lampboard/token`, mode `0600`
 - **constant-time** token comparison: an `==` bails out at the first differing
   byte and the time it takes says how many leading characters were right
 - if the file's permissions turn out wider than `0600` the token is
@@ -120,7 +120,7 @@ through the server's queue — that is, until somebody introduced the deadlock.
 
 ### F0.5 · End-to-end harness
 
-`swift run ClawdLightE2E` launches **the real binary** against a fake home and
+`swift run LampBoardE2E` launches **the real binary** against a fake home and
 talks to it over HTTP, the way the hooks do.
 
 It exists for a precise reason: window title matching stayed broken for an entire
@@ -132,7 +132,7 @@ The hook payloads are not invented: the shapes were taken from binary 2.1.220 wi
 `strings`. `SubagentStop` carries `agent_id`, `agent_type` and
 `last_assistant_message`; `SubagentStart` only the first two.
 
-**Files**: `Sources/ClawdLightE2E/`
+**Files**: `Sources/LampBoardE2E/`
 
 ---
 
@@ -400,7 +400,7 @@ error bubbled up and failed the installation, with a message about the backup wh
 the problem looked like something else. You meet it by installing, uninstalling
 and reinstalling in three clicks. Now there's a counter.
 
-**3. The columns of `clawd-light sessions` were jammed together.**
+**3. The columns of `lampboard sessions` were jammed together.**
 `String(format:)` honors a width on C's placeholders but **ignores** it on `%@`.
 Explicit padding.
 
@@ -429,13 +429,13 @@ my own tests didn't see.
 ```
 *** Terminating app due to uncaught exception 'NSInternalInconsistencyException',
     reason: 'bundleProxyForCurrentProcess is nil'
-8  ClawdLightApp  AppDelegate.startNotifier(for:)
+8  LampBoardApp  AppDelegate.startNotifier(for:)
 ```
 
 `UNUserNotificationCenter.current()` outside a `.app` bundle **does not return
 nil**: it raises an exception and terminates the process. I had put the guard
 inside `SessionNotifier`, where it was needed, and forgotten it on the line
-assigning the delegate. Result: `swift run ClawdLightApp` during development died
+assigning the delegate. Result: `swift run LampBoardApp` during development died
 before drawing the panel.
 
 **Why no test saw it**: the entire end-to-end suite runs `--headless`, and
@@ -499,7 +499,7 @@ introduced: a click on a row does exactly the same thing on the same thread.
 ## The live proof
 
 At the end I made the **real** app walk the complete chain, using the hook script
-installed at `~/.clawd-light/hook.sh` — the same one Claude Code runs — with a
+installed at `~/.lampboard/hook.sh` — the same one Claude Code runs — with a
 test session backed by a live process:
 
 ```
@@ -551,7 +551,7 @@ at **07:09:39** it fired.
 
 ```
 VS Code windows seen (9):
-  → [1] Build floating Mac traff… — clawd-light — Claude Minimal
+  → [1] Build floating Mac traff… — lampboard — Claude Minimal
     [2] Q3-Proposal.pptx — acme-portal
     [3] Read documentation and s… — docs-site — Claude Minimal
     …
@@ -680,11 +680,11 @@ of work I shipped without watching it work.
 1. **Stable signature: done** (30 July, after fixing five defects in the script —
    see above). Verified where it counts: two builds in a row produce the same
    designated requirement,
-   `identifier "com.clawdlight.app" and certificate leaf = H"4dff4499…"`,
+   `identifier "com.lampboard.app" and certificate leaf = H"4dff4499…"`,
    hooked to the certificate and not to the binary's hash. From here on the
    authorizations survive rebuilds, and launch at login is unlocked in the menu.
 2. **The click: verified in full**, recognition and raise. The side-effect-free
-   diagnosis remains `clawd-light focus <project> --dry-run`.
+   diagnosis remains `lampboard focus <project> --dry-run`.
 3. **Claude Code sessions that are already open** don't have the two new hooks:
    they pick them up on their next start. Until then the subagent counter stays at
    zero for those sessions, and that is normal.
@@ -786,7 +786,7 @@ a window, and the reason sat at the bottom of a context menu. An app that
 degrades silently into a place nobody looks is indistinguishable from a broken
 one, and the first person it defeated was the person who wrote it.
 
-Two faults underneath. System Settings listed clawd-light with the switch **on**
+Two faults underneath. System Settings listed lampboard with the switch **on**
 while `AXIsProcessTrusted()` said no, and the app was right: these
 authorizations are keyed on the signature, so the same bundle identifier signed
 three ways leaves three records — `tccutil reset` reported success four times.
@@ -1006,7 +1006,7 @@ had managed to draw.
 
 Now bounded — five seconds for a probe, fifteen for `open`, which may have to
 start an application. The behaviour in every case that already worked is
-unchanged; `focus clawd-light --dry-run` still picks the right window out of
+unchanged; `focus lampboard --dry-run` still picks the right window out of
 eight, in 0.84s. What this does not do is make the click feel instant, and the
 reason it stops here is written down as D27 rather than left as an intention.
 
@@ -1074,13 +1074,13 @@ The cause is not the tunnel. `applicationWillTerminate` stops the polling, the
 server, the presence file and the tunnels, and all of it is correct. None of it
 runs when the process is killed with a signal: a Cocoa app takes SIGTERM's
 default disposition and simply stops. And the way this project tells you to
-restart, printed by its own build script, is `pkill -x clawd-light`. So every
+restart, printed by its own build script, is `pkill -x lampboard`. So every
 restart left a tunnel holding the port, the next instance was refused, and the
 refusal was reported against a machine that had done nothing wrong.
 
 SIGTERM and SIGINT now go through `NSApp.terminate`, so the cleanup that already
 existed finally runs. Proven with the real command rather than argued: panel
-1964 with child ssh 3279, `pkill -x clawd-light`, and the child died with it —
+1964 with child ssh 3279, `pkill -x lampboard`, and the child died with it —
 zero orphans, and a `tunnel minisforum: off` in the log that had never appeared
 before.
 
@@ -1340,7 +1340,7 @@ line: `/home/dev/.notes` exists, and it does not exist here.
 
 **Iterating without the keychain.** The Developer ID key asks for the password on
 every signature; the local signing identity does not. So the loop is: build,
-`open dist/ClawdLight.app`, look, repeat — no prompt, at the cost of the
+`open dist/LampBoard.app`, look, repeat — no prompt, at the cost of the
 Accessibility permission, which only matters for raising windows and not for
 anything being designed. One signed install at the end, one password.
 

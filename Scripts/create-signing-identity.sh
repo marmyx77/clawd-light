@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Creates a persistent self-signed signing identity for clawd-light.
+# Creates a persistent self-signed signing identity for lampboard.
 #
 # WHY IT'S NEEDED
 # With an ad-hoc signature (`codesign --sign -`) every rebuild produces a binary
@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-NAME="clawd-light Local Signing"
+NAME="lampboard Local Signing"
 KEYCHAIN="${HOME}/Library/Keychains/login.keychain-db"
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -54,7 +54,7 @@ x509_extensions    = ext
 prompt             = no
 
 [ dn ]
-CN = clawd-light Local Signing
+CN = lampboard Local Signing
 
 [ ext ]
 basicConstraints       = critical,CA:false

@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClawdLight",
+    name: "LampBoard",
     platforms: [.macOS(.v14)],
     targets: [
         // Pure logic: parsing, workspace resolution, state machine.
         // No dependency on AppKit — entirely verifiable.
         .target(
-            name: "ClawdLightCore",
+            name: "LampBoardCore",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // A mini assertion framework. It exists because the macOS Command Line
@@ -17,16 +17,16 @@ let package = Package(
             name: "TestKit",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
-        // Executable test suite: `swift run ClawdLightTests`.
+        // Executable test suite: `swift run LampBoardTests`.
         .executableTarget(
-            name: "ClawdLightTests",
-            dependencies: ["ClawdLightCore", "TestKit"],
+            name: "LampBoardTests",
+            dependencies: ["LampBoardCore", "TestKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // AppKit/SwiftUI shell: floating panel, HTTP server, window focus.
         .executableTarget(
-            name: "ClawdLightApp",
-            dependencies: ["ClawdLightCore"],
+            name: "LampBoardApp",
+            dependencies: ["LampBoardCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // End-to-end tests: they launch the real binary and talk to it over HTTP.
@@ -35,8 +35,8 @@ let package = Package(
         // spawn processes and wait on the network: keeping it together with the
         // domain tests would slow down a suite that has to stay instantaneous.
         .executableTarget(
-            name: "ClawdLightE2E",
-            dependencies: ["ClawdLightCore", "TestKit"],
+            name: "LampBoardE2E",
+            dependencies: ["LampBoardCore", "TestKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
