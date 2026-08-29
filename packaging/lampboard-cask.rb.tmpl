@@ -1,0 +1,62 @@
+# Cask template for marmyx77/homebrew-tap (Casks/lampboard.rb).
+#
+# Rendered by `Scripts/make-cask.sh` from a published release: __VERSION__ and
+# __SHA256__ are the tag and the disk image's checksum. Two placeholders and
+# `sed`, not `envsubst` — gettext is not on a clean Mac, and a release script
+# that fails on the machine cutting the release is worse than one extra sed.
+#
+# One artifact installs the whole product. The app is the panel and the server;
+# the same executable is the CLI, and the `binary` stanza puts it on PATH.
+# Measured before choosing it: `lampboard status` behaves identically run
+# through a symlink outside the bundle and run inside it.
+cask "lampboard" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "https://github.com/marmyx77/lampboard/releases/download/v#{version}/LampBoard-#{version}.dmg"
+  name "LampBoard"
+  desc "Floating traffic lights for Claude Code and Codex sessions, with the context left in each"
+  homepage "https://github.com/marmyx77/lampboard"
+
+  depends_on macos: :sonoma
+
+  app "LampBoard.app"
+  binary "#{appdir}/LampBoard.app/Contents/MacOS/lampboard"
+
+  # Opened on install. LampBoard has no Dock icon and its panel is the whole
+  # interface: a fresh install that launches nothing is a fresh install that
+  # looks like it failed, and the caveats have already scrolled past by then.
+  postflight do
+    system_command "/usr/bin/open", args: ["-a", "#{appdir}/LampBoard.app"]
+  end
+
+  uninstall quit: "com.lampboard.app"
+
+  # `brew uninstall --zap lampboard` is the full teardown. What it deliberately
+  # does **not** touch is `~/.claude/settings.json` and `~/.codex/hooks.json`:
+  # those are the user's files, shared with everything else they have installed,
+  # and a package manager editing them on the way out is a package manager that
+  # will one day delete somebody else's hook. `lampboard uninstall-hooks`
+  # removes ours, by exact path, and it is named in the caveats.
+  zap trash: [
+        "~/.lampboard",
+        "~/Library/Caches/com.lampboard.app",
+        "~/Library/HTTPStorages/com.lampboard.app",
+        "~/Library/Preferences/com.lampboard.app.plist",
+      ]
+
+  caveats <<~EOS
+    LampBoard is opening now: the panel appears in the corner of the screen.
+    It has no Dock icon and no menu bar item — the panel is the interface.
+
+    To register the hooks that feed it:
+
+      lampboard install-hooks
+
+    That wires Claude Code, and Codex too if you have it. Codex then needs one
+    thing nobody can do for you: open Codex, run /hooks, and approve the entry.
+    Until you do, Codex reports nothing and says nothing about why.
+
+    To remove the hooks later:  lampboard uninstall-hooks
+  EOS
+end

@@ -485,10 +485,24 @@ the name empty to go back to the original.
 
 ## Installation
 
-You need macOS 14 or later — **macOS 26 for dictation**, which uses the on-device
-Speech framework that arrived there — and Xcode's Command Line Tools
-(`xcode-select --install`), which ship the Swift 6.2 toolchain. Full Xcode is not
-required.
+```bash
+brew install --cask marmyx77/tap/lampboard
+lampboard install-hooks
+```
+
+That is the whole of it. The app opens on install — it has no Dock icon and no
+menu bar item, the panel *is* the interface — and `install-hooks` registers
+Claude Code's hooks, and Codex's too if you have it.
+
+> One step nobody can do for you, and only for Codex: open Codex, run `/hooks`,
+> and approve the entry. Codex will not run a hook it has not been told to trust,
+> and **says nothing when it declines** — the file is right, the events never
+> fire, and there is no error anywhere to explain it.
+
+To build it yourself instead, you need macOS 14 or later — **macOS 26 for
+dictation**, which uses the on-device Speech framework that arrived there — and
+Xcode's Command Line Tools (`xcode-select --install`), which ship the Swift 6.2
+toolchain. Full Xcode is not required.
 
 ```bash
 ./Scripts/build-app.sh

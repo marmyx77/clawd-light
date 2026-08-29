@@ -736,6 +736,7 @@ the realignment is asynchronous.
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
 | `Scripts/make-screenshots.sh` | the README's images, taken from the real app against a temporary home of invented projects, so they never carry anybody's real work and never fall behind the panel; `screencapture -l` reads the window's backing store, which works with the screen locked |
+| `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
