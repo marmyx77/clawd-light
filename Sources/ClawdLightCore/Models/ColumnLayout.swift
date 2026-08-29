@@ -78,6 +78,20 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// The moment since which the row has been in its current state.
     public var statusSince: Date { primary.statusSince }
 
+    /// How many listeners are registered behind this row.
+    ///
+    /// Counted across every session of the row, not only the one whose colour
+    /// wins: with grouping on, a project where one session left a monitor and
+    /// another has an answer ready is a project where something is still
+    /// listening, and the ring is the only thing that says so.
+    public var listeners: Int {
+        sessions.reduce(0) { total, session in
+            total + session.waitingOn.filter {
+                AppConfig.backgroundTaskTypesThatOnlyListen.contains($0.lowercased())
+            }.count
+        }
+    }
+
     /// The most recent activity seen in the row.
     public var updatedAt: Date { sessions.map(\.updatedAt).max() ?? primary.updatedAt }
 

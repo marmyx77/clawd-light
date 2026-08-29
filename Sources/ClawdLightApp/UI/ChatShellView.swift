@@ -123,7 +123,7 @@ struct ChatSidebarRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            TrafficLightDot(status: row.status, calm: false)
+            TrafficLightDot(status: row.status, calm: false, listening: row.listeners > 0)
                 .padding(.top, 3)
 
             VStack(alignment: .leading, spacing: 2) {

@@ -25,6 +25,15 @@ enum WaitingSuite {
         )
     }
 
+    /// The state after a prompt and a `Stop`, ready to receive another action.
+    private static func signals(
+        _ first: HookEventKind, _ second: HookEventKind, inFlight: [String]
+    ) -> TrafficLightState {
+        [signal(first), signal(second, inFlight: inFlight)].reduce(TrafficLightState.empty) {
+            StateReducer.reduce($0, action: .signal($1, workspace: workspace), now: t0)
+        }
+    }
+
     private static func apply(_ signals: [HookSignal]) -> SessionState? {
         signals.reduce(TrafficLightState.empty) { current, signal in
             StateReducer.reduce(current, action: .signal(signal, workspace: workspace), now: t0)
@@ -43,6 +52,43 @@ enum WaitingSuite {
         TestCase("The row remembers what it is waiting on") { t in
             let s = apply([signal(.userPromptSubmit), signal(.stop, inFlight: ["monitor", "monitor", "shell"])])
             t.expectEqual(s?.waitingOn, ["monitor", "monitor", "shell"], "the types, in Claude Code's order")
+        },
+
+        TestCase("A monitor alone does not bury the answer above it") { t in
+            // Measured on a real session before this rule existed: two monitors
+            // registered at 06:38 held the row blue for an hour while the reply
+            // above them had been finished the whole time. A monitor produces
+            // nothing until the thing it watches happens; the turn really did
+            // end, and there really is something to read.
+            let s = apply([signal(.userPromptSubmit), signal(.stop, inFlight: ["monitor", "monitor"])])
+            t.expectEqual(s?.status, .ready, "green: the answer is unread")
+            t.expectEqual(s?.waitingOn, ["monitor", "monitor"], "and the ear is still recorded")
+        },
+
+        TestCase("One real shell is enough to hold the row blue") { t in
+            // The direction that must never be got wrong: a listener alongside
+            // work does not make the work a listener.
+            let s = apply([signal(.userPromptSubmit), signal(.stop, inFlight: ["monitor", "shell"])])
+            t.expectEqual(s?.status, .waiting, "something is still producing")
+        },
+
+        TestCase("An unrecognised type counts as work") { t in
+            // The safe direction. Calling real work a listener shows green over a
+            // busy session, which is the lie this state exists to prevent; calling
+            // a listener work only shows blue for a while.
+            let s = apply([signal(.userPromptSubmit), signal(.stop, inFlight: ["something-new"])])
+            t.expectEqual(s?.status, .waiting, "unknown work is work")
+        },
+
+        TestCase("The ring survives the answer being read") { t in
+            // A green clears when you look at it. The ear does not close because
+            // you read something, so the row keeps what is registered behind it.
+            let after = StateReducer.reduce(
+                signals(.userPromptSubmit, .stop, inFlight: ["monitor"]),
+                action: .markSeen(sessionId: "s1"), now: t0
+            ).sessions["s1"]
+            t.expectEqual(after?.status, .idle, "the answer was read")
+            t.expectEqual(after?.waitingOn, ["monitor"], "the monitor is still listening")
         },
 
         TestCase("Housekeeping alone is not a wait") { t in

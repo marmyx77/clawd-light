@@ -65,12 +65,40 @@ public struct HookSignal: Sendable, Equatable {
 
     /// `true` when something in flight is work the user is waiting on.
     ///
-    /// Not every entry is. Claude Code lists its own housekeeping — `dream`,
-    /// memory consolidation on an idle session — alongside shells and subagents,
-    /// and its own task view removes it again before showing anything. A row held
-    /// yellow by housekeeping is a row lying about an answer that is already there.
+    /// Not every entry is, and the list has two kinds of exception.
+    ///
+    /// Claude Code lists its own housekeeping — `dream`, memory consolidation on
+    /// an idle session — alongside shells and subagents, and its own task view
+    /// removes it again before showing anything. A row held yellow by
+    /// housekeeping is a row lying about an answer that is already there.
+    ///
+    /// And a `monitor` is not work either: it is an ear. It produces nothing
+    /// until the thing it watches happens, so a turn that ends with only monitors
+    /// registered has genuinely ended, and the answer above them is genuinely
+    /// unread. Those still show — as a ring around the row's own colour — because
+    /// "finished, and something is listening" is a different fact from "finished".
     public var hasWorkInFlight: Bool {
-        inFlightBackgroundTaskTypes.contains {
+        inFlightBackgroundTaskTypes.contains { type in
+            let name = type.lowercased()
+            return !AppConfig.backgroundTaskTypesThatAreNotWork.contains(name)
+                && !AppConfig.backgroundTaskTypesThatOnlyListen.contains(name)
+        }
+    }
+
+    /// The listeners registered when the turn ended, in the order they arrived.
+    public var listenersInFlight: [String] {
+        inFlightBackgroundTaskTypes.filter {
+            AppConfig.backgroundTaskTypesThatOnlyListen.contains($0.lowercased())
+        }
+    }
+
+    /// Everything still registered that is worth showing: the work and the ears,
+    /// without Claude Code's housekeeping.
+    ///
+    /// This is what the row keeps, so that a blue can name what holds it and a
+    /// green can say what is still listening behind it.
+    public var reportableBackgroundTaskTypes: [String] {
+        inFlightBackgroundTaskTypes.filter {
             !AppConfig.backgroundTaskTypesThatAreNotWork.contains($0.lowercased())
         }
     }

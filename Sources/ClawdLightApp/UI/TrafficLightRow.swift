@@ -64,7 +64,7 @@ struct TrafficLightRow: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            TrafficLightDot(status: row.status, calm: flags.isCalm)
+            TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0)
 
             if !compact {
                 // The slot number, which is the answer to "which key opens this".
@@ -277,13 +277,16 @@ struct TrafficLightRow: View {
 
         // A blue row has to say what is holding it, or a wait that lasts a day is
         // indistinguishable from a defect. "monitor ×2, shell" is the difference.
-        if row.status == .waiting {
-            let counts = row.primary.waitingOn.reduce(into: [(String, Int)]()) { acc, type in
-                if let i = acc.firstIndex(where: { $0.0 == type }) { acc[i].1 += 1 } else { acc.append((type, 1)) }
-            }
-            if !counts.isEmpty {
-                lines.append("waiting on " + counts.map { $0.1 > 1 ? "\($0.0) ×\($0.1)" : $0.0 }.joined(separator: ", "))
-            }
+        //
+        // And a ringed row has to say it too, for the opposite reason: the ring
+        // is deliberately quiet, so the only place that can name the thing still
+        // listening is here.
+        let counts = row.primary.waitingOn.reduce(into: [(String, Int)]()) { acc, type in
+            if let i = acc.firstIndex(where: { $0.0 == type }) { acc[i].1 += 1 } else { acc.append((type, 1)) }
+        }
+        if !counts.isEmpty {
+            let listed = counts.map { $0.1 > 1 ? "\($0.0) ×\($0.1)" : $0.0 }.joined(separator: ", ")
+            lines.append(row.status == .waiting ? "waiting on " + listed : "still listening: " + listed)
         }
 
         if let slot = row.slot {

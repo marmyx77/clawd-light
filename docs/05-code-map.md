@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   6,479 lines · 57 files   pure logic, zero AppKit
-  ClawdLightApp/    10,318 lines · 56 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,354 lines · 35 files   504 cases, instantaneous
+  ClawdLightCore/   6,545 lines · 57 files   pure logic, zero AppKit
+  ClawdLightApp/    10,354 lines · 56 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,400 lines · 35 files   508 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 324
+### `AppConfig.swift` · 376
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `CLAWD_LIGHT_HOME` and is the root of **every** path: it
@@ -114,7 +114,7 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 168
+### `HookSignal.swift` · 196
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -530,7 +530,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
 | `PanelRootView.swift` | 280 | the general menu, and the gear under the rows that opens it |
-| `TrafficLightDot.swift` | 52 | the dot and the silenceable blink |
+| `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
@@ -556,7 +556,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 504 cases
+## `ClawdLightTests/` — 508 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -603,7 +603,7 @@ ship neither XCTest nor a complete swift-testing (D11).
 ### `Instrument.swift` · 133
 Calibrates the assertions before anything is measured with them, and it is the
 reason the number in the heading above means something. Adding one early
-`return` to `expect` made all 504 cases report success while verifying nothing —
+`return` to `expect` made all 508 cases report success while verifying nothing —
 a full green, no warning, no clue. So every assertion is now made to fail on
 purpose and must record it, made to pass and must stay silent, and a failing run
 must still reach a non-zero exit code; nineteen proofs, none of them written in

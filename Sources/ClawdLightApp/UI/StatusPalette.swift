@@ -60,6 +60,14 @@ enum StatusPalette {
     /// panel has never used would read as belonging to some other application.
     static let warningTint = Color(red: 1.00, green: 0.45, blue: 0.10)
 
+    /// The ring around a row that has something listening behind it.
+    ///
+    /// Exactly the `waiting` blue, and that is the whole idea: the column has
+    /// already taught that this shade means "something is registered and nothing
+    /// needs you". As a fill it says the row *is* that; as a ring it says the row
+    /// *also* is that, without taking the colour that carries the news.
+    static let listeningTint = Color(red: 0.42, green: 0.66, blue: 0.98)
+
     /// Text of the badge carrying the session or subagent count.
     static let badgeForeground = Color.primary.opacity(0.80)
 
@@ -89,6 +97,10 @@ enum StatusPalette {
 /// the views.
 enum Layout {
     static let dotSize: CGFloat = 11
+    /// Thickness of the listening ring, drawn inside the dot. Two points of
+    /// eleven: visible at a glance across a room, and it still leaves a core
+    /// large enough to read the colour underneath.
+    static let listeningRing: CGFloat = 2
     static let rowHeight: CGFloat = 22
     static let rowSpacing: CGFloat = 2
     static let panelPadding: CGFloat = 8

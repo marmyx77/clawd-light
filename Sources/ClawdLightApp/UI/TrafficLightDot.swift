@@ -17,6 +17,16 @@ struct TrafficLightDot: View {
     /// been waiting for half an hour and you don't intend to answer yet.
     var calm: Bool = false
 
+    /// `true` when something is still listening behind this row — a monitor
+    /// registered and not yet triggered.
+    ///
+    /// Drawn as a ring rather than as a colour of its own, because it is not a
+    /// state: the turn ended green, or red, or it is working again, and *besides
+    /// that* an ear is open. Giving it a colour would have meant choosing which
+    /// of the two facts to hide, and the one it used to hide was the answer
+    /// sitting unread underneath.
+    var listening: Bool = false
+
     /// Two views, not one view with two behaviours.
     ///
     /// The first version toggled a `@State` flag on the same circle and relied on
@@ -43,6 +53,17 @@ struct TrafficLightDot: View {
         Circle()
             .fill(color)
             .frame(width: Layout.dotSize, height: Layout.dotSize)
+            // Drawn *inside* the dot's own circle with `strokeBorder`, so a ring
+            // costs no layout: eleven points is eleven points whether or not
+            // anything is listening, and a column whose rows changed width when
+            // a monitor appeared would be worse than the problem.
+            .overlay {
+                if listening {
+                    Circle().strokeBorder(
+                        StatusPalette.listeningTint, lineWidth: Layout.listeningRing
+                    )
+                }
+            }
             .opacity(StatusPalette.opacity(for: status))
     }
 

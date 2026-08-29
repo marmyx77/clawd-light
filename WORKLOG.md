@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **504**, instantaneous |
+| Domain tests | **508**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1026,3 +1026,37 @@ Worth recording that the commit made an hour earlier would have failed its own
 check. It was green when it was written, and turned red the moment `bite.sh`
 stopped being untracked — which is a decent argument for the CI landing before
 the next commit does.
+
+## 29 August — an ear is not a hand
+
+Two rows sat blue all morning with nothing running behind them. The API said
+why: `waitingOn: ["monitor", "monitor"]`, registered at 06:38 and never closed.
+One of them was this project's own session, blue because publishing a document
+had armed a live subscription that listens for republishes — real background
+work by the letter of the rule, and nothing anyone was waiting for.
+
+The rule was too coarse by one category. `background_tasks` was being read as
+two groups — Claude Code's housekeeping, which is ignored, and everything else,
+which turns the row blue. But a monitor belongs to neither. It watches for a
+condition and produces nothing until that condition happens, so the turn really
+did end and the answer above it really is unread. Blue was saying "more is
+coming" about something that may never come, and burying a green underneath it.
+
+Three groups now, and the third does not get a colour: it gets a ring. The row
+keeps the colour it would have had, and the dot carries a blue border in the
+same shade the column already uses for `waiting` — as a fill it means
+"registered, nothing needs you", as a ring it means the same without taking the
+colour that carries the news. Drawn inside the dot with `strokeBorder`, so
+eleven points stays eleven points and no row changes width because a monitor
+appeared.
+
+The ring outlives the answer being read, which is the part worth having thought
+about: a green clears when you look at it, and an ear does not close because you
+looked. So the row keeps what is registered behind it, and the ring survives into
+idle. The tooltip names it either way — *"waiting on monitor ×2, shell"* under a
+blue, *"still listening: monitor ×2"* under anything else.
+
+One rule protects the whole thing: **anything unrecognised counts as work**. The
+mistake is not symmetrical. Calling real work a listener paints green over a busy
+session, which is the lie D22 exists to prevent; calling a listener work only
+shows blue a while longer. The list of listeners is one entry long and closed.

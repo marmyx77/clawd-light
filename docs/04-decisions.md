@@ -1153,6 +1153,48 @@ the chain.
 
 ---
 
+## D28 · A listener gets a ring, not a colour
+
+**Decided.** `background_tasks` entries are now read in three groups, not two.
+Housekeeping (`dream`, `cloud session`) is ignored, as before. Work — a shell, a
+subagent, a workflow, **and anything unrecognised** — turns the row blue, as
+before. A `monitor` does neither: the row keeps the colour it would have had,
+and the dot is drawn with a blue ring around it.
+
+**Why.** A monitor watches for a condition. Until that condition happens it
+produces nothing, writes nothing and wakes nobody — while the answer the session
+wrote before registering it sits above, unread. Painting the row blue says "more
+is coming" about something that may never come, and hides the one fact the
+column exists to deliver. Measured on a real session: two monitors registered at
+06:38 held a row blue for an hour with a finished reply underneath.
+
+**Why a ring and not a sixth colour.** Because it is not a state. The turn ended
+green, or red, or the session is working again, and *besides that* an ear is
+open. A colour of its own would have forced a choice about which of the two
+facts to hide, and the one being hidden was the answer. The ring is the same
+blue the column already teaches: as a fill it means "registered, nothing needs
+you"; as a ring it means the same thing without taking the colour that carries
+the news.
+
+**What the ring outlives.** Reading the answer. A green clears when you look at
+it, and the ear does not close because you looked — so the row keeps what is
+registered behind it and the ring survives into the idle state, until the
+listener actually goes.
+
+**Unknown types are work.** The mistake here is not symmetrical. Calling real
+work a listener paints green over a session that is still busy — the exact lie
+`waiting` was introduced to prevent (D22). Calling a listener work only shows
+blue a while longer. So the listener list is short, explicit, and closed.
+
+**Discarded:** blue after N minutes, so short work never shows at all. It trades
+a wrong colour for a late one and makes the column's meaning depend on a clock.
+**Discarded:** dropping monitors from the payload entirely. Then a row with an
+ear open is indistinguishable from one without, and the tooltip that says
+*"still listening: monitor ×2"* — the thing that turns a puzzle into a fact —
+would have nothing to say.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

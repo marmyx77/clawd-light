@@ -271,6 +271,26 @@ public enum AppConfig {
     /// written as `cloud session`.
     public static let backgroundTaskTypesThatAreNotWork: Set<String> = ["dream", "cloud session"]
 
+    /// Entries that keep an ear open without producing anything of their own.
+    ///
+    /// A `monitor` watches for a condition. Until that condition trips it emits
+    /// nothing, changes nothing, and the answer the session already wrote is
+    /// sitting there unread — so painting the row blue says "more is coming"
+    /// about something that may never come, and buries a green underneath it.
+    /// Measured on a real session: two monitors registered at 06:38 held a row
+    /// blue for an hour while the reply above them had been finished the whole
+    /// time.
+    ///
+    /// So a listener does not make the row blue. It draws a ring around whatever
+    /// colour the row would have had anyway, which is the honest shape of the
+    /// fact: the turn ended, *and* something is still listening.
+    ///
+    /// Deliberately a short list, and everything unrecognised counts as work.
+    /// The expensive mistake here is one-directional: calling real work a
+    /// listener shows green over a session that is still busy, which is the lie
+    /// this whole state exists to prevent.
+    public static let backgroundTaskTypesThatOnlyListen: Set<String> = ["monitor"]
+
     // MARK: - Remote hosts
 
     /// Hosts to read sessions from, one name per line, `#` for comments.

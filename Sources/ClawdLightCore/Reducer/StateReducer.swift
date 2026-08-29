@@ -177,9 +177,13 @@ public enum StateReducer {
             .with(status: newStatus, at: now)
             .with(lastMessage: preview(of: signal.lastAssistantMessage))
             .with(failureReason: newStatus == .failed ? (signal.failureReason ?? .unknown) : nil)
-            // What the row is waiting on is a fact about *this* Stop; any other
-            // event means the wait is over or never was.
-            .with(waitingOn: newStatus == .waiting ? signal.inFlightBackgroundTaskTypes : [])
+            // What is registered behind the row is a fact about *this* Stop; any
+            // other event means it is over, or never was.
+            //
+            // Kept for a green row too, not only a blue one: a turn can end with
+            // nothing running and an ear still open, and that ring has to survive
+            // the answer being read.
+            .with(waitingOn: signal.event == .stop ? signal.reportableBackgroundTaskTypes : [])
 
         // A new question opens a new turn: the previous turn's subagents no longer
         // count, and if some `SubagentStop` got lost along the way this is where
