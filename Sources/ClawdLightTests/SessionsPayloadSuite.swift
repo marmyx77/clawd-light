@@ -21,7 +21,7 @@ enum SessionsPayloadSuite {
             lastMessage: "Working on it.",
             updatedAt: t0,
             statusSince: t0.addingTimeInterval(-60),
-            activeSubagents: 2,
+            activeAgentIds: ["a1", "a2"],
             entrypoint: "claude-vscode",
             origin: .terminal,
             title: "Wire the release script"
@@ -50,7 +50,7 @@ enum SessionsPayloadSuite {
                 workspace: Workspace(path: "/dev/a"),
                 updatedAt: t0,
                 statusSince: t0,
-                activeSubagents: 1
+                activeAgentIds: ["a1"]
             )
             // Whoever reads the endpoint has to see what the column sees:
             // exposing `ready` while the dot is yellow would be two truths.

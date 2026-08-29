@@ -39,7 +39,14 @@ public enum ReducerAction: Sendable, Equatable {
     /// seen. It is an observation attached to a row, and a row that does not
     /// exist gets none: this never creates one, because a context reading is not
     /// evidence that a session is worth showing.
-    case observed(sessionId: String, context: ContextReading?)
+    /// The reading is **not** optional, and that is the whole point. When it was,
+    /// the two callers disagreed without either noticing: the remote branch
+    /// filtered out the sessions it could not read, the local one passed its
+    /// `nil` straight through, and `with(context:)` dutifully replaced a good
+    /// figure with nothing. A transcript that has moved out from under the reader
+    /// for one poll would blank the ring on a session that was still working.
+    /// A read that fails is not an observation, so it cannot be spelled here.
+    case observed(sessionId: String, context: ContextReading)
 
     /// Inserts a session discovered from the filesystem, without overwriting one
     /// already known: what the hooks know is always more precise than a deduction.
@@ -142,8 +149,10 @@ public enum StateReducer {
         // The birth and death of a subagent must be read **before** the rule that
         // discards subagent signals: they carry `agent_id` like all the others,
         // but they speak about the parent's turn, not the child's.
-        if let delta = signal.subagentDelta {
-            return applySubagent(delta: delta, signal: signal, workspace: workspace, to: state, now: now)
+        if let transition = signal.subagentTransition {
+            return applySubagent(
+                transition, signal: signal, workspace: workspace, to: state, now: now
+            )
         }
 
         // A subagent works inside the parent's turn: it has no traffic light of its own.
@@ -216,14 +225,14 @@ public enum StateReducer {
     /// session never seen before, and materializing a row from a closing event
     /// would mean inventing a state out of its own conclusion.
     private static func applySubagent(
-        delta: Int,
+        _ transition: (id: String, starting: Bool),
         signal: HookSignal,
         workspace: Workspace,
         to state: TrafficLightState,
         now: Date
     ) -> TrafficLightState {
         guard let existing = state.sessions[signal.sessionId] else {
-            guard delta > 0 else { return state }
+            guard transition.starting else { return state }
             return state.upserting(
                 SessionState(
                     id: signal.sessionId,
@@ -231,7 +240,7 @@ public enum StateReducer {
                     workspace: workspace,
                     updatedAt: now,
                     statusSince: now,
-                    activeSubagents: delta
+                    activeAgentIds: [transition.id]
                 )
             )
         }
@@ -249,7 +258,7 @@ public enum StateReducer {
         //
         // A subagent *finishing* proves nothing either way — one already running
         // when the prompt opened can finish while the turn is still blocked.
-        let released = delta > 0 && existing.baseStatus == .awaiting
+        let released = transition.starting && existing.baseStatus == .awaiting
         let base = released
             ? existing.with(status: .working, at: now)
             : existing
@@ -257,7 +266,7 @@ public enum StateReducer {
         return state.upserting(
             base
                 .with(workspace: workspace)
-                .withSubagents(delta: delta, at: now)
+                .withSubagent(id: transition.id, starting: transition.starting, at: now)
         )
     }
 

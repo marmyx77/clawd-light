@@ -33,11 +33,24 @@ public struct SessionState: Sendable, Equatable, Identifiable {
 
     /// How many subagents are running inside this session's turn.
     ///
+    /// The subagents believed to be alive, **by identity**.
+    ///
     /// A subagent has no traffic light of its own, but its existence **proves**
-    /// the session is working: without this counter a forty-five minute
-    /// background workflow leaves the light frozen, because `Stop` only fires
-    /// when the turn closes and nothing arrives in between.
-    public let activeSubagents: Int
+    /// the session is working: without this a forty-five minute background
+    /// workflow leaves the light frozen, because `Stop` only fires when the turn
+    /// closes and nothing arrives in between.
+    ///
+    /// It is a set and not a counter because hooks are fire-and-forget over a
+    /// socket and a duplicate delivery is a fact of the transport, not a bug to
+    /// be prevented upstream. A counter that a repeated `SubagentStart` pushed to
+    /// two would only ever be brought back down by one `SubagentStop`, and the
+    /// row stayed blue for the rest of the session. Adding the same identity
+    /// twice is free; the idempotence is a property of the type instead of a
+    /// rule somebody has to remember.
+    public let activeAgentIds: Set<String>
+
+    /// How many subagents are alive. Derived, so every reader is unchanged.
+    public var activeSubagents: Int { activeAgentIds.count }
 
     /// What the session is waiting on, when it is `waiting`: the types Claude Code
     /// listed in flight at the last `Stop`, in its order — `monitor`, `shell`,
@@ -93,7 +106,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         updatedAt: Date,
         statusSince: Date,
         failureReason: StopFailureReason? = nil,
-        activeSubagents: Int = 0,
+        activeAgentIds: Set<String> = [],
         transcriptPath: String? = nil,
         waitingOn: [String] = [],
         entrypoint: String? = nil,
@@ -113,7 +126,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         self.updatedAt = updatedAt
         self.statusSince = statusSince
         self.failureReason = failureReason
-        self.activeSubagents = max(0, activeSubagents)
+        self.activeAgentIds = activeAgentIds
         self.transcriptPath = transcriptPath
     }
 
@@ -192,7 +205,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// Compared before replacing, like every other `with`: a reading that has
     /// not moved must not produce a new value, or the panel republishes its
     /// whole snapshot every five seconds and redraws for nothing.
-    public func with(context reading: ContextReading?) -> SessionState {
+    /// A reading that failed is not passed here at all — see `ReducerAction.observed`.
+    /// A reading that succeeded but found nothing left to read is a *value*, with
+    /// `confidence == .unknown`, so a compacted session still has a way to say so.
+    public func with(context reading: ContextReading) -> SessionState {
         guard reading != context else { return self }
         return replacing(context: .some(reading))
     }
@@ -263,8 +279,19 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// The floor at zero is not pedantry: `SubagentStop` can arrive without its
     /// matching `SubagentStart` — the app may have started mid-turn — and a
     /// negative counter would hold the row yellow forever.
-    public func withSubagents(delta: Int, at now: Date) -> SessionState {
-        replacing(updatedAt: now, activeSubagents: max(0, activeSubagents + delta))
+    /// Copy with one subagent recorded as born or gone.
+    ///
+    /// Both directions are idempotent by construction: inserting an identity
+    /// already present changes nothing, and removing one already absent changes
+    /// nothing. A duplicate delivery of either event is therefore harmless, and
+    /// a `SubagentStop` for a child this app never saw start — which happens
+    /// every time the app launches mid-turn — cannot push the count negative.
+    public func withSubagent(id: String, starting: Bool, at now: Date) -> SessionState {
+        let updated = starting
+            ? activeAgentIds.union([id])
+            : activeAgentIds.subtracting([id])
+        guard updated != activeAgentIds else { return replacing(updatedAt: now) }
+        return replacing(updatedAt: now, activeAgentIds: updated)
     }
 
     /// Copy with the counter zeroed.
@@ -276,8 +303,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// if a `SubagentStop` gets lost along the way, the stuck counter clears on the
     /// next question instead of holding the row yellow until pruning.
     public func withoutSubagents() -> SessionState {
-        guard activeSubagents != 0 else { return self }
-        return replacing(activeSubagents: 0)
+        guard !activeAgentIds.isEmpty else { return self }
+        return replacing(activeAgentIds: [])
     }
 
     // MARK: - Queries
@@ -305,7 +332,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         updatedAt: Date? = nil,
         statusSince: Date? = nil,
         failureReason: StopFailureReason?? = nil,
-        activeSubagents: Int? = nil,
+        activeAgentIds: Set<String>? = nil,
         transcriptPath: String?? = nil,
         waitingOn: [String]? = nil,
         entrypoint: String?? = nil,
@@ -321,7 +348,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             updatedAt: updatedAt ?? self.updatedAt,
             statusSince: statusSince ?? self.statusSince,
             failureReason: failureReason ?? self.failureReason,
-            activeSubagents: activeSubagents ?? self.activeSubagents,
+            activeAgentIds: activeAgentIds ?? self.activeAgentIds,
             transcriptPath: transcriptPath ?? self.transcriptPath,
             waitingOn: waitingOn ?? self.waitingOn,
             entrypoint: entrypoint ?? self.entrypoint,

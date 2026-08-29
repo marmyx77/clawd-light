@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   7,292 lines · 61 files   pure logic, zero AppKit
-  ClawdLightApp/    11,494 lines · 63 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,906 lines · 38 files   547 cases, instantaneous
+  ClawdLightCore/   7,341 lines · 61 files   pure logic, zero AppKit
+  ClawdLightApp/    11,509 lines · 63 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,953 lines · 38 files   551 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -611,7 +611,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 547 cases
+## `ClawdLightTests/` — 551 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

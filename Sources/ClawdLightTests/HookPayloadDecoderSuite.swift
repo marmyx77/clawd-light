@@ -279,7 +279,8 @@ enum HookPayloadDecoderSuite {
             """.utf8)
             let signal = try? HookPayloadDecoder.decode(data)
             t.expectEqual(signal?.event, .subagentStart, "event")
-            t.expectEqual(signal?.subagentDelta, 1, "delta")
+            t.expectEqual(signal?.subagentTransition?.id, "a1", "identity")
+            t.expectEqual(signal?.subagentTransition?.starting, true, "direction")
             t.expectEqual(signal?.isFromSubagent, true, "carries agent_id")
         },
 
@@ -289,12 +290,22 @@ enum HookPayloadDecoderSuite {
              "agent_id":"a1","last_assistant_message":"done"}
             """.utf8)
             let signal = try? HookPayloadDecoder.decode(data)
-            t.expectEqual(signal?.subagentDelta, -1, "delta")
+            t.expectEqual(signal?.subagentTransition?.id, "a1", "identity")
+            t.expectEqual(signal?.subagentTransition?.starting, false, "direction")
         },
 
-        TestCase("A normal event does not move the counter") { t in
+        TestCase("A normal event declares no subagent") { t in
             let signal = try? HookPayloadDecoder.decode(json(validStop))
-            t.expectNil(signal?.subagentDelta, "delta")
+            t.expectNil(signal?.subagentTransition?.id, "identity")
+        },
+
+        TestCase("A subagent event without an id declares nothing") { t in
+            let data = Data("""
+            {"session_id":"s","hook_event_name":"SubagentStart","cwd":"/tmp"}
+            """.utf8)
+            let signal = try? HookPayloadDecoder.decode(data)
+            t.expectEqual(signal?.event, .subagentStart, "event still decodes")
+            t.expectNil(signal?.subagentTransition?.id, "no identity to count")
         },
     ])
 }

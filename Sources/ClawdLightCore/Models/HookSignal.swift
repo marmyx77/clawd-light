@@ -165,10 +165,23 @@ public struct HookSignal: Sendable, Equatable {
     /// describe the subagent's *work*, these two describe that the subagent
     /// **exists**, which is a fact about the parent's turn. The rule that discards
     /// subagent signals still stands — it just has to be applied afterwards.
-    public var subagentDelta: Int? {
+    /// The **identity** whose birth or death this signal declares, if it declares one.
+    ///
+    /// Both halves are required, and the missing half is not an oversight to be
+    /// papered over with a default. A start without an `agent_id` cannot be
+    /// matched by the stop that ends it, so counting it would hold the row blue
+    /// for the rest of the session — the exact failure the identity set exists
+    /// to remove. Refusing it costs a lost blue in a case the contract says
+    /// cannot happen; accepting it costs a row that never goes green again.
+    ///
+    /// `Contracts/golden/hooks.jsonl` carries the same `agent_id` on both events
+    /// of a recorded pair, and `check-contract.sh` asserts the field is there. If
+    /// it ever disappears we learn it from the gate, not from a stuck light.
+    public var subagentTransition: (id: String, starting: Bool)? {
+        guard let id = agentId?.trimmed.nilIfEmpty else { return nil }
         switch event {
-        case .subagentStart: return 1
-        case .subagentStop: return -1
+        case .subagentStart: return (id, true)
+        case .subagentStop: return (id, false)
         default: return nil
         }
     }

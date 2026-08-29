@@ -154,7 +154,15 @@ final class SessionNotifier {
 
         let content = UNMutableNotificationContent()
         content.title = RowNames.name(of: session.workspace.path, in: preferences.rowNames) ?? session.displayName
-        content.body = session.lastMessage.map { "Waiting for an answer — \($0)" }
+        // Not `lastMessage`, and this is a correction rather than a preference.
+        // A `Notification` payload carries no `last_assistant_message`, and
+        // `with(lastMessage:)` keeps the previous value when the new one is
+        // absent — so the row still holds the reply from the turn *before* the
+        // question. Quoting it here presented the previous answer as the thing
+        // being asked about, which is the worst kind of wrong: fluent, specific,
+        // and false. The session's own title is current by construction; where
+        // there is none, the plain sentence says only what is true.
+        content.body = session.title.map { "Waiting for your answer — \($0)" }
             ?? "Waiting for your answer."
         content.sound = .default
         // Carries the session id: clicking the notification has to take you *there*,

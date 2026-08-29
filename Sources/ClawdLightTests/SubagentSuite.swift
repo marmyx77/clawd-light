@@ -52,6 +52,42 @@ enum SubagentSuite {
             t.expectEqual(state.sessions["s1"]?.activeSubagents, 3, "counter")
         },
 
+        TestCase("The same start delivered twice counts one") { t in
+            let state = apply([
+                signal(.subagentStart, agentId: "a1"),
+                signal(.subagentStart, agentId: "a1"),
+            ])
+            // Hooks are fire-and-forget over a socket. A duplicate used to add a
+            // second body to a counter that only one `SubagentStop` would ever
+            // subtract from, and the row stayed blue for the rest of the session.
+            t.expectEqual(state.sessions["s1"]?.activeSubagents, 1, "counter")
+        },
+
+        TestCase("The same stop delivered twice leaves the count at zero") { t in
+            let state = apply([
+                signal(.userPromptSubmit),
+                signal(.subagentStart, agentId: "a1"),
+                signal(.stop),
+                signal(.subagentStop, agentId: "a1"),
+                signal(.subagentStop, agentId: "a1"),
+            ])
+            t.expectEqual(state.sessions["s1"]?.activeSubagents, 0, "counter")
+            t.expectEqual(state.sessions["s1"]?.status, .ready, "status")
+        },
+
+        TestCase("A subagent event without an identity is not counted") { t in
+            let state = apply([
+                signal(.userPromptSubmit),
+                signal(.subagentStart),
+            ])
+            // Counting it would restore the very counter this design removes:
+            // without an id there is nothing to subtract later, so an anonymous
+            // start would hold the row blue forever. The contract asserts the
+            // field is there; if it ever disappears we learn from the gate, not
+            // from a row that never goes green again.
+            t.expectEqual(state.sessions["s1"]?.activeSubagents, 0, "counter")
+        },
+
         TestCase("A stop decrements") { t in
             let state = apply([
                 signal(.subagentStart, agentId: "a1"),

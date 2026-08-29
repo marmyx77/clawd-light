@@ -20,7 +20,7 @@ enum ColumnLayoutSuite {
             workspace: Workspace(path: path),
             updatedAt: t0.addingTimeInterval(since),
             statusSince: t0.addingTimeInterval(since),
-            activeSubagents: subagents
+            activeAgentIds: Set((0..<subagents).map { "agent-\($0)" })
         )
     }
 

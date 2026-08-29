@@ -45,7 +45,7 @@ enum RowSummarySuite {
             updatedAt: at,
             statusSince: at,
             failureReason: failure,
-            activeSubagents: subagents,
+            activeAgentIds: Set((0..<subagents).map { "agent-\($0)" }),
             waitingOn: waitingOn,
             context: context
         )

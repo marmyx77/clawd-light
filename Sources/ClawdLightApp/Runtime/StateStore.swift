@@ -163,6 +163,12 @@ final class StateStore: ObservableObject {
             guard let self else { return }
             await MainActor.run {
                 self.contextReadsInFlight.remove(sessionId)
+                // A read that came back empty is not news. The transcript can be
+                // mid-rotation, mid-compaction, or simply not there for one poll,
+                // and publishing that as an observation would blank the ring on a
+                // session that is still working. The last figure we did read stays
+                // until a better one arrives.
+                guard let reading else { return }
                 self.apply(.observed(sessionId: sessionId, context: reading), now: self.clock())
             }
         }
@@ -231,9 +237,10 @@ final class StateStore: ObservableObject {
             // where its transcript actually is. `.observed` attaches it to a row
             // that already exists and creates none — a remote session earns its
             // row by speaking through the tunnel, not by being seen.
-            for session in sessions where session.context != nil {
+            for session in sessions {
+                guard let reading = session.context else { continue }
                 apply(
-                    .observed(sessionId: session.sessionId, context: session.context),
+                    .observed(sessionId: session.sessionId, context: reading),
                     now: askedAt
                 )
             }
