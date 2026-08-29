@@ -33,6 +33,7 @@ final class PanelController {
     /// Called from outside to turn notifications on or off.
     /// Opens the Settings window; set by whoever owns it.
     var onOpenSettings: (() -> Void)?
+    var onOpenLegend: (() -> Void)?
 
     var onNotificationToggle: ((Bool) -> Void)?
 
@@ -152,6 +153,15 @@ final class PanelController {
                 self.preferences.saveOrigin(self.panel.frame.origin)
             }
             .store(in: &cancellables)
+    }
+
+    /// The rows exactly as the panel is drawing them at this moment.
+    ///
+    /// The legend counts through this rather than through the state, so that a
+    /// census and a column can never disagree: same renderer, same options, same
+    /// hidden projects left out of both.
+    var currentRendering: ColumnRendering {
+        ColumnLayout.render(store.state, options: columnOptions)
     }
 
     /// The layout options derived from the preferences.
@@ -569,6 +579,7 @@ final class PanelController {
         PanelActions(
             openExtended: { [weak self] in self?.openExtendedWindow() },
             openSettings: { [weak self] in self?.onOpenSettings?() },
+            openLegend: { [weak self] in self?.onOpenLegend?() },
             toggleCompact: { [weak self] in self?.toggleCompact() },
             toggleSessionTab: { [weak self] in
                 self?.preferences.opensSessionTab.toggle()

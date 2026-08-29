@@ -67,16 +67,16 @@ struct TrafficLightRow: View {
             TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0)
 
             if !compact {
-                // The slot number, which is the answer to "which key opens this".
-                // Without it the binding is invisible and you have to count rows —
-                // and counting rows is exactly what an address exists to avoid.
-                if let slot = row.slot {
-                    Text("\(slot)")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(StatusPalette.timeColor)
-                        .monospacedDigit()
-                        .frame(width: 7)
-                }
+                // How full this session's context is, and on which model. It took
+                // the cell the slot number used to have: the slot answers "which
+                // key opens this" once and never changes, and it reads well enough
+                // in the tooltip. This changes while you work, and it is what
+                // decides whether a large task starts here or in a new session.
+                //
+                // Drawn on every row, including the ones with nothing read yet —
+                // a cell that appears and disappears would move the names of half
+                // the column sideways every time a session replied.
+                ContextRing(reading: row.context)
 
                 // A terminal row says so, the way a remote one says where it is:
                 // its click leads to a tab, not to an editor window.
@@ -126,7 +126,10 @@ struct TrafficLightRow: View {
         }
         .padding(.horizontal, 6)
         .frame(height: Layout.rowHeight)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // Compact mode is thirty-five points of panel with one eleven-point dot
+        // in it: leading alignment left that dot two points off the centre line,
+        // which on a column of twelve rows reads as a column that is crooked.
+        .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(Color.white.opacity(isDragged ? 0.18 : hovering ? 0.12 : 0))
@@ -270,10 +273,25 @@ struct TrafficLightRow: View {
     }
 
     private var tooltip: String {
-        var lines = [
-            "\(row.displayLabel) — \(StatusPalette.label(for: row.status))",
-            RelativeTime.detailedLabel(for: row.updatedAt, now: now),
-        ]
+        var lines = ["\(row.displayLabel) — \(StatusPalette.label(for: row.status))"]
+
+        // The name on the row can be one you chose. When it is, the folder it is
+        // actually working in appears nowhere else on screen — not in the row,
+        // not in the menu except as a parenthesis inside "Rename…" — and a name
+        // you picked three weeks ago is exactly the one you no longer place.
+        if row.alias != nil {
+            lines.append("in \(row.workspace.name)")
+        }
+
+        lines.append(RelativeTime.detailedLabel(for: row.updatedAt, now: now))
+
+        // The ring gives the shape at a glance; the sentence gives the figure,
+        // the tokens behind it and the exact model with its version. In compact
+        // mode this tooltip is the only surface there is, so it carries the lot.
+        lines.append(
+            row.context?.explanation
+                ?? "context — nothing read from this session yet"
+        )
 
         // A blue row has to say what is holding it, or a wait that lasts a day is
         // indistinguishable from a defect. "monitor ×2, shell" is the difference.

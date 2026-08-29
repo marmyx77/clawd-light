@@ -72,6 +72,15 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
         return "\(displayName) @\(host)"
     }
 
+    /// How full the context is of the session a click would open.
+    ///
+    /// The **primary** session's, not the fullest of the group and not a sum:
+    /// contexts do not add up — three sessions at 40% are three sessions with
+    /// room, not one at 120% — and the row already means "the session a click
+    /// opens" everywhere else, from the colour to the timestamp. A row holding
+    /// several says so in its tooltip, one line per session.
+    public var context: ContextReading? { primary.context }
+
     /// Sum of the active subagents in the row.
     public var activeSubagents: Int { sessions.reduce(0) { $0 + $1.activeSubagents } }
 

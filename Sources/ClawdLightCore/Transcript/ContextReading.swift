@@ -48,10 +48,56 @@ public struct ContextReading: Sendable, Equatable {
     }
 
     /// `nil` when there is no denominator, or when the number is known to be wrong.
+    ///
+    /// THE DENOMINATOR IS THE WHOLE WINDOW, AND THAT WAS MEASURED
+    /// Claude Code compacts before the window is full — its own indicator counts
+    /// down to `window − min(maxOutputTokens, 20 000) − 13 000`, read out of the
+    /// binary — but it counts *its own* token estimate, which is not this sum and
+    /// can differ from it by anything between 0.3% and sixty-fold. Borrowing that
+    /// threshold means dividing our number by their denominator.
+    ///
+    /// So the question was asked of the transcripts instead: at what value of
+    /// **this** sum does a session actually get compacted? Every auto-compaction
+    /// in 18,622 files — 236 of them — says the same thing: never above the
+    /// window, and up to 99.91% of it on a 1M model, 99.99% on a 200k one. The
+    /// window is the ceiling. `Scripts/measure-compaction.py` re-runs it.
+    ///
+    /// Not clamped on purpose. A figure above 100% would mean the window in the
+    /// table moved, and that is worth seeing rather than hiding under a `min`.
     public var percent: Int? {
         guard let window, window > 0, confidence != .unknown else { return nil }
         return Int((Double(tokens) / Double(window) * 100).rounded())
     }
+
+    /// How much of the ring is drawn, `0...1`, or `nil` when nothing may be drawn.
+    ///
+    /// Clamped where `percent` is not, and for the opposite reason: an arc past
+    /// the end of the circle draws a second lap over the first and reads as
+    /// *emptier*, which is the one direction this must never fail in.
+    public var fraction: Double? {
+        guard let window, window > 0, confidence != .unknown else { return nil }
+        return min(1, Double(tokens) / Double(window))
+    }
+
+    /// The letter inside the ring: the family of the model that produced the reply.
+    public var modelInitial: String { Self.initial(of: model) }
+
+    /// `O`, `S`, `H`, `F`, `M` — or `n` for a model nobody here has heard of.
+    ///
+    /// Matched on the family word wherever it appears, not on position: the ids
+    /// are not all shaped the same, and `claude-3-5-haiku` carries its numbers in
+    /// the middle. `n` is a statement — *this is a model I do not know* — and it
+    /// is a different fact from an empty ring, which means nothing was read.
+    public static func initial(of model: String) -> String {
+        for (family, letter) in families where model.contains(family) {
+            return letter
+        }
+        return "n"
+    }
+
+    private static let families: [(String, String)] = [
+        ("opus", "O"), ("sonnet", "S"), ("haiku", "H"), ("fable", "F"), ("mythos", "M"),
+    ]
 
     /// What a row shows. Never empty: a blank cell reads as "there is room",
     /// which is exactly what would make somebody start a large task in a session

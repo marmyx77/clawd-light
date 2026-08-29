@@ -302,6 +302,36 @@ CTXPY
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Where a session actually gets compacted"
+
+# The other half of the denominator, and the half that nearly went in wrong.
+#
+# Claude Code's indicator counts down to a threshold BELOW the window -
+# `window - min(maxOutputTokens, 20000) - 13000`, plainly readable in the binary.
+# Three hand-readings of that indicator agreed with a denominator of 0.92 x
+# window to within a point, and that number was one commit away from the code.
+# It was wrong: the threshold is compared against Claude Code's own token
+# estimate, not against the sum this project reads out of `message.usage`, and on
+# the same compaction the two have been seen 0.4% apart and sixty-fold apart.
+#
+# So the transcripts get asked instead. Every `compact_boundary` with
+# `trigger: "auto"` is a session that hit the ceiling; the last reply before it
+# is our reading at that moment. A reading above 100% of the recorded window
+# would mean the denominator is too small — that is what this fails on.
+COMPACTION_REPORT="$(Scripts/measure-compaction.py 2>&1)" && COMPACTION_STATUS=0 || COMPACTION_STATUS=$?
+
+case "$COMPACTION_STATUS" in
+    0) ok "every reading sits inside its model's window"
+       printf '%s\n' "$COMPACTION_REPORT" ;;
+    # Exit 2 is "there was nothing to look at": no transcripts on this machine, a
+    # fresh account, a build server. Not a pass and not a failure.
+    2) skip "no auto-compaction has ever happened here - the denominator was not exercised"
+       printf '%s\n' "$COMPACTION_REPORT" ;;
+    *) bad "a session was read above its own window - the denominator in the table is too small"
+       printf '%s\n' "$COMPACTION_REPORT" ;;
+esac
+
+# ─────────────────────────────────────────────────────────────────────────────
 head_ "Background work (the reason a working session is not green)"
 
 # The traffic light trusts Claude Code to have already filtered this list down to

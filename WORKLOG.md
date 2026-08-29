@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **528**, instantaneous |
+| Domain tests | **531**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1154,3 +1154,58 @@ judgement made on a machine we do not update. Measured on the node: 208,943 of
 The numbers, from the real path, through HTTP, on the sessions open right now:
 `≥85%`, `≥63%`, `≥63%`, `52%`, `≥11%`, and one `—` for a session compacted since
 its last reply. The dash is doing exactly what it exists for.
+
+## 29 August — the ring, the legend, and a denominator that was almost wrong
+
+The figure from this morning had nowhere to be shown. It has one now: the cell
+left of the name, which used to carry the row's keyboard slot, carries an
+eleven-point ring — the arc is how much of the window is gone, the letter is the
+model family, `O`, `S`, `H`, `F`, `M`, or `n` for one this build has no window
+for. Monochrome, because six states already own the colour here and a ring that
+went red near the end would be a seventh voice arriving exactly when the row's
+own colour matters most. The slot moved into the tooltip, which also gained the
+exact figure, the model with its version, and — on a renamed row — the folder
+underneath, which until today appeared nowhere on screen.
+
+**The denominator was the day's real work, and it was nearly wrong.** Claude Code
+compacts before the window is full: its indicator counts down to
+`window − min(maxOutputTokens, 20 000) − 13 000`, which is plainly readable in
+the binary. Three sessions read by hand against that indicator agreed, to within
+a point, with a denominator of `0.92 × window`. Three points, two models,
+fillings from 68% to 92%. It reached the prototype and was one commit from the
+code.
+
+It was wrong twice over. The threshold is compared against Claude Code's **own**
+token estimate, which is not the sum we read out of `message.usage`: on one
+compaction the two were 0.4% apart, on another sixty-fold. And a fixed
+subtraction is not a ratio — 0.92 fits a 1M window and would mean 0.835 on a 200k
+one, which none of the three readings could have caught, all three being on 1M
+models. The agreement was our own floor being 30–40k stale in all three cases,
+pointing the same way each time, which is what a floor does.
+
+What settled it was asking the files a question with one answer: at what value of
+*our* number does a session actually get compacted? Every `compact_boundary`
+carrying `trigger: "auto"` is a session that hit the ceiling. 18,622 transcripts,
+236 of them: the highest reading before a compaction is 99.91% of a 1M window and
+99.99% of a 200k one, and **not one ever exceeded its window**. Under `0.92`, ten
+of them would print above 100%. `Scripts/measure-compaction.py` reproduces it in
+twenty-four seconds, `check-contract.sh` fails on any reading past its own
+window, and it was watched failing: opus-5 set to 920,000 in the contract answers
+`108.6%`, twice, and exits 1.
+
+**A legend, because the grammar outgrew inference.** Six colours, two of which
+differ only in brightness, a ring that is not a state and now a second ring that
+is not a light. A `?` in the footer and an entry in the menu open a window that
+says what each one means — with a live count beside it, taken through
+`PanelController.currentRendering`, so a census and a column cannot disagree. A
+key is read once; a key that also answers *how many are waiting for me* is worth
+opening twice.
+
+And the compact strip is straight again: one dot in thirty-five points, aligned
+leading, sat two points off the centre line, which on twelve rows reads as a
+column that was built crooked.
+
+Verified: 531 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
+committed and 20 caught, 10 contract checks. The three new domain cases lock the
+denominator itself — the highest reading ever seen before a compaction, 999,083,
+must print 100% and not 109%.

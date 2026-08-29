@@ -374,6 +374,44 @@ All unset on this machine when this was written; undetectable the day one is set
 
 ---
 
+## context.ceiling · the window is the ceiling, the compaction trigger is not ours
+
+**We assume** a session's saturation is `input + cache_creation + cache_read`
+over the **whole** window of its model — not over Claude Code's auto-compaction
+threshold, which is a different quantity measured on a different numerator.
+
+**Depends at** [ContextReading.percent](../Sources/ClawdLightCore/Transcript/ContextReading.swift)
+· [measure-compaction.py](../Scripts/measure-compaction.py)
+
+**How verified** — `transcripts`, and this one earned its own script. Claude Code
+computes its threshold as `window − min(maxOutputTokens, 20 000) − 13 000`
+(readable in the binary: `iSe → W3(eF(…))`) and counts down to it — but against
+**its own** token estimate, which is not this sum. On the same compaction the two
+have been seen 0.4% apart (966,032 against 973,029) and sixty-fold apart.
+
+So the question was put to the files instead: at what value of *our* sum does a
+session actually get compacted? Every `compact_boundary` carrying
+`trigger: "auto"` in 18,622 transcripts — 236 of them — with the last reply
+before it as the reading at that moment:
+
+| window | n | highest reading | past 90% | above 100% |
+|---|---|---|---|---|
+| 1,000,000 | 20 | 99.91% | 10 | 0 |
+| 200,000 | 216 | 99.99% | 79 | 0 |
+
+**Failure mode** — a denominator below the window prints figures above 100% and
+tells somebody a session is fuller than it is. Set the table to 0.92 × window,
+the ratio three hand-readings of the indicator agreed on, and this measurement
+answers `108.6%` twice within a second. That is the check, and it is the reason
+0.92 is not in this repository.
+
+**Not covered** — the direction the other way. Our reading is a floor: whatever
+was loaded after the last reply is invisible, so the envelope approaches the
+ceiling from below and never touches it. This proves the denominator is not too
+small; it cannot prove it is not slightly too large.
+
+---
+
 ## hook.background_tasks · Stop reports the work still in flight
 
 **We assume** `Stop` carries `background_tasks`, a list of the background work

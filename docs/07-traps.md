@@ -42,6 +42,9 @@ severity.
 12. **A feature that answers its own security question first can end up
     answering nothing else.** Decide what the row must *do*, then the mechanism,
     then its safety — and measure the machine before designing for it.
+13. **Three readings that agree can agree on the wrong thing.** A denominator
+    fitted to three hand-read percentages survived every sanity check and was
+    refuted in twenty-four seconds by asking 18,622 files the same question.
 
 ---
 
@@ -1488,3 +1491,77 @@ code.
 
 **Lesson.** A measurement is worth exactly what the measuring device is worth,
 and a device that has never been calibrated is not a device, it is a decoration.
+
+
+---
+
+# Three readings that agreed, and a formula that was not there
+
+**Symptom.** None. That is the whole entry: a number that was about to be
+written into the panel, that agreed with every observation available, and that
+was wrong.
+
+**What was being decided.** The panel had to say how full a session's context is.
+The numerator was settled and verified — `input + cache_creation + cache_read`,
+the same sum Claude Code's own status line reports. The denominator looked
+obvious: the model's context window. Then a screenshot showed that Claude Code
+displays *"% until auto-compact"*, not *"% of window"* — it compacts before the
+window is full — so dividing by the whole window would promise room that is not
+there.
+
+**The measurement that looked like proof.** Three sessions were read by hand and
+compared against Claude Code's own indicator:
+
+| session | model | our reading | with the full window | with 0.92 × window | shown |
+|---|---|---|---|---|---|
+| this one | opus-5 | 697,813 | 30% | **24%** | 24% |
+| a second | opus-4-8 | 627,330 | 37% | **32%** | 32% |
+| a third | opus-5 | 847,105 | 85% used | **92% used** | 92% |
+
+Three points, two models, fillings from 68% to 92%, and a threshold — 0.92 —
+that fitted all three to within a point. Written down, it reads like a
+measurement. It reached the prototype and was one commit from the code.
+
+**What it actually was.** Two mistakes standing on each other.
+
+The first: the fit was to *three* points, all of them on 1M models, and each of
+those readings is a **floor** — this project's own finding, in this same file.
+Every gap pointed the same way, which is exactly what a floor does. The
+"agreement" was our number being 30–40k stale in all three cases.
+
+The second is worse, and it is the one worth remembering. The threshold *does*
+exist — `window − min(maxOutputTokens, 20 000) − 13 000`, plainly readable in the
+binary — but it is compared against **Claude Code's own token estimate**, which
+is not the sum we read. On one compaction the two were 0.4% apart (966,032
+against 973,029); on another, sixty-fold. Borrowing that threshold means dividing
+our numerator by somebody else's denominator, and nothing on screen would ever
+have said so. And a fixed subtraction is not a ratio: 0.92 fits a 1M window and
+means 0.835 on a 200k one, which no measurement here would have caught, because
+all three readings were on 1M models.
+
+**How it was caught.** By asking the transcripts a question that has one right
+answer: *at what value of our own number does a session actually get compacted?*
+Every `compact_boundary` carrying `trigger: "auto"` is a session that hit the
+ceiling, and the last reply before it is our reading at that moment. 18,622
+files, 236 compactions:
+
+| window | n | highest reading | past 90% | above 100% |
+|---|---|---|---|---|
+| 1,000,000 | 20 | 99.91% | 10 | 0 |
+| 200,000 | 216 | 99.99% | 79 | 0 |
+
+The window is the ceiling. Under a `0.92` denominator, ten of those compactions
+would have printed above 100% — the shape of the refutation was sitting in the
+data the whole time, and it took a script and a minute to ask for it.
+
+**Correction.** `Scripts/measure-compaction.py` runs the measurement;
+`check-contract.sh` fails on any reading that exceeds its own window, and was
+watched failing — the contract's opus-5 window set to 920,000 answers `108.6%`
+twice and exits 1. `Contracts/assumptions.md` records the ceiling, and states the
+one thing this cannot prove: our reading is a floor, so it can show the
+denominator is not too small and never that it is not slightly too large.
+
+**Lesson.** A number fitted to a handful of observations of *somebody else's*
+display is a hypothesis wearing a measurement's clothes. Before it goes in, find
+the event the number claims to predict — here, the compaction itself — and count
+how often it happened where the number says it should.

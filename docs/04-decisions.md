@@ -1237,6 +1237,83 @@ nothing.
 
 ---
 
+## D30 · The context takes the slot's cell, and the window is the denominator
+
+**Decided.** The cell left of the name no longer carries the row's keyboard slot.
+It carries an eleven-point ring: the arc is how much of the context window is
+gone, the letter in the middle is the model family — `O`, `S`, `H`, `F`, `M`, and
+`n` for one this build has no window for. Monochrome. The slot moved into the
+tooltip, which also gained the exact figure, the model with its version, and —
+on a renamed row — the folder underneath.
+
+**Why the slot lost.** It answers "which key opens this" once and then never
+changes, on a row whose position never changes either (D23). The saturation is
+the opposite kind of fact: it moves while you work, and it is the one that
+decides whether a large task starts here or in a fresh session. Seven points of
+the name were the price of the swap — 108.82 becomes 104.82 on a plain row.
+
+**Why monochrome.** Six states already own the colour in this panel. A ring that
+turned red near the end would be a seventh voice, arriving exactly when the row's
+own colour matters most.
+
+**Three silences, three marks.** A dashed circle means nothing has been read from
+that session yet. A solid circle with a dimmed letter means a figure was read and
+is known to be wrong — the session was compacted since. An `n` means the model is
+unknown here. An empty ring for all three would have read as "there is room",
+which is the one thing none of them says.
+
+**The denominator is the whole window, and that was nearly wrong.** Claude Code
+compacts *before* the window is full: its indicator counts down to
+`window − min(maxOutputTokens, 20 000) − 13 000`, which is plainly readable in
+the binary. Three hand-readings of that indicator agreed, to within a point, with
+a denominator of `0.92 × window`, and that number reached the prototype.
+
+It was wrong. That threshold is compared against Claude Code's **own** token
+estimate, which is not the sum this project reads out of `message.usage`: on one
+compaction the two were 0.4% apart, on another sixty-fold. So the question went
+to the files instead — at what value of *our* sum does a session actually get
+compacted? Every auto-compaction in 18,622 transcripts, 236 of them, answers the
+same way: **never above the window**, and up to 99.91% of it on a 1M model,
+99.99% on a 200k one. Against a `0.92` denominator, ten of those compactions
+print above 100%. `Scripts/measure-compaction.py` re-runs the whole thing in
+under a minute, and `check-contract.sh` fails on any reading that exceeds its own
+window.
+
+**Discarded:** a number in the cell instead of a ring. `≥62%` is five glyphs
+where the arc is none, and the column has twelve rows. **Discarded:** colouring
+the arc by fullness — see above. **Discarded:** drawing the floor as *extra* arc.
+It would invent tokens nobody counted; the paler ink says the same thing without
+claiming a figure.
+
+---
+
+## D31 · A legend, and it counts
+
+**Decided.** A `?` in the footer, and an entry in the menu, open a window that
+says what the six colours and the two rings mean — with a live count of each
+beside it, taken through the same renderer the column uses.
+
+**Why now.** The panel started with three colours and needed no explanation. It
+has six, two of which differ only in brightness, plus a ring that is not a state
+and a second ring that is not a light. That is past what a stranger can infer,
+and the project is about to be public.
+
+**Why it also counts.** A key that only says "green means an unread answer" is
+read once and never again. The same table with a number beside each row answers
+the question people actually have — *how many are waiting for me?* — and that is
+what makes it worth opening twice. The counts come from
+`PanelController.currentRendering`, so a census and a column cannot disagree:
+same renderer, same options, hidden projects left out of both.
+
+**Discarded:** a popover off the footer. The panel never takes focus, and a
+popover hung off a non-activating window cannot be scrolled, cannot be left open
+beside the column, and cannot be found again once it has closed itself.
+**Discarded:** opening it by itself on first run. It is the one moment a stranger
+exists — and also the kind of thing that is presumptuous the second time. It
+stays a door, not a greeting.
+
+---
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

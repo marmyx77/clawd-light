@@ -16,7 +16,7 @@ whole time. Nothing about that was visible from the outside — a working guard
 and a broken one print exactly the same thing.
 
 **The second.** Adding one `if true { return }` to `expect` in
-`Sources/TestKit/Assertions.swift` made all 528 domain tests report success
+`Sources/TestKit/Assertions.swift` made every domain test report success
 while verifying nothing at all. No warning, no clue, a full green.
 
 Both failures are the same shape: **absence mistaken for permission**. A search
@@ -60,7 +60,7 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (528 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (531 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
 | End-to-end suite (82 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
@@ -73,6 +73,8 @@ Measured on an M-series Mac, 29 August 2026.
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
+| Model context windows | every window in the table is the one the binary carries | **external** | a window edited in the contract is reported against the binary | with the contract | in the above |
+| Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 
 `bite.sh` commits twenty violations and demands twenty catches. It takes 26
 seconds.

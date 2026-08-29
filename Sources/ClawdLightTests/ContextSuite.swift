@@ -124,6 +124,44 @@ enum ContextSuite {
             t.expectEqual(reading?.tokens, 361_178, "the whole record behind it")
         },
 
+        TestCase("The window is the ceiling, and it is the denominator") { t in
+            // Measured, not chosen. Every auto-compaction in 18,622 transcripts
+            // was found — 236 of them — and the last reading before each one was
+            // compared with the model's window. None ever exceeded it, and the
+            // envelope reaches 99.91% of 1,000,000 and 99.99% of 200,000.
+            //
+            // The number this replaces was 0.92, fitted to three readings of
+            // Claude Code's own indicator. Against this table it would print
+            // 108% for ten of those compactions.
+            //   Scripts/measure-compaction.py — reproduces it in a minute
+            let full = ContextScanner.read(tail: reply(read: 999_083 - 2_279))
+            t.expectEqual(full?.tokens, 999_083, "the highest reading ever seen before a compaction")
+            t.expectEqual(full?.percent, 100, "which is a hundred percent of the window, not a hundred and nine")
+            t.expectEqual(full?.fraction, Double(999_083) / Double(1_000_000), "and the arc is that, over the window")
+        },
+
+        TestCase("The ring carries the family of the model, or says it does not know") { t in
+            t.expectEqual(ContextReading.initial(of: "claude-opus-5"), "O", "opus")
+            t.expectEqual(ContextReading.initial(of: "claude-sonnet-4-5-20250929"), "S", "sonnet, dated")
+            t.expectEqual(ContextReading.initial(of: "claude-3-5-haiku"), "H", "haiku, numbered in the middle")
+            t.expectEqual(ContextReading.initial(of: "claude-fable-5"), "F", "fable")
+            t.expectEqual(ContextReading.initial(of: "claude-mythos-5"), "M", "mythos")
+            // Not a blank and not a guess: a letter that says "this is a model
+            // I have never heard of", which is a different fact from "no reading".
+            t.expectEqual(ContextReading.initial(of: "claude-something-next"), "n", "unknown")
+            t.expectEqual(ContextReading.initial(of: ""), "n", "empty")
+        },
+
+        TestCase("An arc is drawn only for a figure that is allowed to be shown") { t in
+            let floor = ContextScanner.read(tail: reply() + "\n" + prompt)
+            t.expectEqual(floor?.fraction, Double(361_178) / Double(1_000_000),
+                          "a floor still draws — it is a lower bound, not a doubt")
+            let gone = ContextScanner.read(tail: reply() + "\n" + compaction)
+            t.expectNil(gone?.fraction, "a compacted session draws no arc at all")
+            let unknownModel = ContextScanner.read(tail: reply(model: "claude-something-next"))
+            t.expectNil(unknownModel?.fraction, "and neither does a model with no window")
+        },
+
         TestCase("The sentence for the tooltip carries the whole truth") { t in
             let reading = ContextScanner.read(tail: reply() + "\n" + prompt)
             let text = reading?.explanation ?? ""

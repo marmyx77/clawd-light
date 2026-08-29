@@ -1,13 +1,13 @@
 # Code map
 
-~26,500 lines of Swift across five targets. For each file: what it contains, why
+~27,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   7,004 lines · 60 files   pure logic, zero AppKit
-  ClawdLightApp/    10,586 lines · 57 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,638 lines · 37 files   528 cases, instantaneous
+  ClawdLightCore/   7,059 lines · 60 files   pure logic, zero AppKit
+  ClawdLightApp/    10,966 lines · 60 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,676 lines · 37 files   531 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -54,7 +54,7 @@ before changing anything here: it is the heart of the subagent correction.
 > **Touching the computation of `status`** risks reintroducing green during
 > background work. Coverage: `SubagentSuite`.
 
-### `ColumnLayout.swift` · 327
+### `ColumnLayout.swift` · 350
 From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
@@ -229,7 +229,7 @@ Where a window opening on a long transcript starts reading: a few megabytes
 before the end, on a whole line. A transcript can be half a gigabyte and the
 window shows three hundred entries; reading it all was the beachball on ⌘+click.
 
-### `ContextReading.swift` · 124 · `ContextScanner.swift` · 117
+### `ContextReading.swift` · 170 · `ContextScanner.swift` · 117
 How full a session's context is, read backwards from the end of its transcript.
 
 The numerator is the sum of `input_tokens`, `cache_creation_input_tokens` and
@@ -562,16 +562,19 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 812 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 322 | one row: dot, slot, name, badge, timestamp, handle, menu |
+| `PanelController.swift` | 767 | holds everything together; row and panel actions |
+| `TrafficLightRow.swift` | 343 | one row: dot, context ring, name, badge, timestamp, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
-| `PanelRootView.swift` | 280 | the general menu, and the gear under the rows that opens it |
+| `PanelRootView.swift` | 319 | the general menu, the gear that opens it, and the `?` that opens the legend |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
+| `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
+| `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
+| `LegendWindowController.swift` | 57 | owns the legend window |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 132 | colors and measurements |
+| `StatusPalette.swift` | 149 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
@@ -593,7 +596,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 528 cases
+## `ClawdLightTests/` — 531 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -641,7 +644,7 @@ ship neither XCTest nor a complete swift-testing (D11).
 ### `Instrument.swift` · 133
 Calibrates the assertions before anything is measured with them, and it is the
 reason the number in the heading above means something. Adding one early
-`return` to `expect` made all 528 cases report success while verifying nothing —
+`return` to `expect` made every case in this target report success while verifying nothing —
 a full green, no warning, no clue. So every assertion is now made to fail on
 purpose and must record it, made to pass and must stay silent, and a failing run
 must still reach a non-zero exit code; nineteen proofs, none of them written in

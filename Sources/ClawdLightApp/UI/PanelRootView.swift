@@ -7,6 +7,9 @@ struct PanelActions {
     let openExtended: () -> Void
     /// Opens the Settings window: what does not fit in this menu.
     let openSettings: () -> Void
+    /// Opens the legend: what the six colours and the two rings mean, with a
+    /// live count of each beside it.
+    let openLegend: () -> Void
     let toggleCompact: () -> Void
     let toggleSessionTab: () -> Void
     let toggleGrouping: () -> Void
@@ -58,6 +61,7 @@ struct PanelRootView: View {
     let rowActions: RowActions
 
     @State private var hoveringGear = false
+    @State private var hoveringLegend = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -141,6 +145,25 @@ struct PanelRootView: View {
     private var footer: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
+
+            // The door to the legend, and it is a question mark because that is
+            // the shape of the question: the column now has six colours and two
+            // rings, and nothing on screen says what they are. Expanded mode only
+            // — thirty-five points hold one glyph, and between the two the gear
+            // is the one that leads everywhere.
+            if !flags.compact {
+                Button(action: actions.openLegend) {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.primary.opacity(hoveringLegend ? 0.55 : 0.2))
+                        .frame(width: 14, height: Layout.footerHeight)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("What the lights mean — and how many of each there are right now")
+                .onHover { hoveringLegend = $0 }
+            }
+
             Button(action: openMenuUnderPointer) {
                 // Drawn exactly like the rows' drag handles — same weight,
                 // same translucency, same column — so it reads as one more
@@ -191,6 +214,7 @@ struct PanelRootView: View {
         // rather than changing how this panel looks. Everything below it is a
         // setting; this is the door.
         Button("Open the conversations…", action: actions.openExtended)
+        Button("What the lights mean…", action: actions.openLegend)
         Button("Settings…", action: actions.openSettings)
 
         Divider()

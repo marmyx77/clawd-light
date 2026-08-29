@@ -101,6 +101,11 @@ enum Layout {
     /// eleven: visible at a glance across a room, and it still leaves a core
     /// large enough to read the colour underneath.
     static let listeningRing: CGFloat = 2
+    /// Thickness of the context ring, which is the same eleven points across as
+    /// the dot and sits beside it. Two points again, and for the same reason:
+    /// any thinner and the arc stops being readable at a glance, any thicker and
+    /// there is no room left inside for the model's letter.
+    static let contextRingWidth: CGFloat = 2
     static let rowHeight: CGFloat = 22
     static let rowSpacing: CGFloat = 2
     static let panelPadding: CGFloat = 8

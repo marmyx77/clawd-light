@@ -27,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
     private lazy var settingsWindow = SettingsWindowController(fleet: fleet)
+    /// Built with the panel, because it counts what the panel is showing.
+    private var legendWindow: LegendWindowController?
     private var notifier: SessionNotifier?
     private var presence: PresenceFile?
 
@@ -62,6 +64,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startInterface() {
         let controller = PanelController(store: store, installer: installer)
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        let legend = LegendWindowController(
+            store: store,
+            rendering: { [weak controller] in controller?.currentRendering ?? .empty }
+        )
+        legendWindow = legend
+        controller.onOpenLegend = { legend.show() }
         controller.show()
         panelController = controller
 
