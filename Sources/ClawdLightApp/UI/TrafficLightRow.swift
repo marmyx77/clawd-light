@@ -22,6 +22,8 @@ struct RowActions {
     let openChat: (ColumnRow) -> Void
     /// Gives the row the name the user wants to read, by folder.
     let rename: (ColumnRow) -> Void
+    /// Opens the folder the session is working in, in the Finder.
+    let revealInFinder: (ColumnRow) -> Void
 }
 
 /// What the column tells a row about the drag in progress.
@@ -59,6 +61,7 @@ struct TrafficLightRow: View {
     var drag: RowDragState? = nil
 
     @State private var hovering = false
+    @State private var hoveringFolder = false
 
     private var isDragged: Bool { drag?.isDragged ?? false }
 
@@ -121,11 +124,21 @@ struct TrafficLightRow: View {
                     .layoutPriority(1)
                     .monospacedDigit()
 
+                // Appears under the pointer and takes eighteen points off the
+                // name while it is there. That cost is the whole argument: the
+                // alternative was carrying it on every row for ever, on rows
+                // where it cannot even work — a session on another machine has a
+                // path, and it is not a path on this Mac.
+                if hovering, !row.workspace.isRemote {
+                    folderButton
+                }
+
                 if let drag {
                     handle(drag)
                 }
             }
         }
+        .animation(.easeOut(duration: 0.12), value: hovering)
         .padding(.horizontal, 6)
         .frame(height: Layout.rowHeight)
         // Compact mode is thirty-five points of panel with one eleven-point dot
@@ -140,7 +153,7 @@ struct TrafficLightRow: View {
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
         .contextMenu { menu }
-        .tooltip(tooltip)
+        .tooltip(RowSummary.of(row, now: now, muted: flags.isMuted))
         // The row follows the pointer while it is the one being dragged, and steps
         // aside — animated — when another row is dragged past it.
         .offset(y: drag?.offset ?? 0)
@@ -161,6 +174,28 @@ struct TrafficLightRow: View {
     /// every time a session replied.
     private var ring: some View {
         ContextRing(reading: row.context)
+    }
+
+    /// The folder this session is working in, one click away.
+    ///
+    /// Drawn only while the pointer is on the row. A permanent icon would be
+    /// eighteen points off every name — measured: 100.87 becomes 82.87, which is
+    /// where the names were before this afternoon's work gave the width back —
+    /// and it would have to disappear on remote rows anyway, which is the same
+    /// jump with worse timing.
+    private var folderButton: some View {
+        Button {
+            actions.revealInFinder(row)
+        } label: {
+            Image(systemName: "folder")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.primary.opacity(hoveringFolder ? 0.85 : 0.45))
+                .frame(width: 13, height: Layout.rowHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hoveringFolder = $0 }
+        .transition(.opacity)
     }
 
     /// The three lines on the right: where you grab the row to move it.
@@ -194,6 +229,11 @@ struct TrafficLightRow: View {
             activateChat()
         } else if modifiers.contains(.option) {
             actions.peek(row)
+        } else if modifiers.contains(.shift), !row.workspace.isRemote {
+            // The fast path for the glyph that only appears on hover. Both exist
+            // for the same reason the other two modifiers do: the gesture is for
+            // whoever knows it, the menu is how anybody finds out it is there.
+            actions.revealInFinder(row)
         } else {
             actions.open(row)
         }
@@ -231,6 +271,12 @@ struct TrafficLightRow: View {
         Button("Move down", action: { actions.move(row, 1) })
         Button(row.alias == nil ? "Rename…" : "Rename… (“\(row.workspace.name)” underneath)",
                action: { actions.rename(row) })
+
+        // Absent, not disabled, on a row that lives elsewhere: the folder is on
+        // that machine, and a greyed entry would still be a promise.
+        if !row.workspace.isRemote {
+            Button("Show in Finder", action: { actions.revealInFinder(row) })
+        }
 
         Button(flags.isHidden ? "✓ Hide" : "Hide",
                action: { actions.toggleHidden(row) })
@@ -288,72 +334,4 @@ struct TrafficLightRow: View {
         row.status == .idle ? Color.primary.opacity(0.72) : .primary
     }
 
-    private var tooltip: String {
-        var lines = ["\(row.displayLabel) — \(StatusPalette.label(for: row.status))"]
-
-        // The name on the row can be one you chose. When it is, the folder it is
-        // actually working in appears nowhere else on screen — not in the row,
-        // not in the menu except as a parenthesis inside "Rename…" — and a name
-        // you picked three weeks ago is exactly the one you no longer place.
-        if row.alias != nil {
-            lines.append("in \(row.workspace.name)")
-        }
-
-        lines.append(RelativeTime.detailedLabel(for: row.updatedAt, now: now))
-
-        // The ring gives the shape at a glance; the sentence gives the figure,
-        // the tokens behind it and the exact model with its version. In compact
-        // mode this tooltip is the only surface there is, so it carries the lot.
-        lines.append(
-            row.context?.explanation
-                ?? "context — nothing read from this session yet"
-        )
-
-        // A blue row has to say what is holding it, or a wait that lasts a day is
-        // indistinguishable from a defect. "monitor ×2, shell" is the difference.
-        //
-        // And a ringed row has to say it too, for the opposite reason: the ring
-        // is deliberately quiet, so the only place that can name the thing still
-        // listening is here.
-        let counts = row.primary.waitingOn.reduce(into: [(String, Int)]()) { acc, type in
-            if let i = acc.firstIndex(where: { $0.0 == type }) { acc[i].1 += 1 } else { acc.append((type, 1)) }
-        }
-        if !counts.isEmpty {
-            let listed = counts.map { $0.1 > 1 ? "\($0.0) ×\($0.1)" : $0.0 }.joined(separator: ", ")
-            lines.append(row.status == .waiting ? "waiting on " + listed : "still listening: " + listed)
-        }
-
-        if let slot = row.slot {
-            lines.append("Slot \(slot) — clawd-light open \(slot)")
-        }
-
-        if row.count > 1 {
-            lines.append("\(row.count) sessions in this project:")
-            for session in row.sessions.prefix(8) {
-                lines.append("  · \(StatusPalette.label(for: session.status))")
-            }
-            if row.count > 8 { lines.append("  · …and \(row.count - 8) more") }
-        }
-
-        if row.activeSubagents > 0 {
-            lines.append("\(row.activeSubagents) subagents at work")
-        }
-
-        if row.status == .failed, let reason = row.primary.failureReason {
-            lines.append(reason.detailedLabel)
-        }
-
-        if let message = row.primary.lastMessage {
-            // On an interrupted turn `last_assistant_message` holds the error
-            // text, not an answer: without the prefix it would look like
-            // something Claude wrote for you.
-            lines.append(row.status == .failed ? "Error: \(message)" : message)
-        }
-
-        if flags.isMuted { lines.append("Notifications muted for this project.") }
-
-        lines.append("Click to open. ⌘+click for the conversations. Alt+click to keep the green.")
-        if drag != nil { lines.append("Drag ≡ to reorder; the order is yours and does not change on its own.") }
-        return lines.joined(separator: "\n")
-    }
 }

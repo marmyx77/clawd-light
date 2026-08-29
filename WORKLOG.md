@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **532**, instantaneous |
+| Domain tests | **547**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1296,3 +1296,50 @@ today that sentence was written, tested, and never once shown on a screen.
 Verified: 532 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
 caught; and a capture of the panel, because a width argument settled by arithmetic
 alone is how the last one went wrong.
+
+## 29 August — the second layer, drawn; and a glyph that only exists under the pointer
+
+Two requests, and both are cheaper than they look because of what was fixed this
+morning.
+
+**The tooltip is a card.** Not because it is prettier: because the old one was a
+`private var` on a SwiftUI view that appended sentences to an array and joined
+them with newlines. Untestable by construction — and it had never been displayed
+at all. `RowSummary` in Core decides what appears, in what order and under which
+word; `TooltipCard` draws it and decides nothing. Fifteen cases hold the rules.
+
+Two of those cases exist because the first version printed something false.
+`— 412,117 of 1,000,000` for a session compacted since its last reply: a dash
+followed by a figure reads as a figure with a typo in front of it, when in fact
+there is no figure — the reading describes a conversation that no longer exists.
+It now says *compacted since — that reading is void*, and draws no bar. And the
+help line must not promise a modifier that does nothing, which is why a row on
+another machine is not offered a folder this Mac cannot open.
+
+The status words moved from `StatusPalette` to `SessionStatus`: the colour is a
+property of the interface, the word is a property of the state, and a summary
+assembled in Core cannot reach into the app to ask what a state is called.
+
+**The folder appears under the pointer.** 18 points, measured, is what a
+permanent glyph would take off every name for ever — 100.87 back to 82.87, which
+is exactly where the names were this morning when `aworld-os-platform` read
+`aworl…latform`. So it is drawn only while the pointer is on the row, with
+⇧+click and a menu entry for whoever prefers not to hunt for it. The cost was
+stated before it was built and it is real: under the pointer a long name
+re-truncates while you look at it, softened by a 120 ms ease. On a row that lives
+on another machine there is no glyph, no menu entry and no mention in the help
+line: `/home/dev/.notes` exists, and it does not exist here.
+
+**Iterating without the keychain.** The Developer ID key asks for the password on
+every signature; the local signing identity does not. So the loop is: build,
+`open dist/ClawdLight.app`, look, repeat — no prompt, at the cost of the
+Accessibility permission, which only matters for raising windows and not for
+anything being designed. One signed install at the end, one password.
+
+Verified: 547 domain cases, 82 end-to-end, 9 documentation gates, 20 mutations
+caught. And on screen, because none of the above is visible to a suite: the card
+at 318 × 180 with its bar, a renamed row showing `idle · in Exit`, a void reading
+showing no figure, and the folder glyph arriving between the timestamp and the
+handle. The leak guard also earned its keep — the first draft of this work put
+a real remote home directory into a source comment, and it was caught before the
+commit.

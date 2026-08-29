@@ -1,13 +1,13 @@
 # Code map
 
-~27,200 lines of Swift across five targets. For each file: what it contains, why
+~27,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  ClawdLightCore/   7,075 lines · 60 files   pure logic, zero AppKit
-  ClawdLightApp/    11,246 lines · 61 files   shell: AppKit, network, windows
-  ClawdLightTests/  6,693 lines · 37 files   532 cases, instantaneous
+  ClawdLightCore/   7,292 lines · 61 files   pure logic, zero AppKit
+  ClawdLightApp/    11,408 lines · 62 files   shell: AppKit, network, windows
+  ClawdLightTests/  6,906 lines · 38 files   547 cases, instantaneous
   ClawdLightE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -142,6 +142,14 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
+
+### `RowSummary.swift` · 177
+Everything a row can say about itself, as **fields** rather than as a paragraph:
+title, state, subtitle, an ordered grid of label/value/detail, the per-session
+list of a group, the last message, the help line. It used to be a `private var`
+on a SwiftUI view that appended sentences to an array — untestable by
+construction, and, as it turned out, never once displayed. What a row tells you
+is domain; only how it looks is drawing.
 
 ### `RelativeTime.swift` · `CompactDuration.swift`
 The labels for the right-hand slot. `RelativeTime` reasons in **calendar days**:
@@ -564,8 +572,8 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 767 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 354 | one row: dot, context ring, name, badge, timestamp, handle, menu |
+| `PanelController.swift` | 784 | holds everything together; row and panel actions |
+| `TrafficLightRow.swift` | 337 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
 | `PanelRootView.swift` | 344 | the general menu and the three glyphs under the rows: legend, width, menu |
@@ -573,11 +581,12 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
 | `LegendWindowController.swift` | 57 | owns the legend window |
-| `Tooltip.swift` | 211 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32) |
+| `Tooltip.swift` | 243 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32) |
+| `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 173 | colors and measurements |
+| `StatusPalette.swift` | 159 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
@@ -599,7 +608,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `ClawdLightTests/` — 532 cases
+## `ClawdLightTests/` — 547 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

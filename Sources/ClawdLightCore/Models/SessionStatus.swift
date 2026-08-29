@@ -42,6 +42,25 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     ///
     /// `failed` sits below `ready` on purpose: a ready answer is consumed right
     /// away, whereas there is nothing you can do about a rate limit until it expires.
+    /// What this state is called, in the words a person reads.
+    ///
+    /// In Core and not in the palette next to the colours: the colour is a
+    /// property of the interface, the word is a property of the state, and the
+    /// tooltip's summary is assembled in Core where a test can reach it.
+    public var label: String {
+        switch self {
+        case .idle: return "idle"
+        case .working: return "working"
+        case .waiting: return "waiting on background work"
+        // Neutral with respect to the reason: it covers both the permission
+        // request and a dialog opened by an MCP server, without having to
+        // propagate the cause.
+        case .awaiting: return "waiting for your answer"
+        case .ready: return "answer ready"
+        case .failed: return "turn interrupted"
+        }
+    }
+
     public var urgencyRank: Int {
         switch self {
         case .awaiting: return 0

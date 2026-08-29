@@ -77,20 +77,6 @@ enum StatusPalette {
 
     /// The vertical rule marking a pinned project.
     static let pinMarker = Color.primary.opacity(0.35)
-
-    static func label(for status: SessionStatus) -> String {
-        switch status {
-        case .idle: return "idle"
-        case .working: return "working"
-        case .waiting: return "waiting on background work"
-        // Neutral with respect to the reason: it covers both the permission
-        // request and a dialog opened by an MCP server, without having to
-        // propagate the cause.
-        case .awaiting: return "waiting for your answer"
-        case .ready: return "answer ready"
-        case .failed: return "turn interrupted"
-        }
-    }
 }
 
 /// Interface measurements, gathered here so magic numbers don't scatter through

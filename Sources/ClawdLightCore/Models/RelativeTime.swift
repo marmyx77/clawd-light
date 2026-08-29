@@ -68,6 +68,27 @@ public enum RelativeTime {
         return "last activity \(shortDate(date, calendar: calendar)) at \(time(date, calendar: calendar))"
     }
 
+    /// The moment, as a value in a field rather than as a sentence.
+    ///
+    /// `detailedLabel` says "last activity yesterday at 22:30", which reads well
+    /// on its own line and badly next to a label that already says ACTIVITY. This
+    /// is the same fact with the sentence taken off.
+    public static func spelled(
+        for date: Date,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> String {
+        let days = calendarDaysBetween(date, and: now, calendar: calendar)
+        switch days {
+        case ..<1:
+            return time(date, calendar: calendar)
+        case 1:
+            return "yesterday, \(time(date, calendar: calendar))"
+        default:
+            return "\(shortDate(date, calendar: calendar)), \(time(date, calendar: calendar))"
+        }
+    }
+
     // MARK: - Helpers
 
     /// Calendar days separating the two moments, ignoring the time of day.

@@ -18,6 +18,7 @@ let suites: [TestSuite] = [
     WindowTitleMatcherSuite.suite,
     SessionDeepLinkSuite.suite,
     RelativeTimeSuite.suite,
+    RowSummarySuite.suite,
     StateReducerSuite.suite,
     ReducerFixesSuite.suite,
     LivePruningSuite.suite,

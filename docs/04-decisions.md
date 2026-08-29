@@ -1337,6 +1337,21 @@ under a renamed row, the slot and its command, was written, tested, and never
 once displayed. Found the only way it could be: reported by somebody hovering
 and seeing nothing.
 
+**What it shows.** Not a paragraph. `RowSummary` (Core) decides what appears, in
+what order and under which word; `TooltipCard` draws it and decides nothing else.
+The header carries the light's own colour and nothing else does — a tooltip with
+a second palette would compete with the column it exists to explain. The context
+gets the one bar on the card, because it is the one fact there that moves while
+you work.
+
+That split is the part worth keeping: the old builder lived in a `private var` on
+a view, where no test in this project could call it. Fifteen cases now hold the
+rules — including the two that would otherwise print something false: a reading
+invalidated by a compaction must not show its tokens (`— 412,117 of 1,000,000`
+reads as a figure with a typo in front of it), and the help line must not promise
+a modifier that does nothing, which is why a session on another machine is not
+offered a folder this Mac cannot open.
+
 **What it must never do.** Take the focus, take a click, or outlive the thing it
 explains. So: `ignoresMouseEvents`, `orderFrontRegardless` and never `makeKey`,
 and a local event monitor that removes it on any mouse-down — because a
@@ -1349,6 +1364,38 @@ non-activating panel exists to prevent. **Discarded:** a SwiftUI popover, which
 is clipped by a panel 240 points wide and 35 in the strip. **Discarded:** leaving
 `.help` in place as well: two tooltips for one row, one of which almost never
 appears, is worse than either.
+
+---
+
+## D33 · The folder appears under the pointer, and costs nothing at rest
+
+**Decided.** Hovering a row reveals a small folder glyph between the timestamp
+and the drag handle; clicking it shows the folder in the Finder. ⇧+click does the
+same without the glyph, and the row's menu carries "Show in Finder". None of the
+three appears on a row that lives on another machine.
+
+**Why not always visible.** Measured: the glyph and its spacing are 18 points,
+taken off the name of every row for ever. The name is 100.87 points on a plain
+row — it would go back to 82.87, which is exactly where it was this morning, when
+`aworld-os-platform` was reading `aworl…latform`. An action taken a few times a
+day does not get permanent tenancy in the field that is short.
+
+**What it costs instead, and this was said before it was built.** Under the
+pointer the name shrinks by those same 18 points, so a long name re-truncates
+while you are looking at it. That is a real defect and it was the argument
+against this option; it is mitigated by a 120 ms ease rather than a jump, and it
+only shows on names longer than 82 points. The alternative that costs nothing —
+swapping the glyph in where the timestamp is — hides a fact under the pointer and
+announces itself nowhere, which is worse.
+
+**Why remote rows get nothing at all, not a disabled entry.** `/home/dev/.notes`
+exists; it does not exist *here*. A greyed-out menu item is still a promise, and
+an icon that is sometimes missing changes the width of the name — the same jump,
+with worse timing.
+
+**Discarded:** the tooltip as the place to put it. It ignores the mouse by
+construction, which is what stops it from ever taking the focus; nothing in it
+can be clicked, and that is a feature.
 
 ---
 

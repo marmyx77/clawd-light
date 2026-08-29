@@ -1,4 +1,5 @@
 import AppKit
+import ClawdLightCore
 import SwiftUI
 
 /// The panel's own tooltips, because AppKit's never appear here.
@@ -27,31 +28,38 @@ enum Tooltip {
     /// prototype was played with.
     private static let delay: TimeInterval = 0.45
 
-    /// The tooltip is never wider than this, and wraps instead. A row's text runs
-    /// to eight lines when a project holds several sessions.
-    private static let maximumWidth: CGFloat = 340
-
     private static var panel: NSPanel?
     private static var pending: DispatchWorkItem?
     private static var dismissals: Any?
 
-    /// Shows `text` under the pointer once it has rested there.
+    /// What a tooltip can be: a sentence, or a row's whole second layer.
+    enum Content {
+        /// One line, for a control that does one thing.
+        case text(String)
+        /// A row: fields, the context bar, what each session of a group is doing.
+        case card(RowSummary)
+    }
+
+    /// Shows something under the pointer once it has rested there.
     ///
-    /// Calling it again with different text while one is up replaces it without
-    /// waiting: moving between two rows should read as one tooltip following the
-    /// pointer, not as a flicker and a new delay.
-    static func show(_ text: String) {
+    /// Calling it again while one is up replaces it without waiting: moving
+    /// between two rows should read as one tooltip following the pointer, not as
+    /// a flicker and a new delay.
+    static func show(_ content: Content) {
         pending?.cancel()
 
         if panel?.isVisible == true {
-            present(text)
+            present(content)
             return
         }
 
-        let work = DispatchWorkItem { present(text) }
+        let work = DispatchWorkItem { present(content) }
         pending = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
+
+    static func show(_ text: String) { show(.text(text)) }
+    static func show(_ summary: RowSummary) { show(.card(summary)) }
 
     static func hide() {
         pending?.cancel()
@@ -61,12 +69,12 @@ enum Tooltip {
 
     // MARK: - Internals
 
-    private static func present(_ text: String) {
+    private static func present(_ content: Content) {
         let panel = panel ?? makePanel()
         Self.panel = panel
 
-        let size = measure(text)
-        let hosting = NSHostingView(rootView: TooltipContent(text: text, width: size.width - padding.width))
+        let hosting = view(for: content)
+        let size = hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: size)
         panel.contentView = hosting
         panel.setContentSize(size)
@@ -78,33 +86,58 @@ enum Tooltip {
         startWatchingForDismissal()
     }
 
-    /// The window's size, measured from the text rather than asked of SwiftUI.
+    /// The hosted view, already carrying a width.
     ///
-    /// `NSHostingView.fittingSize` answers before the view has a width to wrap
-    /// against, so it lays the text out one word per line and reports a height of
-    /// three thousand points — measured, on the first version of this: a tooltip
-    /// 358 by 3,332, positioned two thousand points off the top of the screen.
-    /// Here the width is decided first and the height follows from it, which is
-    /// the order the reader experiences too.
-    private static func measure(_ text: String) -> NSSize {
-        let font = NSFont.systemFont(ofSize: fontSize)
-        let bounds = (text as NSString).boundingRect(
-            with: NSSize(width: maximumWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
-        )
-        // A point of slack in each direction: SwiftUI's line breaking and
-        // AppKit's agree to within a hair, and a hair is enough to clip a
-        // descender or drop the last line.
-        return NSSize(
-            width: min(maximumWidth, ceil(bounds.width) + 1) + padding.width,
-            height: ceil(bounds.height) + 1 + padding.height
-        )
+    /// THE ORDER MATTERS AND IT BIT ONCE
+    /// A borderless window has no layout to size it: the size has to be known
+    /// before it is shown. The first version asked `NSHostingView.fittingSize`
+    /// for a view that had no width to wrap against, so SwiftUI laid the text out
+    /// one word per line and answered **358 by 3,332 points** — measured, from the
+    /// window list, two thousand points above the top of the screen.
+    ///
+    /// The fix is not a cleverer measurement, it is deciding the width first. Both
+    /// contents below declare their own `.frame(width:)`, so by the time
+    /// `fittingSize` is asked there is only one unknown left, and it is the height.
+    private static func view(for content: Content) -> NSHostingView<AnyView> {
+        switch content {
+        case .text(let text):
+            // A sentence gets only as much width as it needs, up to the cap: a
+            // six-word tooltip stretched to the width of a card would read as an
+            // empty box with a line in it.
+            let font = NSFont.systemFont(ofSize: 11)
+            let bounds = (text as NSString).boundingRect(
+                with: NSSize(width: textWidth, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font]
+            )
+            return NSHostingView(rootView: AnyView(
+                chrome(TooltipText(text: text, width: min(textWidth, ceil(bounds.width) + 1)))
+            ))
+        case .card(let summary):
+            return NSHostingView(rootView: AnyView(
+                chrome(TooltipCard(summary: summary, width: cardWidth))
+            ))
+        }
     }
 
-    private static let fontSize: CGFloat = 11
-    /// Nine points left and right, seven above and below.
-    private static let padding = NSSize(width: 18, height: 14)
+    /// The surface both contents sit on.
+    private static func chrome(_ content: some View) -> some View {
+        content
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .background(TooltipBackground())
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+    }
+
+    /// A sentence wraps at most here; a card is always exactly this wide.
+    private static let textWidth: CGFloat = 300
+    /// Wide enough for `860,960 of 1,000,000` beside its label without wrapping,
+    /// narrow enough that a card never reads as a window.
+    private static let cardWidth: CGFloat = 296
 
     private static func makePanel() -> NSPanel {
         let panel = NSPanel(
@@ -164,11 +197,9 @@ enum Tooltip {
     }
 }
 
-/// The text, and the surface it sits on.
-private struct TooltipContent: View {
+/// One sentence, wrapped at a width decided before it is drawn.
+private struct TooltipText: View {
     let text: String
-    /// The width the text has to wrap at — decided by `Tooltip.measure`, so that
-    /// the window and its contents cannot disagree about where the lines break.
     let width: CGFloat
 
     var body: some View {
@@ -177,14 +208,6 @@ private struct TooltipContent: View {
             .foregroundStyle(Color.primary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(width: width, alignment: .leading)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
-            .background(TooltipBackground())
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-            )
     }
 }
 
@@ -204,8 +227,17 @@ extension View {
     /// The panel's tooltip. Replaces `.help(…)`, which shows nothing in a window
     /// that is never key — see `Tooltip`.
     func tooltip(_ text: String) -> some View {
+        tooltip(.text(text))
+    }
+
+    /// A row's whole second layer, as a card.
+    func tooltip(_ summary: RowSummary) -> some View {
+        tooltip(.card(summary))
+    }
+
+    private func tooltip(_ content: Tooltip.Content) -> some View {
         onHover { inside in
-            if inside { Tooltip.show(text) } else { Tooltip.hide() }
+            if inside { Tooltip.show(content) } else { Tooltip.hide() }
         }
     }
 }

@@ -244,7 +244,7 @@ private struct HiddenSummaryRow: View {
     private var tooltip: String {
         var lines = ["Hidden projects: \(summary.workspaceNames.joined(separator: ", "))"]
         if summary.needsAttention {
-            lines.append("One of them: \(StatusPalette.label(for: summary.status)).")
+            lines.append("One of them: \(summary.status.label).")
         }
         lines.append("Click to bring them all back into the column.")
         return lines.joined(separator: "\n")

@@ -151,7 +151,7 @@ struct ChatSidebarRow: View {
                 HStack(spacing: 6) {
                     // The line under the name is the last thing Claude said, which
                     // is what tells two projects apart when both are red.
-                    Text(preview ?? StatusPalette.label(for: row.status))
+                    Text(preview ?? row.status.label)
                         .font(.system(size: 10))
                         .foregroundStyle(StatusPalette.timeColor)
                         .lineLimit(1)

@@ -84,7 +84,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         openChat(in: row)
-        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(row.status.label)"
     }
 
     /// `true` when the panel really is under the user's eyes.
@@ -278,8 +278,25 @@ final class PanelController {
             },
             newConversation: { [weak self] row in self?.newConversation(in: row) },
             openChat: { [weak self] row in self?.openChat(in: row) },
-            rename: { [weak self] row in self?.rename(row) }
+            rename: { [weak self] row in self?.rename(row) },
+            revealInFinder: { row in PanelController.reveal(row.workspace.path) }
         )
+    }
+
+    /// Opens the Finder on the folder the session is working in.
+    ///
+    /// `activateFileViewerSelecting` rather than `open`: it selects the folder
+    /// inside its parent instead of opening a window onto its contents, which is
+    /// what "show me where this is" means and what ⌘⇧R does everywhere else on
+    /// this machine. Nothing here is guarded by a permission — the Finder opening
+    /// a folder is not an Apple Event.
+    ///
+    /// Never called for a row on another machine: `/home/dev/.notes` exists,
+    /// and it does not exist here. The glyph and the menu entry are both absent
+    /// there rather than disabled.
+    private static func reveal(_ path: String) {
+        guard !path.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 
     /// The projects drawn right now, top to bottom: what a drag or a "move" is
@@ -513,7 +530,7 @@ final class PanelController {
             return nil
         }
         activate(row, markSeen: true)
-        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(row.status.label)"
     }
 
     /// Raises the project bound to a slot, for `open <n>`.
@@ -528,7 +545,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         activate(row, markSeen: true)
-        return "\(row.displayName) — \(StatusPalette.label(for: row.status))"
+        return "\(row.displayName) — \(row.status.label)"
     }
 
     /// Opens a new conversation in the project bound to a slot, for `new <n>`.
