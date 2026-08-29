@@ -48,14 +48,18 @@ actor ContextReader {
     /// The reading for a session, or `nil` when there is nothing to read yet —
     /// a session whose transcript does not exist, which is the ordinary state of
     /// one that has not answered.
-    func reading(ofTranscriptAt path: String, for sessionId: String) -> ContextReading? {
+    func reading(
+        ofTranscriptAt path: String,
+        for sessionId: String,
+        harness: Harness = .claudeCode
+    ) -> ContextReading? {
         guard !path.isEmpty, let size = fileSize(of: path) else { return nil }
 
         if let cached = cache[sessionId], cached.size == size {
             return cached.reading
         }
 
-        let reading = read(path: path, size: size)
+        let reading = read(path: path, size: size, harness: harness)
         cache[sessionId] = Cached(size: size, reading: reading)
         return reading
     }
@@ -66,7 +70,7 @@ actor ContextReader {
 
     // MARK: - Internals
 
-    private func read(path: String, size: UInt64) -> ContextReading? {
+    private func read(path: String, size: UInt64, harness: Harness) -> ContextReading? {
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
 
@@ -80,9 +84,15 @@ actor ContextReader {
                   !data.isEmpty
             else { return nil }
 
-            if let reading = ContextScanner.read(tail: String(decoding: data, as: UTF8.self)) {
-                return reading
+            // The two harnesses record the same fact in different shapes, and
+            // the widening search around them is identical — a tail, and a
+            // bigger tail if the first held no count. Only the parse differs.
+            let tail = String(decoding: data, as: UTF8.self)
+            let reading = switch harness {
+            case .claudeCode: ContextScanner.read(tail: tail)
+            case .codex: CodexRolloutScanner.read(tail: tail)
             }
+            if let reading { return reading }
             if wholeFile { return nil }
             slice *= 8
         }

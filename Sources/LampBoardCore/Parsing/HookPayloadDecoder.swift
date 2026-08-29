@@ -51,7 +51,10 @@ public enum HookPayloadDecoder {
     ///     machine. Anything that is not a plausible host name is dropped rather
     ///     than carried: the value ends up in a row label and in an ssh argument.
     public static func decode(
-        _ data: Data, entrypoint: String? = nil, host: String? = nil
+        _ data: Data,
+        entrypoint: String? = nil,
+        host: String? = nil,
+        harness: Harness = .claudeCode
     ) throws -> HookSignal {
         guard data.count <= AppConfig.maxRequestBodyBytes else {
             throw HookPayloadError.bodyTooLarge(data.count)
@@ -100,9 +103,19 @@ public enum HookPayloadDecoder {
             transcriptPath: host == nil
                 ? TranscriptPathPolicy.accepted(
                     optionalString(object, key: "transcript_path"),
-                    under: AppConfig.claudeDirectory)
+                    under: harness.transcriptRoot)
                 : nil,
-            host: host
+            host: host,
+            harness: harness,
+            // Only from the event that actually carries it. Reading `tool_name`
+            // off a `PostToolUse` would attach the tool that just *finished* to a
+            // row that is blocked on something else entirely.
+            pendingAsk: event == .permissionRequest
+                ? PendingAsk.from(
+                    toolName: optionalString(object, key: "tool_name"),
+                    toolInput: object["tool_input"]
+                )
+                : nil
         )
     }
 

@@ -78,6 +78,20 @@ public struct RowSummary: Sendable, Equatable {
             fields.append(Field("context", "—", detail: "nothing read from this session yet"))
         }
 
+        // The question itself, right under the figure, because an amber row is the
+        // only kind anybody is reading this card in a hurry to resolve.
+        if let ask = row.primary.pendingAsk {
+            fields.append(Field("asking", ask.sentence))
+        }
+
+        // What this harness cannot tell you, said once, on every row that belongs
+        // to it. It is the difference between a limit somebody is told and a limit
+        // somebody discovers by trusting a green row that was never going to turn
+        // red. Claude Code has nothing to say here and says nothing.
+        if let limitation = row.primary.harness.limitation {
+            fields.append(Field("harness", row.primary.harness.displayName, detail: limitation))
+        }
+
         // A blue row has to say what is holding it, or a wait that lasts a day is
         // indistinguishable from a defect. A ringed row has to say it for the
         // opposite reason: the ring is deliberately quiet, so this is the only
@@ -134,6 +148,14 @@ public struct RowSummary: Sendable, Equatable {
                 return "\(context.tokens.formatted()) tokens · no window recorded for this model"
             }
             return "\(context.tokens.formatted()) of \(window.formatted())"
+        case .declared:
+            // The window came from the harness, in the same record as the count.
+            // Saying so is the point: everywhere else the denominator is ours and
+            // could go stale without warning, and here it cannot.
+            guard let window = context.window else {
+                return "\(context.tokens.formatted()) tokens"
+            }
+            return "\(context.tokens.formatted()) of \(window.formatted()) · window stated by the harness"
         }
     }
 

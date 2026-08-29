@@ -14,6 +14,15 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let statusSince: Date
     public let activeSubagents: Int
 
+    /// Which coding agent the session belongs to. Exposed because a reader of
+    /// this endpoint has the same question a reader of the panel has: whether a
+    /// green row is one that could have turned red.
+    public let harness: String
+
+    /// What a blocked session is asking for, when its harness says. `nil` on a
+    /// row that is not blocked, and on every Claude Code row — see `PendingAsk`.
+    public let pendingAsk: String?
+
     /// What a `waiting` session is waiting on — `monitor`, `shell`, `subagent` —
     /// in Claude Code's order. Empty unless the status is `waiting`. A reader that
     /// shows a blue dot without this cannot tell a CI wait from a forgotten server.
@@ -90,6 +99,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         updatedAt: Date,
         statusSince: Date,
         activeSubagents: Int = 0,
+        harness: String = Harness.claudeCode.rawValue,
+        pendingAsk: String? = nil,
         waitingOn: [String] = [],
         contextPercent: Int? = nil,
         contextTokens: Int? = nil,
@@ -119,6 +130,8 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.updatedAt = updatedAt
         self.statusSince = statusSince
         self.activeSubagents = activeSubagents
+        self.harness = harness
+        self.pendingAsk = pendingAsk
         self.waitingOn = waitingOn
         self.failureReason = failureReason
         self.lastMessage = lastMessage
@@ -185,6 +198,8 @@ public enum SessionsCodec {
             updatedAt: session.updatedAt,
             statusSince: session.statusSince,
             activeSubagents: session.activeSubagents,
+            harness: session.harness.rawValue,
+            pendingAsk: session.pendingAsk?.sentence,
             waitingOn: session.waitingOn,
             contextPercent: session.context?.percent,
             contextTokens: session.context?.tokens,

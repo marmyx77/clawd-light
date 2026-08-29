@@ -21,6 +21,14 @@ public struct ContextReading: Sendable, Equatable {
     public enum Confidence: String, Sendable, Equatable, Codable {
         /// Nothing has been added since the reply this was read from.
         case exact
+        /// The harness stated its own window in the same record as the count.
+        ///
+        /// Stronger than `exact`, and kept apart from it on purpose. `exact`
+        /// means we measured the denominator and believe it; `declared` means we
+        /// did not have to. Codex writes `model_context_window` beside the token
+        /// count, so nothing about that percentage rests on a table of ours that
+        /// a vendor could invalidate without telling anybody.
+        case declared
         /// Something was loaded afterwards: the true figure is higher.
         case floor
         /// A compaction or a refused prompt sits after it. The number is known
@@ -97,6 +105,10 @@ public struct ContextReading: Sendable, Equatable {
 
     private static let families: [(String, String)] = [
         ("opus", "O"), ("sonnet", "S"), ("haiku", "H"), ("fable", "F"), ("mythos", "M"),
+        // Codex reports `gpt-5.6-sol` and its kin. `G` and not `5`: a digit in
+        // that cell reads as a version number next to a column of letters, and
+        // the cell has one job, which is to be told apart at a glance.
+        ("gpt", "G"), ("codex", "G"), ("o3", "G"), ("o4", "G"),
     ]
 
     /// What a row shows. Never empty: a blank cell reads as "there is room",

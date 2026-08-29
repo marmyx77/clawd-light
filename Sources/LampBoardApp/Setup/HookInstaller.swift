@@ -29,18 +29,54 @@ struct HookInstaller {
     private let scriptURL: URL
     private let rewakeScriptURL: URL
     private let fileManager: FileManager
+    private let harness: Harness
 
     init(
         settingsURL: URL = AppConfig.claudeSettingsURL,
         scriptURL: URL = AppConfig.hookScriptURL,
         rewakeScriptURL: URL = AppConfig.rewakeScriptURL,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        harness: Harness = .claudeCode
     ) {
+        self.harness = harness
         self.settingsURL = settingsURL
         self.scriptURL = scriptURL
         self.rewakeScriptURL = rewakeScriptURL
         self.fileManager = fileManager
     }
+
+    /// The installer for Codex, pointed at Codex's own files.
+    ///
+    /// A second instance rather than a mode, because everything that differs is
+    /// already a parameter: where the configuration lives, which script to write,
+    /// and which events to ask for.
+    static func codex(fileManager: FileManager = .default) -> HookInstaller {
+        HookInstaller(
+            settingsURL: AppConfig.codexHooksURL,
+            scriptURL: AppConfig.codexHookScriptURL,
+            // Message delivery is a Claude Code feature: it rides a second `Stop`
+            // hook that answers a mailbox, and Codex has no path back into a
+            // session for it to answer through. Naming a file that is never
+            // written keeps uninstall symmetric without inventing a feature.
+            rewakeScriptURL: AppConfig.codexHookScriptURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("codex-rewake.sh"),
+            fileManager: fileManager,
+            harness: .codex
+        )
+    }
+
+    /// What a person must still do by hand after Codex's hooks are written.
+    ///
+    /// Codex will not run a hook it has not been told to trust, and it says
+    /// nothing when it declines: the file is correct, the events never fire, and
+    /// there is no error anywhere to explain it. Finding that out cost an hour
+    /// here, and printing this sentence is what stops it costing anybody else one.
+    static let codexTrustNotice = """
+        Codex will not run these hooks until you trust them. Open Codex, run
+        /hooks, and approve the entry. Until then Codex reports nothing — and
+        says nothing about why.
+        """
 
     var scriptPath: String { scriptURL.path }
     var rewakeScriptPath: String { rewakeScriptURL.path }
@@ -89,8 +125,8 @@ struct HookInstaller {
         let backup = try backupSettingsIfNeeded()
 
         let events = includeToolEvents
-            ? HookConfigMerger.defaultEvents + HookConfigMerger.toolEvents
-            : HookConfigMerger.defaultEvents
+            ? harness.defaultHookEvents + HookConfigMerger.toolEvents
+            : harness.defaultHookEvents
 
         // Strip the registrations left by the name this project had before, then
         // install. Two steps and not one because the entries name a path, and the
@@ -137,7 +173,7 @@ struct HookInstaller {
                 at: scriptURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try Data(HookScriptBuilder.script(port: port).utf8)
+            try Data(HookScriptBuilder.script(port: port, harness: harness).utf8)
                 .write(to: scriptURL, options: .atomic)
             try fileManager.setAttributes(
                 [.posixPermissions: 0o755], ofItemAtPath: scriptURL.path

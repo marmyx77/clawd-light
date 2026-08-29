@@ -1,18 +1,18 @@
 # Code map
 
-~27,900 lines of Swift across five targets. For each file: what it contains, why
+~29,200 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   7,390 lines · 61 files   pure logic, zero AppKit
-  LampBoardApp/    11,542 lines · 63 files   shell: AppKit, network, windows
-  LampBoardTests/  6,953 lines · 38 files   551 cases, instantaneous
+  LampBoardCore/   8,052 lines · 64 files   pure logic, zero AppKit
+  LampBoardApp/    11,632 lines · 64 files   shell: AppKit, network, windows
+  LampBoardTests/  7,221 lines · 39 files   570 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 786 lines. The limit the project sets itself is 800.
+No file exceeds 768 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 376
+### `AppConfig.swift` · 449
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -43,7 +43,30 @@ The six states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `SessionState.swift` · 333
+### `Harness.swift` · 153
+Which coding agent a session belongs to, and — the reason the type exists at all
+— **what that agent is unable to say**. One row shape for every harness; what
+differs is what a row can promise. `cannotReport` is checked against each
+vendor's published event list rather than guessed, and every consumer that would
+otherwise infer a state from silence has to consult it first.
+
+The rule it encodes: an absence is declared, never inferred. Codex publishes no
+error event of any kind, so a Codex row never turns red and the card says why.
+
+### `PendingAsk.swift` · 102
+What a blocked session is asking for, as one line: `Bash: git push origin main`.
+
+The allow-list is the design. `tool_input` is free-form and an `apply_patch`
+carries the **contents of the file being written**; only `command`, `file_path`,
+`path`, `url` and `description` are ever shown, and only as strings. Adding a key
+is a decision about what may appear on a floating panel above a shared screen,
+not a formatting tweak.
+
+Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
+Claude binary builds its notification as `Claude needs your permission to use
+${tool}` and carries no `tool_input` at all.
+
+### `SessionState.swift` · 388
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -114,7 +137,7 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 196
+### `HookSignal.swift` · 224
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -143,7 +166,7 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
 
-### `RowSummary.swift` · 177
+### `RowSummary.swift` · 199
 Everything a row can say about itself, as **fields** rather than as a paragraph:
 title, state, subtitle, an ordered grid of label/value/detail, the per-session
 list of a group, the last message, the help line. It used to be a `private var`
@@ -239,6 +262,16 @@ Where a window opening on a long transcript starts reading: a few megabytes
 before the end, on a whole line. A transcript can be half a gigabyte and the
 window shows three hundred entries; reading it all was the beachball on ⌘+click.
 
+### `CodexRolloutScanner.swift` · 194
+Reads a Codex rollout: how full the window is, and how much of the plan's
+allowance is gone.
+
+Codex writes `model_context_window` into the same record as the count, so the
+reading is `.declared` — nothing about that percentage rests on a table of ours.
+Two rules are inherited from the Claude side because both were paid for there:
+`last_token_usage` and never the cumulative total, and backwards **by position**,
+never sorted by timestamp.
+
 ### `ContextReading.swift` · 170 · `ContextScanner.swift` · 117
 How full a session's context is, read backwards from the end of its transcript.
 
@@ -317,7 +350,7 @@ implementation: what Claude writes, and anything unrecognized becomes a paragrap
 
 ## `Parsing/`
 
-### `HookPayloadDecoder.swift` · 176
+### `HookPayloadDecoder.swift` · 204
 The only point where external data enters the domain. Strict validation: no
 required field is ever inferred or filled in with a default.
 
@@ -467,7 +500,17 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInterface.swift` · 786
+### `CommandLineInstall.swift` · 63
+The two commands that write into somebody else's configuration file:
+`install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
+reached the 800-line ceiling, along the seam that was already there — everything
+else in that file reads state or raises a window.
+
+Installing Claude Code's hooks also installs Codex's, where Codex is present, and
+prints the sentence about trust: Codex will not run a hook it has not been told
+to trust, and says nothing when it declines.
+
+### `CommandLineInterface.swift` · 753
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -564,7 +607,7 @@ The names a Remote-SSH window may carry for a host — the configured one, what 
 
 ## `Setup/`
 
-### `HookInstaller.swift` · 239
+### `HookInstaller.swift` · 296
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail.
 
@@ -611,7 +654,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 551 cases
+## `LampBoardTests/` — 570 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

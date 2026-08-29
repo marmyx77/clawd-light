@@ -304,7 +304,8 @@ final class SignalServer {
                 host: request.header(
                     AppConfig.remoteHostHeader,
                     orLegacy: AppConfig.legacyRemoteHostHeader
-                )
+                ),
+                harness: Harness.named(request.header(AppConfig.harnessHeader))
             )
             onSignal(signal)
             return HTTPRequestParser.response(status: 204, reason: "No Content")

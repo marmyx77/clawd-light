@@ -146,12 +146,23 @@ final class StateStore: ObservableObject {
               !contextReadsInFlight.contains(sessionId)
         else { return }
 
-        let derived = TranscriptLocator.candidateURL(
-            sessionId: sessionId, cwd: session.workspace.path
-        ).path
-        let path = session.transcriptPath.flatMap { FileManager.default.fileExists(atPath: $0) ? $0 : nil }
-            ?? derived
-        guard FileManager.default.fileExists(atPath: path) else { return }
+        let harness = session.harness
+        // The derived path is Claude Code's scheme — one file per session under a
+        // folder named after the project — and it exists because a session can be
+        // seen before it has ever sent a hook. Codex files its rollouts by date
+        // instead, so there is nothing to derive: a Codex row without a path in
+        // its payload simply has no reading yet, which is the truth and not a
+        // failure. Deriving a Claude path for it would open somebody else's file.
+        let derived = harness == .claudeCode
+            ? TranscriptLocator.candidateURL(
+                sessionId: sessionId, cwd: session.workspace.path
+            ).path
+            : nil
+        guard let path = session.transcriptPath.flatMap({
+            FileManager.default.fileExists(atPath: $0) ? $0 : nil
+        }) ?? derived,
+            FileManager.default.fileExists(atPath: path)
+        else { return }
 
         contextReadsInFlight.insert(sessionId)
         // Captured here, on the actor, so the detached task never reaches back
@@ -159,7 +170,9 @@ final class StateStore: ObservableObject {
         // quietly performs the read on the main thread.
         let reader = contextReader
         Task.detached(priority: .utility) { [weak self] in
-            let reading = await reader.reading(ofTranscriptAt: path, for: sessionId)
+            let reading = await reader.reading(
+                ofTranscriptAt: path, for: sessionId, harness: harness
+            )
             guard let self else { return }
             await MainActor.run {
                 self.contextReadsInFlight.remove(sessionId)

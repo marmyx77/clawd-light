@@ -118,6 +118,17 @@ public struct HookSignal: Sendable, Equatable {
     /// claims `/home/…` — its workspace is its own folder, on that host.
     public let host: String?
 
+    /// Which coding agent sent this. Declared by the hook script, never sniffed
+    /// from the payload: one script is installed per harness, so the sender
+    /// knows for certain and a receiver guessing would be wrong the first time
+    /// either vendor moved a field. Defaults to Claude Code, which is what
+    /// every script written before this existed sends.
+    public let harness: Harness
+
+    /// What a blocked session is asking for, when the harness says. Only Codex
+    /// does today, and only on `PermissionRequest` — see `PendingAsk`.
+    public let pendingAsk: PendingAsk?
+
     public init(
         sessionId: String,
         event: HookEventKind,
@@ -130,7 +141,9 @@ public struct HookSignal: Sendable, Equatable {
         failureReason: StopFailureReason? = nil,
         inFlightBackgroundTaskTypes: [String] = [],
         transcriptPath: String? = nil,
-        host: String? = nil
+        host: String? = nil,
+        harness: Harness = .claudeCode,
+        pendingAsk: PendingAsk? = nil
     ) {
         self.sessionId = sessionId
         self.event = event
@@ -144,6 +157,8 @@ public struct HookSignal: Sendable, Equatable {
         self.inFlightBackgroundTaskTypes = inFlightBackgroundTaskTypes
         self.transcriptPath = transcriptPath
         self.host = host
+        self.harness = harness
+        self.pendingAsk = pendingAsk
     }
 
     /// `true` when the event is a context compaction: not the start of a session,

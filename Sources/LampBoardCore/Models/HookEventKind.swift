@@ -11,6 +11,11 @@ public enum HookEventKind: String, Sendable, Equatable, CaseIterable, Codable {
     case preToolUse = "PreToolUse"
     case postToolUse = "PostToolUse"
     case notification = "Notification"
+
+    /// Codex is about to ask for an approval. Claude Code has no equivalent it
+    /// exposes passively — it announces the same fact through `Notification` —
+    /// so this is registered for one harness only. See `Harness.defaultHookEvents`.
+    case permissionRequest = "PermissionRequest"
     case stop = "Stop"
     case stopFailure = "StopFailure"
     case sessionEnd = "SessionEnd"

@@ -154,39 +154,6 @@ enum CommandLineInterface {
 
     // MARK: - Commands
 
-    private static func runInstall(port: UInt16, includeToolEvents: Bool) -> Int32 {
-        let installer = HookInstaller()
-        do {
-            let backup = try installer.install(port: port, includeToolEvents: includeToolEvents)
-            print("Hooks installed for: \(installer.installedEvents().joined(separator: ", "))")
-            print("Script: \(installer.scriptPath)")
-            if let backup {
-                print("Backup of settings.json: \(backup.path)")
-            }
-            print("\nClaude Code sessions that are already open pick up the new")
-            print("configuration the next time they start.")
-            return 0
-        } catch {
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            return 1
-        }
-    }
-
-    private static func runUninstall() -> Int32 {
-        let installer = HookInstaller()
-        do {
-            let backup = try installer.uninstall()
-            print("Hooks removed from ~/.claude/settings.json")
-            if let backup {
-                print("Backup: \(backup.path)")
-            }
-            return 0
-        } catch {
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            return 1
-        }
-    }
-
     private static func runStatus() -> Int32 {
         let installer = HookInstaller()
         let events = installer.installedEvents()

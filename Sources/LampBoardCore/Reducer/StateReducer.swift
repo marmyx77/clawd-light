@@ -30,7 +30,20 @@ public enum ReducerAction: Sendable, Equatable {
     /// Aligns the column with the Claude Code processes that are actually alive.
     /// An empty set is ignored: it almost always means the filesystem read failed,
     /// not that every session disappeared.
-    case reconcile(alive: Set<String>)
+    ///
+    /// It speaks for **one harness only**, and that is the whole of the second
+    /// parameter. The list comes from `~/.claude/sessions`, where Claude Code
+    /// drops one file per live process; Codex keeps no such directory, so a Codex
+    /// row is absent from that list for the same reason a cat is absent from a
+    /// list of dogs. Reconciling across harnesses removed every Codex row within
+    /// five seconds of the hook that created it — a row that appeared and
+    /// vanished, with nothing anywhere saying why.
+    ///
+    /// So the sweep prunes only what it can see. A harness with no liveness
+    /// source of its own keeps its rows until its own `SessionEnd` arrives, or
+    /// until `prune` retires them for silence. That is weaker evidence, and it is
+    /// the evidence that exists.
+    case reconcile(alive: Set<String>, harness: Harness = .claudeCode)
 
     /// A fact read from outside the hooks: how full a session's context is.
     ///
@@ -75,9 +88,13 @@ public enum StateReducer {
                 olderThan: AppConfig.sessionStaleAfter, at: now, keepingAlive: alive
             )
 
-        case .reconcile(let alive):
+        case .reconcile(let alive, let harness):
             guard !alive.isEmpty else { return state }
-            return TrafficLightState(sessions: state.sessions.filter { alive.contains($0.key) })
+            return TrafficLightState(
+                sessions: state.sessions.filter {
+                    $0.value.harness != harness || alive.contains($0.key)
+                }
+            )
 
         case .observed(let sessionId, let context):
             guard let session = state.sessions[sessionId] else { return state }
@@ -192,7 +209,8 @@ public enum StateReducer {
                 status: newStatus,
                 workspace: workspace,
                 updatedAt: now,
-                statusSince: now
+                statusSince: now,
+                harness: signal.harness
             )
 
         let updated = base
@@ -206,6 +224,14 @@ public enum StateReducer {
             // nothing running and an ear still open, and that ring has to survive
             // the answer being read.
             .with(waitingOn: signal.event == .stop ? signal.reportableBackgroundTaskTypes : [])
+            // The question lives exactly as long as the amber does. A signal that
+            // carries one brings it; any signal that moves the row off amber takes
+            // it away. Keeping it a moment longer would leave a row showing a
+            // question that has already been answered, which is the same class of
+            // wrong as the notification that quoted the previous reply.
+            .with(pendingAsk: newStatus == .awaiting
+                ? (signal.pendingAsk ?? base.pendingAsk)
+                : nil)
 
         // A new question opens a new turn: the previous turn's subagents no longer
         // count, and if some `SubagentStop` got lost along the way this is where
@@ -240,6 +266,7 @@ public enum StateReducer {
                     workspace: workspace,
                     updatedAt: now,
                     statusSince: now,
+                    harness: signal.harness,
                     activeAgentIds: [transition.id]
                 )
             )
@@ -273,6 +300,12 @@ public enum StateReducer {
     /// Maps event → traffic light state. `nil` means "change nothing".
     private static func status(for signal: HookSignal) -> SessionStatus? {
         switch signal.event {
+        case .permissionRequest:
+            // The same fact `Notification/permission_prompt` carries on the other
+            // side: the turn has stopped and is waiting for a person. It arrives
+            // here as its own event because Codex publishes no `Notification`.
+            return .awaiting
+
         case .sessionStart:
             // Context compaction fires mid-turn: treating it as the start of a
             // session would clear the yellow of a session that is working, and
@@ -376,7 +409,8 @@ public enum StateReducer {
                 status: .idle,
                 workspace: workspace,
                 updatedAt: now,
-                statusSince: now
+                statusSince: now,
+                harness: signal.harness
             )
         )
     }

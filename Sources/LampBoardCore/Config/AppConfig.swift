@@ -93,6 +93,23 @@ public enum AppConfig {
         homeDirectory.appendingPathComponent(".claude", isDirectory: true)
     }
 
+    /// Codex's home, holding both its hook configuration and its session
+    /// rollouts. Honours `CODEX_HOME` the way Codex itself does — a machine that
+    /// moved it would otherwise get an app that watches an empty directory and
+    /// says, truthfully and uselessly, that there is nothing there.
+    public static var codexDirectory: URL {
+        if let override = ProcessInfo.processInfo.environment["CODEX_HOME"]?
+            .trimmed.nilIfEmpty, override.hasPrefix("/") {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+        return homeDirectory.appendingPathComponent(".codex", isDirectory: true)
+    }
+
+    /// Where Codex writes one rollout per session, under `YYYY/MM/DD/`.
+    public static var codexSessionsDirectory: URL {
+        codexDirectory.appendingPathComponent("sessions", isDirectory: true)
+    }
+
     /// Directory where the Claude Code VS Code plugin drops one lock file per window.
     public static var ideLockDirectory: URL {
         claudeDirectory.appendingPathComponent("ide", isDirectory: true)
@@ -236,6 +253,23 @@ public enum AppConfig {
     }
 
     /// Claude Code's global configuration file, where the hooks are registered.
+    /// The hook script for a harness that is not Claude Code.
+    ///
+    /// A separate file rather than one script branching on an environment
+    /// variable: the two differ in what they send and in how long they may take,
+    /// and a script that has to work out which agent invoked it is a script that
+    /// can get it wrong on the one turn that mattered.
+    public static var codexHookScriptURL: URL {
+        supportDirectory.appendingPathComponent("codex-hook.sh")
+    }
+
+    /// Codex's hook configuration. One of four places Codex reads hooks from —
+    /// all of them additive, none overriding the others — and the only one this
+    /// app writes.
+    public static var codexHooksURL: URL {
+        codexDirectory.appendingPathComponent("hooks.json")
+    }
+
     public static var claudeSettingsURL: URL {
         homeDirectory
             .appendingPathComponent(".claude", isDirectory: true)
@@ -344,6 +378,16 @@ public enum AppConfig {
     /// stops needing this the moment it is reinstalled; the line goes when every
     /// node has been.
     public static let legacyRemoteHostHeader = "X-Clawd-Host"
+
+    /// Header a hook adds naming the coding agent it belongs to.
+    ///
+    /// Declared by the sender rather than deduced by the receiver, because the
+    /// sender knows: one hook script is installed per harness and each is written
+    /// by this app. Sniffing the payload instead would work today — Codex carries
+    /// `model` where Claude Code does not — and would break silently the first
+    /// time either vendor added a field to match the other. Absent means Claude
+    /// Code, which is what every script written before this existed sends.
+    public static let harnessHeader = "X-LampBoard-Harness"
 
     /// Backoff for a tunnel that exits: the first retry after this many seconds…
     public static let remoteTunnelRetryMin: TimeInterval = 5

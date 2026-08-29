@@ -33,6 +33,20 @@ public struct SessionState: Sendable, Equatable, Identifiable {
 
     /// How many subagents are running inside this session's turn.
     ///
+    /// Which coding agent this session belongs to.
+    ///
+    /// Carried on the row rather than looked up, because two of them can be open
+    /// in the same project at the same time: the panel groups by folder, so a row
+    /// that had to ask the folder which harness it was would get the wrong answer
+    /// exactly when it mattered. It decides which reader parses the transcript,
+    /// and which limits the card declares.
+    public let harness: Harness
+
+    /// What this session is asking for, while it is asking. Cleared the moment
+    /// the row stops being amber: an ask that outlives its question is worse
+    /// than none, because it reads as current.
+    public let pendingAsk: PendingAsk?
+
     /// The subagents believed to be alive, **by identity**.
     ///
     /// A subagent has no traffic light of its own, but its existence **proves**
@@ -106,6 +120,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         updatedAt: Date,
         statusSince: Date,
         failureReason: StopFailureReason? = nil,
+        harness: Harness = .claudeCode,
+        pendingAsk: PendingAsk? = nil,
         activeAgentIds: Set<String> = [],
         transcriptPath: String? = nil,
         waitingOn: [String] = [],
@@ -126,6 +142,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         self.updatedAt = updatedAt
         self.statusSince = statusSince
         self.failureReason = failureReason
+        self.harness = harness
+        self.pendingAsk = pendingAsk
         self.activeAgentIds = activeAgentIds
         self.transcriptPath = transcriptPath
     }
@@ -211,6 +229,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     public func with(context reading: ContextReading) -> SessionState {
         guard reading != context else { return self }
         return replacing(context: .some(reading))
+    }
+
+    /// Copy carrying — or dropping — the question the session is blocked on.
+    public func with(pendingAsk ask: PendingAsk?) -> SessionState {
+        guard ask != pendingAsk else { return self }
+        return replacing(pendingAsk: .some(ask))
     }
 
     public func with(waitingOn types: [String]) -> SessionState {
@@ -332,6 +356,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         updatedAt: Date? = nil,
         statusSince: Date? = nil,
         failureReason: StopFailureReason?? = nil,
+        harness: Harness? = nil,
+        pendingAsk: PendingAsk?? = nil,
         activeAgentIds: Set<String>? = nil,
         transcriptPath: String?? = nil,
         waitingOn: [String]? = nil,
@@ -348,6 +374,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             updatedAt: updatedAt ?? self.updatedAt,
             statusSince: statusSince ?? self.statusSince,
             failureReason: failureReason ?? self.failureReason,
+            harness: harness ?? self.harness,
+            pendingAsk: pendingAsk ?? self.pendingAsk,
             activeAgentIds: activeAgentIds ?? self.activeAgentIds,
             transcriptPath: transcriptPath ?? self.transcriptPath,
             waitingOn: waitingOn ?? self.waitingOn,

@@ -1423,6 +1423,79 @@ with worse timing.
 construction, which is what stops it from ever taking the focus; nothing in it
 can be clicked, and that is a feature.
 
+
+---
+
+## D34 · One row shape for every harness; the card carries what it cannot say
+
+**Decided.** A Codex session gets the same row as a Claude Code one: the same
+dot with the same six meanings, the same ring meaning the same thing, the same
+slot. What differs is not the drawing. It is **what the row is able to promise**,
+and that is stated in the card rather than left to be discovered.
+
+Four rules, and the fourth is the one the others exist for.
+
+**The ring always means context occupancy.** Never a plan allowance, never a
+second quantity borrowed into the same shape. Codex publishes
+`rate_limits.primary.used_percent` beside its token count and it is a genuinely
+useful number, but it is a fact about the *account*: every Codex row would carry
+the same figure, and a reader who did not know that would read it as a property
+of the row. It goes in the card, where a figure that exists for one harness and
+not the other costs nothing.
+
+**The letter in the ring stays the model.** `O`, `S`, `H` for Claude Code, `G`
+for the GPT family. Two rows in one project are told apart at zero cost in
+pixels, and the cell keeps the one job it has. `G` and not `5`: a digit in a
+column of letters reads as a version number.
+
+**A Codex row never turns red from silence.** Codex publishes no error event of
+any kind — checked against the published event table, not assumed — so a failed
+turn simply stops emitting hooks. Silence does not distinguish a crash from a
+long thought, and painting a row red on that basis would be lying in the one
+place lying is most expensive. `Harness.cannotReport` names it, and every
+consumer that would otherwise infer a state has to consult it first.
+
+**The card declares what the harness cannot say.** One line, on every row that
+belongs to it: *Codex reports no failures: a turn that fails stops speaking*.
+This is the rule the other three serve. A limit somebody is told is a limit; a
+limit somebody meets by trusting a green row that was never going to turn red is
+a defect with a good explanation.
+
+**The divergence on `PermissionRequest`, which is deliberate.** D20 refuses to
+register Claude Code's permission hook: the amber state already arrives through
+`Notification`, which is passive, so sitting in the approval path would buy only
+the text of the question. **Codex has no `Notification`.** Without
+`PermissionRequest` a Codex session blocked on an approval is indistinguishable
+from one that is thinking, and the panel loses the single state it exists to
+show. So it is registered there and not here. The hook writes nothing to stdout,
+which Codex's own documentation defines as declining to decide — the ordinary
+approval prompt proceeds exactly as it would have. It reads; it does not answer.
+
+**What it also buys, and what that says about D20.** Codex's `PermissionRequest`
+carries `tool_name` and `tool_input`, so a Codex row can show `Bash: git push
+origin main` where a Claude Code row shows only amber. That asymmetry is a
+measurement, not an omission: the shipped Claude Code binary builds its
+notification as `Claude needs your permission to use ${tool}` and carries no
+`tool_input` at all, on a six-second timer that is cancelled if you answer first.
+The command exists on that side too — only inside the hook D20 declines. D20 is
+therefore unchanged and better understood: what it costs is the text, and the
+text is worth less than the posture.
+
+**Discarded: a harness glyph in the row.** A sixth element on twenty-four rows,
+permanently, for a fact that changes about once a month. The model letter already
+separates them and the card names them in full.
+
+**Discarded: colour as the harness marker.** It would have cost nothing in space
+and it fails the same accessibility test the panel is closing elsewhere: a
+distinction only colour carries is not a distinction for everyone.
+
+**Found by running it.** The five-second liveness sweep reads
+`~/.claude/sessions`, where Claude Code drops one file per live process. Codex
+keeps no such directory, so the sweep deleted every Codex row within five seconds
+of the hook that created it — the row appeared in the log and was gone, with
+nothing anywhere saying why. `reconcile` now carries the harness it speaks for
+and prunes only what it can see. No unit test would have found that; the
+end-to-end injection did, on the first try.
 ---
 
 ## How to add a decision here
