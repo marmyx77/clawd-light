@@ -95,7 +95,7 @@ promise, and the card says so rather than leaving you to find out.
 | Surfaces it covers | CLI, VS Code extension, the copy inside the desktop app | CLI, VS Code extension, the copy inside the ChatGPT app |
 | Context ring | measured denominator, with a confidence | **window declared by the harness** |
 | Plan allowance | not on disk anywhere | in the card |
-| Amber says *what* is being asked | no — the payload carries only the tool's name | **yes** — `Bash: git push origin main` |
+| Amber says *what* is being asked | no, by our choice: see below | **yes**, `Bash: git push origin main` |
 | Red, when a turn fails | yes | **never**: Codex publishes no error event at all |
 | Blue, while background agents work | yes | yes |
 
@@ -109,20 +109,29 @@ carries the line *Codex reports no failures: a turn that fails stops speaking*. 
 limit you are told is a limit; a limit you meet by trusting a green row that was
 never going to turn red is a defect with a good explanation.
 
-**Codex says what it is asking for.** Its `PermissionRequest` carries the tool
-and its arguments, so an amber Codex row reads the command. Claude Code's
-equivalent does not: the shipped binary builds its notification as *Claude needs
-your permission to use Bash* and carries no arguments at all. Only five fields
-are ever shown — `command`, `file_path`, `path`, `url`, `description` — because a
-patch's input carries the contents of the file being written, and this panel
-floats above screens that get shared.
+**Codex says what it is asking for, and that is our doing rather than a
+difference between the two agents.** Both publish a `PermissionRequest` carrying
+the tool and its arguments. What differs is which hooks LampBoard is willing to
+register.
+
+On Claude Code the amber state already arrives through `Notification`, which is
+passive: the shipped binary builds it as *Claude needs your permission to use
+Bash* and carries no arguments at all. So amber costs nothing there, and we
+decline to sit in the approval path for the sake of the extra sentence. Codex has
+no `Notification`, so refusing the same hook would not cost a sentence, it would
+cost the amber state itself. It is registered there, and the command comes with
+it.
+
+Only five fields are ever shown: `command`, `file_path`, `path`, `url`,
+`description`. A patch's input carries the contents of the file being written,
+and this panel floats above screens that get shared.
 
 ### Installing Codex's hooks
 
 `lampboard install-hooks` installs both, wherever both are present. Then one step
 that cannot be automated:
 
-> **Codex will not run a hook it has not been told to trust — and says nothing
+> **Codex will not run a hook it has not been told to trust, and says nothing
 > when it declines.** Open Codex, run `/hooks`, approve the entry. Until you do,
 > the file is correct, the events never fire, and there is no error anywhere to
 > explain it.

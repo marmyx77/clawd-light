@@ -7,18 +7,25 @@ import Foundation
 /// or the one I have to look at* — and walking to the window to find out is the
 /// walk the panel exists to save.
 ///
-/// This exists for Codex and not for Claude Code, and the asymmetry is a finding
-/// rather than an omission. Claude Code's `Notification` payload was read out of
-/// the shipped binary while this was written: it builds the message as
-/// `Claude needs your permission to use ${tool}` and carries no `tool_input` at
-/// all, so the most that side can produce is the amber dot spelled out in
-/// English. The command itself lives only in `PermissionRequest`, a decision
-/// hook this project declines to register there. Codex publishes `tool_name` and
-/// `tool_input` on its own `PermissionRequest`, which it must be registered for
-/// anyway — it has no other way to say a session is blocked.
+/// This exists for Codex and not for Claude Code, and the asymmetry is **ours**,
+/// not a difference between the two vendors. Both publish `PermissionRequest`
+/// carrying `tool_name` and `tool_input`; the command is there on either side.
+/// What differs is which hooks this project is willing to register.
 ///
-/// So the rule is not "show the ask when we can be bothered": it is that the
-/// panel says exactly as much as the harness will tell it, and no more.
+/// On Claude Code the amber state arrives through `Notification`, which is
+/// passive. Its payload was read out of the shipped binary while this was
+/// written: `Claude needs your permission to use ${tool}`, plus a title and a
+/// type, and no `tool_input` anywhere. So amber costs nothing there, and D20
+/// declines to sit in the approval path for the sake of the extra sentence.
+///
+/// Codex has no `Notification` at all. Refusing its `PermissionRequest` would not
+/// cost the sentence, it would cost **the amber state itself**: a blocked session
+/// would be indistinguishable from a thinking one. So it is registered there, and
+/// the command comes along with it.
+///
+/// The rule is therefore not "show the ask where the harness allows it". It is
+/// that a hook which decides is registered only where refusing it would blind the
+/// panel, and where that happens the panel says everything that hook brings.
 public struct PendingAsk: Sendable, Equatable {
 
     /// The tool being asked about, in the harness's own vocabulary: `Bash`,
