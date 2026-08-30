@@ -107,19 +107,35 @@ public enum GhosttyMatcher {
     /// exchange the title is just `✳ Claude Code`. One marked terminal is not a
     /// guess; two are.
     public static func best(among terminals: [Terminal], cwd: String, title: String?) -> Terminal? {
-        if let title = title?.trimmed.nilIfEmpty,
-           let byTitle = terminals.first(where: { $0.name.contains(title) }) {
-            return byTitle
+        candidates(among: terminals, cwd: cwd, title: title).first
+    }
+
+    /// Everything that answers at the strongest level available, in order.
+    ///
+    /// Separate from `best` because the count is itself information. One
+    /// candidate is an answer; several mean the surfaces are indistinguishable
+    /// from here — two conversations in one folder, neither of them titled —
+    /// and taking the first of those is a coin toss the caller should know it is
+    /// making. That is what the tty probe exists to settle.
+    public static func candidates(among terminals: [Terminal], cwd: String, title: String?) -> [Terminal] {
+        if let title = title?.trimmed.nilIfEmpty {
+            let byTitle = terminals.filter { $0.name.contains(title) }
+            if !byTitle.isEmpty { return byTitle }
         }
         // The same folder, however each side spells it. Ghostty reports what the
         // shell told it, which is what was typed; the session reports what the
         // kernel says. On a case-insensitive volume those differ, and comparing
         // them as strings is how a live tab in the right folder was missed.
-        if let byFolder = terminals.first(where: { CanonicalPath.same($0.workingDirectory, cwd) }) {
-            return byFolder
-        }
+        let byFolder = terminals.filter { CanonicalPath.same($0.workingDirectory, cwd) }
+        if !byFolder.isEmpty { return byFolder }
         let marked = terminals.filter { $0.name.contains(claudeMarker) }
-        return marked.count == 1 ? marked[0] : nil
+        return marked.count == 1 ? marked : []
+    }
+
+    /// The surface carrying the probe's marker, which is the surface on the tty
+    /// the marker was written to.
+    public static func identified(among terminals: [Terminal], marker: String) -> Terminal? {
+        terminals.first { $0.name == marker }
     }
 
     /// `true` for an id that may enter a script: Ghostty's are opaque tokens,

@@ -260,6 +260,113 @@ enum TerminalListingSuite {
             t.expect(TerminalScripts.ghosttyList.contains("repeat with t in terminals"), "the listing walks the application's terminals")
         },
 
+        TestCase("Two surfaces that look alike are both candidates, and the marker picks one") { t in
+            // The count is the information. Ghostty's dictionary gives an id, a
+            // title and a folder, and two Codex conversations in one folder
+            // share the last two: measured, `~/Development/turing` twice, both
+            // titled `turing`. `best` would answer, confidently, one of them.
+            let alike = [
+                GhosttyMatcher.Terminal(id: "A", name: "turing", workingDirectory: "/Users/dev/turing"),
+                GhosttyMatcher.Terminal(id: "B", name: "turing", workingDirectory: "/Users/dev/turing"),
+            ]
+            let candidates = GhosttyMatcher.candidates(among: alike, cwd: "/Users/dev/turing", title: nil)
+            t.expectEqual(candidates.count, 2, "neither of them is the answer on its own")
+
+            // What the probe then measures: the surface carrying the marker is
+            // the surface on the tty the marker was written to.
+            let marker = TerminalTitle.randomMarker()
+            let probed = [
+                GhosttyMatcher.Terminal(id: "A", name: "turing", workingDirectory: "/Users/dev/turing"),
+                GhosttyMatcher.Terminal(id: "B", name: marker, workingDirectory: "/Users/dev/turing"),
+            ]
+            t.expectEqual(GhosttyMatcher.identified(among: probed, marker: marker)?.id, "B", "the one that changed")
+            t.expectNil(
+                GhosttyMatcher.identified(among: alike, marker: marker),
+                "and no answer at all when nothing changed, rather than the first"
+            )
+        },
+
+        TestCase("A probe marker is a string nothing else would set") { t in
+            let one = TerminalTitle.randomMarker()
+            let two = TerminalTitle.randomMarker()
+            t.expect(TerminalTitle.isMarker(one), "recognisable as ours")
+            t.expect(one != two, "a fresh one each time, so two overlapping probes cannot read each other")
+            t.expect(!TerminalTitle.isMarker("turing"), "and an ordinary title is not one")
+        },
+
+        TestCase("A title written home cannot carry an escape sequence with it") { t in
+            // The string put back at the end of a probe came **out** of the
+            // terminal, and a program may put anything in its own title.
+            // Writing it back unexamined would run whatever it carries inside a
+            // terminal somebody is working in.
+            let hostile = "ok\u{1B}]0;stolen\u{07}\u{07}more"
+            let clean = TerminalTitle.sanitized(hostile)
+            t.expect(!clean.unicodeScalars.contains { $0.value < 0x20 }, "no control characters survive")
+            t.expectEqual(clean, "ok]0;stolenmore", "what is left is the readable part")
+            t.expectEqual(TerminalTitle.sanitized(String(repeating: "x", count: 400)).count, 256, "and it is bounded")
+
+            let sequence = TerminalTitle.sequence(setting: "turing")
+            t.expectEqual(sequence, "\u{1B}]0;turing\u{07}", "OSC 0, terminated by BEL")
+        },
+
+        TestCase("Writing a title reaches the terminal holding the other end") { t in
+            // The whole probe rests on this: a write to a slave pty is a
+            // **display**, not an input. It travels to whoever holds the master,
+            // which here is the test itself and on a real Mac is Ghostty.
+            var master: Int32 = -1
+            master = posix_openpt(O_RDWR | O_NOCTTY)
+            guard master >= 0, grantpt(master) == 0, unlockpt(master) == 0,
+                  let name = ptsname(master) else {
+                t.expect(false, "no pty to test with")
+                return
+            }
+            defer { close(master) }
+            let slave = String(cString: name)
+
+            // A shell holds its own end open for as long as it lives. Without a
+            // stand-in for it here the pty is torn down by the writer's own
+            // `close`, and the master reads a hangup instead of the bytes — the
+            // test would be measuring the fixture, not the code.
+            let shell = open(slave, O_RDWR | O_NOCTTY)
+            defer { if shell >= 0 { close(shell) } }
+            t.expect(shell >= 0, "the far end is held open")
+
+            t.expect(TerminalTitle.write("turing", toTTY: slave), "the write went out")
+
+            var seen = ""
+            var buffer = [UInt8](repeating: 0, count: 256)
+            for _ in 0..<20 where !seen.contains("]0;turing") {
+                let read = Darwin.read(master, &buffer, buffer.count)
+                if read > 0 { seen += String(decoding: buffer[0..<read], as: UTF8.self) }
+                else { usleep(20_000) }
+            }
+            t.expect(seen.contains("]0;turing"),
+                     "and arrived at the other end as the sequence that sets a title")
+        },
+
+        TestCase("Nothing that is not a tty is written to") { t in
+            // The path comes from the process table. A guard on the one shape it
+            // may have costs nothing next to what an unguarded open for writing
+            // could be pointed at.
+            // A file this test can definitely write to, so what is being
+            // measured is the refusal and not somebody else's permissions. The
+            // first version of this case used `/etc/passwd`, which fails for
+            // want of privilege whether the guard is there or not: it went green
+            // with the guard deleted.
+            let scratch = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("lampboard-title-\(UUID().uuidString)")
+            FileManager.default.createFile(atPath: scratch.path, contents: Data())
+            defer { try? FileManager.default.removeItem(at: scratch) }
+
+            t.expect(!TerminalTitle.write("x", toTTY: scratch.path), "a writable file is still not a tty")
+            t.expectEqual(
+                (try? Data(contentsOf: scratch))?.count, 0,
+                "and nothing was written into it"
+            )
+            t.expect(!TerminalTitle.write("x", toTTY: "/dev/tty../../etc/passwd"), "and not a way round it")
+            t.expect(!TerminalTitle.write("x", toTTY: ""), "nor nothing at all")
+        },
+
         TestCase("One folder spelled two ways is still one folder") { t in
             // Measured on a live Mac: Ghostty listed a tab as
             // `/Users/…/development/turing` while the session running in it

@@ -516,7 +516,7 @@ through the session's process, never by guessing a window title:
 |---|---|---|
 | **Terminal.app** | by tty, through Terminal's dictionary | Automation → Terminal, asked once |
 | **iTerm2** | by tty, through iTerm2's dictionary | Automation → iTerm2, asked once |
-| **Ghostty** | by the conversation title, the folder, or Claude's own `✳` mark when only one terminal carries it | Automation → Ghostty, asked once |
+| **Ghostty** | by the conversation title or the folder; when those name more than one surface, or none, by writing a marker title to the session's tty and asking which surface carries it | Automation → Ghostty, asked once |
 | **WezTerm** | by tty, through `wezterm cli` | nothing |
 | **kitty** | by pid, over kitty's remote-control socket | `allow_remote_control yes` and `listen_on unix:/tmp/kitty` in `kitty.conf`; without them the click activates kitty and the menu says why |
 | **tmux** pane | the pane is selected inside tmux, then the attached client's tab as above | nothing |
@@ -1100,7 +1100,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 633 domain tests, instantaneous
+swift run LampBoardTests              # 638 domain tests, instantaneous
 swift run LampBoardE2E                # 89 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

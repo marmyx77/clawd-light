@@ -204,6 +204,17 @@ public enum AppConfig {
     /// running yet, and that is legitimately slower than a probe.
     public static let focusActivationTimeout: TimeInterval = 15
 
+    /// How long Ghostty is given to read a title written to a tty and report it.
+    ///
+    /// Measured with a real surface: the round trip through the emulator and
+    /// back out through its dictionary settles well inside this. It is spent
+    /// only when two surfaces are genuinely alike, never on an ordinary click.
+    public static let ghosttyProbeSettle: TimeInterval = 0.08
+
+    /// How many times the probe looks before giving up. Three, plus the last
+    /// look that exists to undo a marker rather than to find one.
+    public static let ghosttyProbeAttempts = 3
+
     /// How long that watch stays up before giving in.
     ///
     /// Long enough to find the pane, read the sentence and authenticate; short

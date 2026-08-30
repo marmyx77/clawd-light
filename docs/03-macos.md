@@ -451,7 +451,19 @@ process-table string that does — the zellij session name, validated against
 tabs and sessions, so the tab is selected by tty. Ghostty has no tty but lists
 every terminal's title and working directory: the match happens in Swift —
 title, then folder, then Claude's own `✳` mark when only one terminal carries
-it — and only the chosen id goes back into a script. WezTerm's CLI lists panes
+it — and only the chosen id goes back into a script.
+
+A description names one surface nearly always, and it named the wrong one the
+moment it did not: two Codex conversations in `~/Development/turing`, both
+titled `turing`, and the click could only ever raise the first. So where the
+listing fails to name exactly one surface — several alike, or none at all — the
+tty settles it. The panel knows the tty and Ghostty does not expose it; Ghostty
+knows the surface id and the panel cannot derive it. A title nobody would choose
+is written to the tty, the listing is taken again, and the surface now carrying
+it is the surface on that tty. The old title goes straight back. Writing to a
+slave pty is a display and never an input, which is how `wall` and `write(1)`
+have always worked, so nothing is typed into the program running there. See
+`TerminalTitle`. WezTerm's CLI lists panes
 by `tty_name`; kitty's answers over its remote-control socket with the pid of
 each window's process. A tmux pane is selected inside tmux and the attached
 client's tab raised by its own chain; a zellij client is paired with its server

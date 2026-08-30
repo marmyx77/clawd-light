@@ -1,13 +1,13 @@
 # Code map
 
-~32,978 lines of Swift across five targets. For each file: what it contains, why
+~33,283 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,911 lines · 73 files   pure logic, zero AppKit
-  LampBoardApp/    13,294 lines · 69 files   shell: AppKit, network, windows
-  LampBoardTests/  8,215 lines · 45 files   633 cases, instantaneous
+  LampBoardCore/   9,019 lines · 74 files   pure logic, zero AppKit
+  LampBoardApp/    13,384 lines · 69 files   shell: AppKit, network, windows
+  LampBoardTests/  8,322 lines · 45 files   638 cases, instantaneous
   LampBoardE2E/    2,189 lines · 10 files   89 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -258,6 +258,24 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
+
+### `Seat/TerminalTitle.swift`
+Setting a terminal's title by writing to the tty a session runs on, which is how
+two Ghostty surfaces in one folder are told apart.
+
+Every other host answers this question directly: Terminal.app and iTerm2 expose
+the tty, WezTerm does, kitty matches on the pid. Ghostty lists an id, a title and
+a folder, and two Codex conversations in `~/Development/turing` share the last
+two — measured, and the click could only ever raise the first of them. So the
+question is asked the other way round: write a title nobody would choose to that
+tty, ask which surface now carries it, put the old one back. The surface that
+changed **is** the surface on that tty.
+
+Writing to a slave pty is a **display, never an input** — the bytes travel to the
+emulator holding the master, which is how `wall` and `write(1)` work — so nothing
+is typed into the program running there. The title written home is stripped of
+control characters first: it came out of the terminal, and a program is free to
+put anything in its own title.
 
 ### `CanonicalPath.swift`
 A path as the filesystem itself spells it, through `realpath(3)`.
@@ -776,7 +794,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 633 cases
+## `LampBoardTests/` — 638 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

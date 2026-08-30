@@ -1054,7 +1054,9 @@ a zellij pane's client is paired with its server through their Unix sockets
 (`lsof`) and its tab raised likewise, with the tab titled by the session name
 as the fallback. Ghostty has no tty in its dictionary but lists every terminal's title and
 working directory: the match happens in Swift and only the chosen id goes back
-into a script. WezTerm's CLI lists panes by tty; kitty's, over its remote-control
+into a script. Where that description names more than one surface, or none, the
+tty is asked instead — a marker title written to it, the listing taken again,
+the surface carrying it identified and its old title put back. WezTerm's CLI lists panes by tty; kitty's, over its remote-control
 socket, lists windows by pid — with remote control off the click activates
 kitty and the menu says why it stopped there. Consequence,
 stated: a `claude` started in a Terminal.app tab **inside a folder that is open

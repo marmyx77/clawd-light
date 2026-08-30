@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-633 cases, instantaneous. They verify Core.
+638 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
@@ -283,8 +283,9 @@ A tmux seat is two hops — the pane on that tty selected inside tmux, then the
 attached client's own chain; a zellij seat pairs the client with its server
 through their Unix sockets and follows the client's chain, falling back to the
 tab titled by the session name. Ghostty is matched in Swift on what its dictionary lists (title, working
-directory), WezTerm by tty through its CLI, kitty by pid over its socket
-(`TerminalListings`). Editor seats go the way editor rows go. See
+directory) and, when that names more than one surface or none, by a marker title
+written to the session's tty (`TerminalTitle`); WezTerm by tty through its CLI,
+kitty by pid over its socket (`TerminalListings`). Editor seats go the way editor rows go. See
 [D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
 ## Concurrency

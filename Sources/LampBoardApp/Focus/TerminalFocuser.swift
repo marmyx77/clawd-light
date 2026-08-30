@@ -66,7 +66,7 @@ enum TerminalFocuser {
                 return .failed(error)
             }
         case .appleScriptTitle:
-            return raiseGhostty(context: context)
+            return raiseGhostty(tty: tty, context: context)
         case .wezterm:
             return raiseWezTerm(tty: tty)
         case .kitty:
@@ -78,44 +78,134 @@ enum TerminalFocuser {
 
     /// The listing comes back as a list of `{id, name, working directory}`
     /// triples; the match happens in Swift and only the chosen id goes back.
-    private static func raiseGhostty(context: Context) -> VSCodeFocuser.FocusResult {
+    ///
+    /// When the listing cannot tell two surfaces apart, the tty settles it. See
+    /// `identify(tty:among:)` — and `TerminalTitle`, where the reasoning lives.
+    private static func raiseGhostty(tty: String?, context: Context) -> VSCodeFocuser.FocusResult {
         let app = TerminalKind.ghostty.applicationName
-        let listing: NSAppleEventDescriptor
-        switch VSCodeFocuser.runAppleScript(TerminalScripts.ghosttyList, app: app) {
+        let terminals: [GhosttyMatcher.Terminal]
+        switch listGhostty() {
         case .failure(let error):
             Diagnostics.log("seat: Ghostty listing failed: \(error.shortDescription)")
             return .failed(error)
-        case .success(let found): listing = found
-        }
-        var terminals: [GhosttyMatcher.Terminal] = []
-        if listing.numberOfItems > 0 {
-            for index in 1...listing.numberOfItems {
-                guard let triple = listing.atIndex(index), triple.numberOfItems >= 3,
-                      let id = triple.atIndex(1)?.stringValue else { continue }
-                terminals.append(GhosttyMatcher.Terminal(
-                    id: id, name: triple.atIndex(2)?.stringValue ?? "",
-                    workingDirectory: triple.atIndex(3)?.stringValue ?? ""
-                ))
-            }
+        case .success(let found): terminals = found
         }
         for terminal in terminals {
             Diagnostics.log("seat: Ghostty terminal \(terminal.id): name “\(terminal.name)”, cwd \(terminal.workingDirectory)")
         }
-        guard let chosen = GhosttyMatcher.best(among: terminals, cwd: context.cwd, title: context.title),
+
+        guard let chosen = choose(among: terminals, tty: tty, context: context),
               let script = TerminalScripts.ghosttyFocus(terminalId: chosen.id)
         else {
             Diagnostics.log("seat: Ghostty lists \(terminals.count) terminals, none in \(context.cwd) or titled \(context.title ?? "-")")
             if let error = activate(bundleIdentifier: TerminalKind.ghostty.bundleIdentifier) { return .failed(error) }
             return .activatedOnly(reason: .windowNotFound("a Ghostty terminal in \(context.cwd)"))
         }
+        // Named by the title it had before any probe, never by the marker: the
+        // log is read to understand what happened, and a line saying a surface
+        // called `lampboard-probe-…` was raised understands nothing.
+        let label = terminals.first { $0.id == chosen.id }?.name ?? chosen.name
         switch VSCodeFocuser.runAppleScript(script, app: app) {
         case .success:
-            Diagnostics.log("seat: Ghostty terminal \(chosen.id) (\(chosen.name)) raised")
+            Diagnostics.log("seat: Ghostty terminal \(chosen.id) (\(label)) raised")
             return .raised
         case .failure(let error):
             Diagnostics.log("seat: Ghostty terminal \(chosen.id) not raised: \(error.shortDescription)")
             return .failed(error)
         }
+    }
+
+    /// Which surface the click means: the listing answers, or the tty does.
+    ///
+    /// The listing is the fast path and it is right nearly always — one surface
+    /// carrying the conversation's title, or one sitting in its folder. It is
+    /// only a description, though, and two conversations in one folder have the
+    /// same description. The tty is a fact, so wherever the description fails to
+    /// name exactly one surface, the tty is asked instead: not only when several
+    /// match, but also when none does, where the alternative was raising Ghostty
+    /// and nothing in it.
+    private static func choose(
+        among terminals: [GhosttyMatcher.Terminal], tty: String?, context: Context
+    ) -> GhosttyMatcher.Terminal? {
+        let candidates = GhosttyMatcher.candidates(
+            among: terminals, cwd: context.cwd, title: context.title
+        )
+        if candidates.count == 1 { return candidates[0] }
+
+        if let tty, let identified = identify(tty: tty, before: terminals) {
+            Diagnostics.log("seat: Ghostty \(terminals.count) surfaces listed; \(tty) is \(identified.id)")
+            return identified
+        }
+        // Said out loud rather than passed off as an answer: the click is about
+        // to raise one of several, and which one is a toss.
+        if candidates.count > 1 {
+            Diagnostics.log(
+                "seat: Ghostty \(candidates.count) surfaces in \(context.cwd) are alike "
+                    + "and the tty did not settle it; raising the first"
+            )
+        }
+        return candidates.first
+    }
+
+    /// The surfaces Ghostty is showing, as it describes them.
+    private static func listGhostty() -> Result<[GhosttyMatcher.Terminal], FocusError> {
+        let listing: NSAppleEventDescriptor
+        switch VSCodeFocuser.runAppleScript(
+            TerminalScripts.ghosttyList, app: TerminalKind.ghostty.applicationName
+        ) {
+        case .failure(let error): return .failure(error)
+        case .success(let found): listing = found
+        }
+        var terminals: [GhosttyMatcher.Terminal] = []
+        guard listing.numberOfItems > 0 else { return .success(terminals) }
+        for index in 1...listing.numberOfItems {
+            guard let triple = listing.atIndex(index), triple.numberOfItems >= 3,
+                  let id = triple.atIndex(1)?.stringValue else { continue }
+            terminals.append(GhosttyMatcher.Terminal(
+                id: id, name: triple.atIndex(2)?.stringValue ?? "",
+                workingDirectory: triple.atIndex(3)?.stringValue ?? ""
+            ))
+        }
+        return .success(terminals)
+    }
+
+    /// Which of several look-alike surfaces is the one on this tty.
+    ///
+    /// A title nobody would choose is written to the tty, and whichever surface
+    /// comes back carrying it is the answer — see `TerminalTitle` for why this
+    /// is safe and why it is the only route Ghostty leaves open. The old title
+    /// goes back immediately, taken from the listing made before the probe.
+    ///
+    /// The last look is not a retry. It is there so a marker that arrives after
+    /// the attempts are spent is **undone** rather than left sitting in
+    /// somebody's tab, and if it does arrive it is still the truth, so it is
+    /// also returned.
+    private static func identify(
+        tty: String, before: [GhosttyMatcher.Terminal]
+    ) -> GhosttyMatcher.Terminal? {
+        let marker = TerminalTitle.randomMarker()
+        guard TerminalTitle.write(marker, toTTY: tty) else {
+            Diagnostics.log("seat: Ghostty probe could not write to \(tty)")
+            return nil
+        }
+
+        func settled() -> GhosttyMatcher.Terminal? {
+            guard case .success(let now) = listGhostty() else { return nil }
+            return GhosttyMatcher.identified(among: now, marker: marker)
+        }
+
+        func restoring(_ terminal: GhosttyMatcher.Terminal) -> GhosttyMatcher.Terminal {
+            let previous = before.first { $0.id == terminal.id }?.name ?? ""
+            TerminalTitle.write(previous, toTTY: tty)
+            return terminal
+        }
+
+        for _ in 0..<AppConfig.ghosttyProbeAttempts {
+            Thread.sleep(forTimeInterval: AppConfig.ghosttyProbeSettle)
+            if let found = settled() { return restoring(found) }
+        }
+        if let late = settled() { return restoring(late) }
+        return nil
     }
 
     // MARK: - WezTerm, by tty
