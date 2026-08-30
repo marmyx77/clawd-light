@@ -149,9 +149,9 @@ public struct ColumnOptions: Sendable, Equatable {
         self.names = names
     }
 
-    /// The name given to a folder, if any.
-    func name(for path: String) -> String? {
-        RowNames.name(of: path, in: names)
+    /// The name to show a row: its own if it has one, otherwise the folder's.
+    func name(for path: String, harness: Harness) -> String? {
+        RowNames.name(of: path, harness: harness, in: names)
     }
 
     public static let plain = ColumnOptions(grouped: false)
@@ -300,7 +300,7 @@ public enum ColumnLayout {
                 workspace: members[0].workspace,
                 sessions: members,
                 slot: options.slot(for: path),
-                alias: options.name(for: path)
+                alias: options.name(for: path, harness: members[0].harness)
             )
         }
     }
@@ -317,7 +317,7 @@ public enum ColumnLayout {
                 workspace: session.workspace,
                 sessions: [session],
                 slot: options.slot(for: session.workspace.path),
-                alias: options.name(for: session.workspace.path)
+                alias: options.name(for: session.workspace.path, harness: session.harness)
             )
         }
     }
@@ -364,7 +364,9 @@ public enum ColumnLayout {
             .map(\.status)
             .min { $0.urgencyRank < $1.urgencyRank } ?? .idle
 
-        let names = Set(sessions.map { options.name(for: $0.workspace.path) ?? $0.displayName }).sorted {
+        let names = Set(sessions.map {
+            options.name(for: $0.workspace.path, harness: $0.harness) ?? $0.displayName
+        }).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
 

@@ -476,7 +476,11 @@ final class PanelController {
             placeholder: row.workspace.name,
             confirmTitle: "Rename"
         ) else { return }
-        preferences.rowNames = RowNames.renaming(row.workspace.path, to: answer, in: preferences.rowNames)
+        // The row you right-clicked, not the project: a folder can hold a Claude
+        // row and a Codex row, and naming one must not name the other.
+        preferences.rowNames = RowNames.renaming(
+            row.workspace.path, harness: row.primary.harness, to: answer, in: preferences.rowNames
+        )
         store.republish()
         rebuildContent()
     }

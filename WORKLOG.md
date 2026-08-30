@@ -696,13 +696,13 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **573**, instantaneous |
+| Domain tests | **577**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **22**, all caught |
-| Longest file | 768 lines, `PanelController.swift` (limit the project sets itself: 800) |
+| Longest file | 772 lines, `PanelController.swift` (limit the project sets itself: 800) |
 
 ## 27 August — sessions in a terminal
 
