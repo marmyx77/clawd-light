@@ -343,6 +343,28 @@ final class AppUnderTest {
         return condition()
     }
 
+    /// Answers whether a condition held for long enough that its opposite would
+    /// have happened by now.
+    ///
+    /// The mirror of `waitUntil`, and it cannot be written in terms of it. A row
+    /// that must **not** appear offers no moment to wait for, so the only honest
+    /// check is to let the sweeps go by and keep looking. Two of them plus a
+    /// second, so a probe that was already in flight when the fixture landed
+    /// still gets one whole pass afterwards.
+    ///
+    /// Without this an absence is asserted the instant the fixture is written,
+    /// which every wrong implementation also passes.
+    @discardableResult
+    func holdsThroughTwoSweeps(_ condition: () -> Bool) -> Bool {
+        let deadline = Date()
+            .addingTimeInterval(AppConfig.liveSessionPollInterval * 2 + 1)
+        while Date() < deadline {
+            if !condition() { return false }
+            usleep(200_000)
+        }
+        return condition()
+    }
+
     // MARK: - Internal
 
     private func url(_ path: String) -> URL {

@@ -87,5 +87,31 @@ enum CodexSurfaceSuite {
                      "the ancestry decides where a terminal session is typed")
             t.expect(!CodexSurface.unknown.focusIsDecidedByExecutable, "and nothing decides this")
         },
+        TestCase("A project's own .vscode folder is not an editor extension") { t in
+            // The rule used to accept a bare `.vscode` or `.cursor` segment
+            // anywhere in the path. Every project has a `.vscode` folder, so a
+            // `codex` a person keeps in one claimed to be running inside the
+            // editor: the wrong label on the row, and the wrong idea of what a
+            // click can promise.
+            t.expectEqual(
+                CodexSurface.of(executable: "/Users/dev/project/.vscode/tools/codex"),
+                .commandLine,
+                "a binary in a project folder is a binary in a project folder"
+            )
+            t.expectEqual(
+                CodexSurface.of(executable: "/Users/dev/.cursor/scratch/codex"),
+                .commandLine,
+                "and the editor's directory alone does not make an extension"
+            )
+
+            // The structure the editor really guarantees still reads as one,
+            // with or without the publisher prefix.
+            t.expectEqual(
+                CodexSurface.of(executable: "/Users/dev/.cursor/extensions/some.other-1.2/bin/codex"),
+                .editorExtension,
+                "extensions live under `extensions`, right after the editor"
+            )
+        },
+
     ])
 }

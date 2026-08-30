@@ -279,7 +279,9 @@ struct HookInstaller {
         let stamp = formatter.string(from: Date())
         let directory = settingsURL.deletingLastPathComponent()
 
-        let backupURL = availableBackupURL(in: directory, stamp: stamp)
+        let backupURL = availableBackupURL(
+            in: directory, of: settingsURL.lastPathComponent, stamp: stamp
+        )
 
         do {
             try fileManager.copyItem(at: settingsURL, to: backupURL)
@@ -297,8 +299,15 @@ struct HookInstaller {
     /// parachute against an infinite loop should the filesystem always answer
     /// "exists". Reaching it means something is wrong, and the final attempt will
     /// fail with a message instead of spinning forever.
-    private func availableBackupURL(in directory: URL, stamp: String) -> URL {
-        let base = "settings.json.lampboard-backup-\(stamp)"
+    /// Named after the file it is a copy of, which it was not.
+    ///
+    /// Both installers share this code and only one of them writes a
+    /// `settings.json`: Codex keeps its hooks in `hooks.json`, and its backups
+    /// were called `settings.json.lampboard-backup-…` all the same. Nothing was
+    /// lost, but somebody reading that directory to recover from a bad install
+    /// finds a name for a file that is not there.
+    private func availableBackupURL(in directory: URL, of name: String, stamp: String) -> URL {
+        let base = "\(name).lampboard-backup-\(stamp)"
         let first = directory.appendingPathComponent(base)
         guard fileManager.fileExists(atPath: first.path) else { return first }
 

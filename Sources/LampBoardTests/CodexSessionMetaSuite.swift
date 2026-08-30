@@ -61,6 +61,57 @@ enum CodexSessionMetaSuite {
             t.expectEqual(CodexSessionMetaReader.read(head: head)?.cwd, "/dev/p", "one spelling")
         },
 
+        TestCase("A subagent's rollout carries its parent's name, and says so") { t in
+            // Measured on this machine, 30 August: of 26 rollouts, 3 had a
+            // `source` that is an object rather than a surface, and a
+            // `session_id` naming a **different** conversation. Two of the three
+            // named the same parent.
+            //
+            // Read the old way — `session_id` first, `source` only when it is a
+            // string — each of these became a second evidence for a session that
+            // already had one. Arriving first it took the parent's row: its
+            // transcript, and with it the folder's clock and the context ring.
+            let head = #"{"type":"session_meta","payload":{"session_id":"01a051df-parent","id":"01a052f0-child","cwd":"/dev/p","originator":"Codex Desktop","source":{"subagent":{"other":"guardian"}}}}"#
+            guard let meta = CodexSessionMetaReader.read(head: head) else {
+                t.expect(false, "the record did not parse")
+                return
+            }
+            t.expectEqual(meta.sessionId, "01a051df-parent", "the conversation it belongs to")
+            t.expectEqual(meta.rolloutId, "01a052f0-child", "and the file's own name for itself")
+            t.expectEqual(meta.subagent, "guardian", "who was doing the work")
+            t.expect(meta.isSubagent, "so it is not a row of its own")
+            t.expectNil(meta.source, "and an object is not a surface")
+        },
+
+        TestCase("Ids that disagree are enough, whatever the source becomes") { t in
+            // The safety net, for a format its own authors call unstable. Two
+            // signs, either sufficient: the marker under `source`, and the ids
+            // simply not matching. A rollout whose `id` is not its `session_id`
+            // is not that session's rollout, whatever else the file grows.
+            let head = #"{"type":"session_meta","payload":{"session_id":"parent","id":"other","cwd":"/dev/p","source":"vscode"}}"#
+            t.expect(CodexSessionMetaReader.read(head: head)?.isSubagent == true,
+                     "the disagreement is the signal")
+
+            // And a marker with no name is still a marker: an unnamed subagent
+            // is a subagent, not a conversation.
+            let unnamed = #"{"type":"session_meta","payload":{"session_id":"p","id":"p","cwd":"/dev/p","source":{"subagent":{}}}}"#
+            t.expect(CodexSessionMetaReader.read(head: unnamed)?.isSubagent == true, "still one")
+        },
+
+        TestCase("The command line writes only an id, and that is a whole session") { t in
+            // The other shape on this machine, 4 of the 26: `session_id` is
+            // null and `id` carries the only name there is. Each field falls
+            // back to the other, so this is an ordinary row and not a subagent.
+            let head = #"{"type":"session_meta","payload":{"session_id":null,"id":"01a04f67-cli","cwd":"/dev/p","originator":"codex_cli_rs"}}"#
+            guard let meta = CodexSessionMetaReader.read(head: head) else {
+                t.expect(false, "the record did not parse")
+                return
+            }
+            t.expectEqual(meta.sessionId, "01a04f67-cli", "the name it has")
+            t.expectEqual(meta.rolloutId, "01a04f67-cli", "which is also the file's")
+            t.expect(!meta.isSubagent, "and nothing about it says subagent")
+        },
+
         TestCase("Garbage produces nothing and no crash") { t in
             t.expect(CodexSessionMetaReader.read(head: "") == nil, "empty")
             t.expect(CodexSessionMetaReader.read(head: "{{{ not json") == nil, "nonsense")

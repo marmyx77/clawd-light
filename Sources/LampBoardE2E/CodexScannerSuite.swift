@@ -58,6 +58,36 @@ enum CodexScannerSuite {
         }
     }
 
+    /// A moment in the recent past, written the way a rollout writes one.
+    ///
+    /// Not a fixed date, and the reason is a night this suite spent red. Every
+    /// fixture here used to say `2026-08-30T09:00:00Z`, which worked until the
+    /// clock passed `sessionStaleAfter` — twelve hours — after it. Then the row
+    /// was adopted and pruned as stale inside the same sweep, and four cases
+    /// began failing at a particular time of day, on code that had not changed.
+    ///
+    /// A test whose result depends on when it is run is not measuring the code.
+    private static func momentsAgo(_ seconds: TimeInterval) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: Date().addingTimeInterval(-seconds))
+    }
+
+    /// A subagent's rollout: the parent's `session_id`, its own `id`, and a
+    /// `source` that is an object rather than a surface. Measured shape.
+    private static func writeSubagentRollout(
+        in home: URL, parent: String, child: String, cwd: String
+    ) throws -> String {
+        let directory = home
+            .appendingPathComponent(".codex/sessions/2026/08/30", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("rollout-child-\(child).jsonl")
+        let line = #"{"timestamp":"\#(momentsAgo(60))","type":"session_meta","payload":{"session_id":"\#(parent)","id":"\#(child)","cwd":"\#(cwd)","originator":"Codex Desktop","source":{"subagent":{"other":"guardian"}}}}"#
+        try line.write(to: file, atomically: true, encoding: .utf8)
+        return file.path
+    }
+
     /// A rollout as Codex writes one: the metadata first, then events.
     private static func writeRollout(
         in home: URL, sessionId: String, cwd: String, lastSpoken: String
@@ -68,7 +98,7 @@ enum CodexScannerSuite {
         let file = directory.appendingPathComponent("rollout-2026-08-30T09-00-00-\(sessionId).jsonl")
 
         let lines = [
-            #"{"timestamp":"2026-08-30T09:00:00.000Z","type":"session_meta","payload":{"session_id":"\#(sessionId)","cwd":"\#(cwd)","originator":"codex-tui","source":"cli","cli_version":"0.151.0"}}"#,
+            #"{"timestamp":"\#(momentsAgo(600))","type":"session_meta","payload":{"session_id":"\#(sessionId)","cwd":"\#(cwd)","originator":"codex-tui","source":"cli","cli_version":"0.151.0"}}"#,
             #"{"timestamp":"\#(lastSpoken)","type":"event_msg","payload":{"type":"task_started"}}"#,
             // No timestamp, and it must not become the moment: this is the shape
             // that made three Claude projects read as active while untouched.
@@ -85,7 +115,7 @@ enum CodexScannerSuite {
                 let cwd = "/tmp/lampboard-e2e-codex-project"
                 guard let path = try? writeRollout(
                     in: app.home, sessionId: "e2e-codex-1", cwd: cwd,
-                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                    lastSpoken: momentsAgo(300)
                 ), let held = try? FakeCodex(holding: path, in: app.home) else {
                     a.expect(false, "the fixture could not be set up")
                     return
@@ -120,7 +150,7 @@ enum CodexScannerSuite {
                 let cwd = "/tmp/lampboard-e2e-codex-closing"
                 guard let path = try? writeRollout(
                     in: app.home, sessionId: "e2e-codex-2", cwd: cwd,
-                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                    lastSpoken: momentsAgo(300)
                 ), let held = try? FakeCodex(holding: path, in: app.home) else {
                     a.expect(false, "the fixture could not be set up")
                     return
@@ -133,6 +163,57 @@ enum CodexScannerSuite {
                 a.expect(
                     app.waitUntil { app.session(id: "e2e-codex-2") == nil },
                     "the rollout is still there; nothing is holding it"
+                )
+            },
+
+            TestCase("a subagent's rollout does not become its parent's row") { a in
+                // The subagent's rollout is held open **alone** first, and that
+                // ordering is the whole test. Held beside the parent's, whichever
+                // file the probe happened to reach first would win, and the case
+                // would pass or fail on a coin toss: with both open it passed
+                // even with the rule deleted.
+                //
+                // Alone, there is no ambiguity. The file carries the parent's
+                // `session_id`, so read as a session it is a whole conversation
+                // in a folder that is the subagent's, not the parent's.
+                let parent = "e2e-codex-parent"
+                let subagentFolder = "/tmp/lampboard-e2e-codex-subagent"
+                let parentFolder = "/tmp/lampboard-e2e-codex-parentfolder"
+                guard let childPath = try? writeSubagentRollout(
+                        in: app.home, parent: parent, child: "e2e-codex-child",
+                        cwd: subagentFolder
+                      ),
+                      let holdingChild = try? FakeCodex(holding: childPath, in: app.home)
+                else {
+                    a.expect(false, "the fixture could not be set up")
+                    return
+                }
+                defer { holdingChild.letGo() }
+
+                a.expect(
+                    app.holdsThroughTwoSweeps { app.session(id: parent) == nil },
+                    "a subagent at work is not a conversation you can open"
+                )
+                a.expectNil(app.session(id: "e2e-codex-child"), "under either name")
+
+                // Now the conversation itself. It has its own rollout, held open
+                // by a process of its own, and that is the one the row is made
+                // of: its folder, and its file as the thread back to its window.
+                guard let parentPath = try? writeRollout(
+                        in: app.home, sessionId: parent, cwd: parentFolder,
+                        lastSpoken: momentsAgo(30)
+                      ),
+                      let holdingParent = try? FakeCodex(holding: parentPath, in: app.home)
+                else {
+                    a.expect(false, "the fixture could not be advanced")
+                    return
+                }
+                defer { holdingParent.letGo() }
+
+                a.expect(app.waitUntil { app.session(id: parent) != nil }, "the conversation arrives")
+                a.expectEqual(
+                    app.session(id: parent)?.workspace, "lampboard-e2e-codex-parentfolder",
+                    "naming the folder its own rollout named"
                 )
             },
 
@@ -180,7 +261,7 @@ enum CodexScannerSuite {
                 let cwd = "/tmp/lampboard-e2e-codex-live"
                 guard let path = try? writeRollout(
                     in: app.home, sessionId: "e2e-codex-4", cwd: cwd,
-                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                    lastSpoken: momentsAgo(300)
                 ), let held = try? FakeCodex(holding: path, in: app.home) else {
                     a.expect(false, "the fixture could not be set up")
                     return
@@ -229,7 +310,7 @@ enum CodexScannerSuite {
                 let cwd = "/tmp/lampboard-e2e-codex-cold"
                 guard (try? writeRollout(
                     in: app.home, sessionId: "e2e-codex-3", cwd: cwd,
-                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                    lastSpoken: momentsAgo(300)
                 )) != nil else {
                     a.expect(false, "the fixture could not be written")
                     return

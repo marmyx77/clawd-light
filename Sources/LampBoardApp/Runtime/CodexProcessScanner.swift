@@ -102,6 +102,17 @@ final class CodexProcessScanner {
 
         return .observed(open.compactMap { file in
             guard file.path.hasSuffix(".jsonl"), let meta = meta(atPath: file.path) else { return nil }
+            // A subagent's rollout is not a conversation. It is held open by the
+            // same process as its parent and it carries the **parent's**
+            // `session_id`, so read as a session it becomes a second evidence
+            // for a row that already exists — and if it arrives first it becomes
+            // that row's transcript, which is then the wrong thread back to the
+            // window and the wrong source for its context and its clock.
+            //
+            // Measured here on 30 August: 26 rollouts, 3 of them subagents, two
+            // of those naming the same parent. The parent's own rollout is open
+            // beside them, so nothing is lost by refusing these.
+            guard !meta.isSubagent else { return nil }
             let executable = ProcessTree.path(of: file.pid)
             return CodexEvidence(
                 meta: meta,

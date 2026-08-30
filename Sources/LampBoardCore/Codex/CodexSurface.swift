@@ -84,9 +84,19 @@ public enum CodexSurface: String, Sendable, Equatable, CaseIterable {
         }
         // The extension lives under a versioned folder whose name starts with the
         // publisher, and the marketplace guarantees the publisher and not the
-        // version, so the prefix is what is matched.
-        if segments.contains(where: { $0.hasPrefix("openai.chatgpt-") })
-            || segments.contains(".vscode") || segments.contains(".cursor") {
+        // version, so the prefix is what is matched. Measured on this machine:
+        // `~/.vscode/extensions/openai.chatgpt-26.825.51511-darwin-arm64/bin/…`.
+        if segments.contains(where: { $0.hasPrefix("openai.chatgpt-") }) {
+            return .editorExtension
+        }
+        // The editor's own directory is weaker evidence and used to be taken on
+        // its own, which was too generous: a bare `.vscode` or `.cursor`
+        // *anywhere* in the path counts every project's own `.vscode` folder,
+        // and a `codex` a person keeps in one would have claimed to run inside
+        // an editor. The structure is what the editor actually guarantees, so
+        // the two segments have to be adjacent and in that order.
+        if let editor = segments.firstIndex(where: { $0 == ".vscode" || $0 == ".cursor" }),
+           segments.indices.contains(editor + 1), segments[editor + 1] == "extensions" {
             return .editorExtension
         }
         return segments.last == "codex" ? .commandLine : .unknown

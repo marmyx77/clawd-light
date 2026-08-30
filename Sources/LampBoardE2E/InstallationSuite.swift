@@ -105,15 +105,42 @@ enum InstallationSuite {
                 )
             },
 
-            TestCase("the installation leaves a backup of settings.json") { a in
+            TestCase("each installation backs up the file it is about to change") { a in
+                // And names the backup after that file. Both installers share the
+                // code and only one of them writes a `settings.json`: Codex keeps
+                // its hooks in `hooks.json`, and its backups carried the other
+                // name. Nothing was lost by it, and somebody reading the
+                // directory to undo a bad install finds a name for a file that
+                // was never there.
+                // Both files have to exist before the run: a backup of a file
+                // that is not there is correctly no backup at all, and this case
+                // must not depend on which case ran before it.
+                let claudeSettings = app.home.appendingPathComponent(".claude/settings.json")
+                if !FileManager.default.fileExists(atPath: claudeSettings.path) {
+                    try? "{}".write(to: claudeSettings, atomically: true, encoding: .utf8)
+                }
+                let codexHooks = app.home.appendingPathComponent(".codex/hooks.json")
+                try? FileManager.default.createDirectory(
+                    at: codexHooks.deletingLastPathComponent(), withIntermediateDirectories: true
+                )
+                try? #"{"hooks":{}}"#.write(to: codexHooks, atomically: true, encoding: .utf8)
+
                 app.runCommand(["install-hooks", "--port", String(app.port)])
-                let directory = app.home.appendingPathComponent(".claude")
-                let entries = (try? FileManager.default.contentsOfDirectory(
-                    atPath: directory.path
-                )) ?? []
+
+                func entries(in folder: String) -> [String] {
+                    (try? FileManager.default.contentsOfDirectory(
+                        atPath: app.home.appendingPathComponent(folder).path
+                    )) ?? []
+                }
+                let claude = entries(in: ".claude")
                 a.expect(
-                    entries.contains { $0.hasPrefix("settings.json.lampboard-backup-") },
-                    "no backup among: \(entries.joined(separator: ", "))"
+                    claude.contains { $0.hasPrefix("settings.json.lampboard-backup-") },
+                    "no Claude backup among: \(claude.joined(separator: ", "))"
+                )
+                let codex = entries(in: ".codex")
+                a.expect(
+                    codex.contains { $0.hasPrefix("hooks.json.lampboard-backup-") },
+                    "no Codex backup under its own name among: \(codex.joined(separator: ", "))"
                 )
             },
 
