@@ -136,6 +136,38 @@ enum CodexScannerSuite {
                 )
             },
 
+            TestCase("installing reaches Codex too, and leaves its own hooks alone") { a in
+                // Codex is configured only where it is actually present: writing a
+                // hooks file into a directory nobody has ever used would leave a
+                // configuration for a program that is not there.
+                let codex = app.home.appendingPathComponent(".codex")
+                try? FileManager.default.createDirectory(at: codex, withIntermediateDirectories: true)
+                let hooksFile = codex.appendingPathComponent("hooks.json")
+                let foreign = #"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"/somebody/else.sh"}]}]}}"#
+                try? foreign.write(to: hooksFile, atomically: true, encoding: .utf8)
+
+                let result = app.runCommand(["install-hooks", "--port", String(app.port)])
+                a.expectEqual(result.status, 0, "exit code")
+
+                let text = (try? String(contentsOf: hooksFile, encoding: .utf8)) ?? ""
+                a.expect(text.contains("codex-hook.sh"), "ours is registered")
+                a.expect(text.contains("/somebody/else.sh"), "and theirs is still there")
+            },
+
+            TestCase("uninstalling removes Codex as well, and says so per harness") { a in
+                // It used to remove only Claude Code's, while reporting success:
+                // Codex kept calling a script for a program that was gone, and the
+                // Homebrew caveat promises a removal this command is the whole of.
+                let hooksFile = app.home.appendingPathComponent(".codex/hooks.json")
+                let result = app.runCommand(["uninstall-hooks"])
+                a.expectEqual(result.status, 0, "exit code")
+                a.expect(result.output.contains("Codex"), "the second harness is named")
+
+                let text = (try? String(contentsOf: hooksFile, encoding: .utf8)) ?? ""
+                a.expect(!text.contains("codex-hook.sh"), "ours is gone")
+                a.expect(text.contains("/somebody/else.sh"),
+                         "and somebody else's survived, which is the whole care here")
+            },
             TestCase("a rollout nobody holds open is not a session") { a in
                 // Ten rollouts on this machine, three open. The seven others are
                 // conversations that happened, and a panel listing them would be a

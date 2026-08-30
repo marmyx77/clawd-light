@@ -6,9 +6,9 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/   8,806 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    12,888 lines · 69 files   shell: AppKit, network, windows
+  LampBoardApp/    12,932 lines · 69 files   shell: AppKit, network, windows
   LampBoardTests/  8,092 lines · 45 files   627 cases, instantaneous
-  LampBoardE2E/    2,096 lines · 10 files   86 cases, the real binary
+  LampBoardE2E/    2,128 lines · 10 files   88 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -593,7 +593,7 @@ the file says which session and folder, the binary says which surface. Returns
 `.unavailable` rather than an empty list when the probe could not answer, because
 a probe that timed out is not a session that ended.
 
-### `CommandLineInstall.swift` · 106
+### `CommandLineInstall.swift` · 137
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
 reached the 800-line ceiling, along the seam that was already there — everything
@@ -808,7 +808,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 86 cases
+## `LampBoardE2E/` — 88 cases
 
 | Suite | Covers |
 |---|---|

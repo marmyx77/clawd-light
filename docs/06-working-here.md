@@ -27,7 +27,7 @@ permission. It has already cost one wasted diagnosis.
 
 ```bash
 swift run LampBoardTests              # 627 cases, instantaneous
-swift run LampBoardE2E                # 86 cases, about a minute
+swift run LampBoardE2E                # 88 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
 

@@ -3,19 +3,32 @@ import Foundation
 
 /// Hook installation errors.
 enum HookInstallError: LocalizedError {
-    case unreadableSettings(String)
-    case unwritableSettings(String)
+    case unreadableSettings(path: String, reason: String)
+    case unwritableSettings(path: String, reason: String)
     case scriptWriteFailed(String)
 
+    /// Names the file it actually touched.
+    ///
+    /// It used to say `~/.claude/settings.json` whatever had failed, including
+    /// when the failing instance was the Codex one writing `~/.codex/hooks.json`.
+    /// An error that names the wrong file is worse than one that names none: it
+    /// sends somebody to check a file that is perfectly fine, and everything they
+    /// find there confirms it.
     var errorDescription: String? {
         switch self {
-        case .unreadableSettings(let reason):
-            return "Cannot read ~/.claude/settings.json: \(reason)"
-        case .unwritableSettings(let reason):
-            return "Cannot write ~/.claude/settings.json: \(reason)"
+        case .unreadableSettings(let path, let reason):
+            return "Cannot read \(HookInstallError.short(path)): \(reason)"
+        case .unwritableSettings(let path, let reason):
+            return "Cannot write \(HookInstallError.short(path)): \(reason)"
         case .scriptWriteFailed(let reason):
             return "Cannot write the hook script: \(reason)"
         }
+    }
+
+    /// The home written as a tilde, because that is how a person reads a path.
+    private static func short(_ path: String) -> String {
+        let home = AppConfig.homeDirectory.path
+        return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
     }
 }
 
@@ -213,13 +226,15 @@ struct HookInstaller {
             let data = try Data(contentsOf: settingsURL)
             guard !data.isEmpty else { return [:] }
             guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw HookInstallError.unreadableSettings("the contents are not a JSON object")
+                throw HookInstallError.unreadableSettings(
+                    path: settingsURL.path, reason: "the contents are not a JSON object"
+                )
             }
             return object
         } catch let error as HookInstallError {
             throw error
         } catch {
-            throw HookInstallError.unreadableSettings(error.localizedDescription)
+            throw HookInstallError.unreadableSettings(path: settingsURL.path, reason: error.localizedDescription)
         }
     }
 
@@ -241,7 +256,7 @@ struct HookInstaller {
             )
             try data.write(to: settingsURL, options: .atomic)
         } catch {
-            throw HookInstallError.unwritableSettings(error.localizedDescription)
+            throw HookInstallError.unwritableSettings(path: settingsURL.path, reason: error.localizedDescription)
         }
     }
 
@@ -271,7 +286,7 @@ struct HookInstaller {
             return backupURL
         } catch {
             throw HookInstallError.unwritableSettings(
-                "backup failed: \(error.localizedDescription)"
+                path: settingsURL.path, reason: "backup failed: \(error.localizedDescription)"
             )
         }
     }

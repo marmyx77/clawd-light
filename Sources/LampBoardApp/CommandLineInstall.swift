@@ -46,19 +46,48 @@ extension CommandLineInterface {
         }
     }
 
+    /// Removes what was installed, from **both** configurations.
+    ///
+    /// It used to remove only Claude Code's, which left Codex calling a script
+    /// that was still there for a program that was gone. Worse, it did it while
+    /// reporting success, and the Homebrew caveat promises a removal this command
+    /// is the whole of.
+    ///
+    /// A harness that was never configured is not a failure: `uninstall` on a file
+    /// that does not exist has nothing to do and says so by doing nothing.
     static func runUninstall() -> Int32 {
-        let installer = HookInstaller()
-        do {
-            let backup = try installer.uninstall()
-            print("Hooks removed from ~/.claude/settings.json")
-            if let backup {
-                print("Backup: \(backup.path)")
+        var failed = false
+
+        for (label, installer, path) in [
+            ("Claude Code", HookInstaller(), AppConfig.claudeSettingsURL),
+            ("Codex", HookInstaller.codex(), AppConfig.codexHooksURL),
+        ] {
+            guard FileManager.default.fileExists(atPath: path.path) else {
+                print("\(label): nothing to remove, \(shortPath(path)) is not there.")
+                continue
             }
-            return 0
-        } catch {
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            return 1
+            do {
+                let backup = try installer.uninstall()
+                print("\(label): hooks removed from \(shortPath(path))")
+                if let backup { print("  Backup: \(backup.path)") }
+            } catch {
+                // Said per harness rather than as one verdict. A partial failure
+                // reported as success is how a hook survives an uninstall and
+                // calls a script nobody expects to be called.
+                FileHandle.standardError.write(
+                    Data("\(label): NOT removed: \(error.localizedDescription)\n".utf8)
+                )
+                failed = true
+            }
         }
+
+        return failed ? 1 : 0
+    }
+
+    /// A path with the home written as a tilde.
+    private static func shortPath(_ url: URL) -> String {
+        let home = AppConfig.homeDirectory.path
+        return url.path.hasPrefix(home) ? "~" + url.path.dropFirst(home.count) : url.path
     }
 }
 
