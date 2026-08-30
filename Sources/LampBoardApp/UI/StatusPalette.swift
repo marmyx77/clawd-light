@@ -102,7 +102,7 @@ enum StatusPalette {
     /// A fixed floor puts the contrast budget back in our hands. Six lit colours
     /// on a dark ground is what a board of lamps looks like; six on a pale one is
     /// a spreadsheet.
-    static let panelScrim = Color.black.opacity(0.45)
+    static let panelScrim = Color.black.opacity(0.41)
 
     /// The well a project's conversations sit in: **darker** than the panel, not
     /// lighter.
@@ -111,7 +111,7 @@ enum StatusPalette {
     /// that is already bright: it adds haze rather than shape. Darker reads as
     /// recessed, which is what a container is, and it gives the coloured dots
     /// inside it more contrast rather than less.
-    static let blockWell = Color.black.opacity(0.34)
+    static let blockWell = Color.black.opacity(0.39)
 
     /// One hairline along the well's edge, so it keeps its shape on a bright
     /// wallpaper where the fill alone would wash out.
