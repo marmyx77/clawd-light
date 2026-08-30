@@ -73,9 +73,24 @@ public enum LsofOpenFiles {
     /// directory whose name merely starts the same way cannot pass. `~/.codexes`
     /// is not `~/.codex`.
     public static func under(_ root: String, in files: [OpenFile]) -> [OpenFile] {
-        let normalized = PathNormalizer.normalize(root)
-        return files.filter {
-            PathNormalizer.normalize($0.path).hasPrefix(normalized + "/")
+        under([root], in: files)
+    }
+
+    /// The same, against several spellings of the same place.
+    ///
+    /// `lsof` reports the **real** path and a root can be reached through a link:
+    /// on every Mac `/var` is a link to `/private/var`, which is where a temporary
+    /// Codex home lands. Comparing one spelling against the other matched nothing
+    /// and said so quietly, as a scan that succeeded and found no sessions.
+    ///
+    /// Foundation is no help here on purpose: `resolvingSymlinksInPath` leaves
+    /// `/var/folders` exactly as it found it, so the caller resolves with
+    /// `realpath` and hands both spellings in.
+    public static func under(_ roots: [String], in files: [OpenFile]) -> [OpenFile] {
+        let prefixes = Set(roots.map { PathNormalizer.normalize($0) + "/" })
+        return files.filter { file in
+            let path = PathNormalizer.normalize(file.path)
+            return prefixes.contains { path.hasPrefix($0) }
         }
     }
 }

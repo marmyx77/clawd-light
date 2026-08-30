@@ -79,7 +79,17 @@ final class CodexProcessScanner {
         // `lsof` exits 1 when some of the pids are gone, which is normal here: a
         // session can end between enumerating and asking. What it printed is still
         // good, so the status is not a failure by itself.
-        let open = LsofOpenFiles.under(sessionsRoot.path, in: LsofOpenFiles.parse(result.output))
+        // Both spellings, because `lsof` reports the real path and the root may be
+        // reached through a link. `/var` is a link to `/private/var` on every Mac,
+        // and Foundation's own `resolvingSymlinksInPath` leaves `/var/folders`
+        // untouched by design, so this asks `realpath` and keeps the answer
+        // alongside the original.
+        //
+        // The failure it prevents is the quiet kind: the scan succeeds, matches
+        // nothing, and reports no sessions.
+        let open = LsofOpenFiles.under(
+            Self.spellings(of: sessionsRoot.path), in: LsofOpenFiles.parse(result.output)
+        )
         guard !open.isEmpty else {
             return result.output.isEmpty && !result.succeeded
                 ? .unavailable("lsof said nothing and exited \(result.status)")
@@ -98,6 +108,14 @@ final class CodexProcessScanner {
                 lastActivity: lastActivity(atPath: file.path)
             )
         })
+    }
+
+    /// A path as written, and as the filesystem really spells it.
+    private static func spellings(of path: String) -> [String] {
+        guard let resolved = realpath(path, nil) else { return [path] }
+        defer { free(resolved) }
+        let real = String(cString: resolved)
+        return real == path ? [path] : [path, real]
     }
 
     // MARK: - Reading the file

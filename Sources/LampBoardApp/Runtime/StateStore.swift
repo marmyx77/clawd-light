@@ -161,7 +161,10 @@ final class StateStore: ObservableObject {
         // Only what a process is still holding open survives. Closing the
         // conversation closes the descriptor, and that is the one signal Codex
         // gives us for free.
-        apply(.reconcile(alive: Set(evidence.map(\.meta.sessionId)), harness: .codex), now: now)
+        apply(
+            .reconcile(alive: Set(evidence.map(\.meta.sessionId)), harness: .codex, evenIfEmpty: true),
+            now: now
+        )
     }
 
     /// Reads the conversation's title off the main actor and remembers it.

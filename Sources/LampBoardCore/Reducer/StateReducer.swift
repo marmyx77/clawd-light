@@ -43,7 +43,7 @@ public enum ReducerAction: Sendable, Equatable {
     /// source of its own keeps its rows until its own `SessionEnd` arrives, or
     /// until `prune` retires them for silence. That is weaker evidence, and it is
     /// the evidence that exists.
-    case reconcile(alive: Set<String>, harness: Harness = .claudeCode)
+    case reconcile(alive: Set<String>, harness: Harness = .claudeCode, evenIfEmpty: Bool = false)
 
     /// A fact read from outside the hooks: how full a session's context is.
     ///
@@ -88,8 +88,17 @@ public enum StateReducer {
                 olderThan: AppConfig.sessionStaleAfter, at: now, keepingAlive: alive
             )
 
-        case .reconcile(let alive, let harness):
-            guard !alive.isEmpty else { return state }
+        case .reconcile(let alive, let harness, let evenIfEmpty):
+            // An empty set is normally treated as "the reader failed", because the
+            // Claude side cannot tell that from "nothing is running" and erasing
+            // every row on a bad read is unrecoverable.
+            //
+            // The Codex scanner **can** tell them apart: a probe that could not run
+            // returns `.unavailable` and never reaches here. Without this the last
+            // Codex session on a machine kept its row for ever, and the case that
+            // caught it is the end-to-end one that closes a descriptor and watches
+            // the row go.
+            guard evenIfEmpty || !alive.isEmpty else { return state }
             return TrafficLightState(
                 sessions: state.sessions.filter {
                     $0.value.harness != harness || alive.contains($0.key)

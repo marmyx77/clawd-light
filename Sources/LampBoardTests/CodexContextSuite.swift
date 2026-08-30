@@ -160,6 +160,33 @@ enum CodexContextSuite {
             t.expectEqual(Harness.claudeCode.cannotReport, [], "Claude reports everything")
         },
 
+        TestCase("An empty answer clears the rows only when the caller knows it is one") { t in
+            // The guard against an empty set exists because the Claude reader
+            // cannot tell "nothing is running" from "I could not look", and
+            // erasing a whole column on a bad read is unrecoverable. The Codex
+            // scanner can tell them apart, so it says so.
+            //
+            // Without this the last Codex session on a machine kept its row for
+            // ever, which is the quietest kind of wrong: everything works until
+            // the moment there is only one left.
+            let before = TrafficLightState(sessions: [
+                "codex-1": SessionState(
+                    id: "codex-1", status: .idle, workspace: Workspace(path: "/dev/p"),
+                    updatedAt: t0, statusSince: t0, harness: .codex
+                )
+            ])
+
+            let cautious = StateReducer.reduce(
+                before, action: .reconcile(alive: [], harness: .codex), now: t0
+            )
+            t.expect(cautious.sessions["codex-1"] != nil, "an empty set alone changes nothing")
+
+            let certain = StateReducer.reduce(
+                before, action: .reconcile(alive: [], harness: .codex, evenIfEmpty: true), now: t0
+            )
+            t.expect(certain.sessions["codex-1"] == nil, "and clears it when the caller is sure")
+        },
+
         TestCase("Codex cannot be made red, not even on purpose") { t in
             // The invariant used to hold because no Codex event reached the branch
             // that produces `.failed`, which is a different thing from being true:

@@ -696,8 +696,8 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **626**, instantaneous |
-| End-to-end tests | **82**, about a minute |
+| Domain tests | **627**, instantaneous |
+| End-to-end tests | **86**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |

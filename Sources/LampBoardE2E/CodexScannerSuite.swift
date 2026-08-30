@@ -1,0 +1,156 @@
+import LampBoardCore
+import Foundation
+import TestKit
+
+/// A Codex session becoming a row **without a single hook**.
+///
+/// The other end-to-end chain sends a signal and checks what the panel does with
+/// it, and it would have gone green while Codex inside the ChatGPT app stayed
+/// invisible: that surface registers our hooks, marks them trusted, runs a whole
+/// session and sends nothing. A suite that can only ask questions through
+/// `/signal` cannot see the case this feature exists for.
+///
+/// So nothing here touches the HTTP route. A file is written, a process holds it
+/// open, and the row has to appear on its own.
+enum CodexScannerSuite {
+
+    /// A process called `codex` that holds a file open and does nothing else.
+    ///
+    /// `tail -f` copied under that name, and two details cost an hour each.
+    ///
+    /// **A shell will not do.** The obvious fixture was `/bin/sh -c 'exec 3< …'`,
+    /// and the scanner never saw it: the name it matches on is `p_comm`, and bash
+    /// sets its own, so a copy called `codex` reports itself as `bash`. `tail`
+    /// does not rename itself.
+    ///
+    /// **And the copy has to be signed.** Copying a system binary strips its
+    /// signature, and on Apple Silicon an unsigned one does not run at all. The
+    /// first version died before it opened anything, which looked exactly like the
+    /// scanner failing to find it.
+    private final class FakeCodex {
+        private let process = Process()
+        let executable: URL
+
+        init(holding path: String, in directory: URL) throws {
+            executable = directory.appendingPathComponent("codex")
+            try? FileManager.default.removeItem(at: executable)
+            try FileManager.default.copyItem(
+                at: URL(fileURLWithPath: "/usr/bin/tail"), to: executable
+            )
+            let signing = Process()
+            signing.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            signing.arguments = ["-f", "-s", "-", executable.path]
+            signing.standardOutput = FileHandle.nullDevice
+            signing.standardError = FileHandle.nullDevice
+            try signing.run()
+            signing.waitUntilExit()
+
+            process.executableURL = executable
+            process.arguments = ["-f", path]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try process.run()
+        }
+
+        func letGo() {
+            process.terminate()
+            process.waitUntilExit()
+        }
+    }
+
+    /// A rollout as Codex writes one: the metadata first, then events.
+    private static func writeRollout(
+        in home: URL, sessionId: String, cwd: String, lastSpoken: String
+    ) throws -> String {
+        let directory = home
+            .appendingPathComponent(".codex/sessions/2026/08/30", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("rollout-2026-08-30T09-00-00-\(sessionId).jsonl")
+
+        let lines = [
+            #"{"timestamp":"2026-08-30T09:00:00.000Z","type":"session_meta","payload":{"session_id":"\#(sessionId)","cwd":"\#(cwd)","originator":"codex-tui","source":"cli","cli_version":"0.151.0"}}"#,
+            #"{"timestamp":"\#(lastSpoken)","type":"event_msg","payload":{"type":"task_started"}}"#,
+            // No timestamp, and it must not become the moment: this is the shape
+            // that made three Claude projects read as active while untouched.
+            #"{"type":"bridge-session","id":"x"}"#,
+        ]
+        try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+        return file.path
+    }
+
+    static func suite(app: AppUnderTest) -> TestSuite {
+        TestSuite("E2E · Codex found without hooks", [
+
+            TestCase("a session nobody announced becomes a row") { a in
+                let cwd = "/tmp/lampboard-e2e-codex-project"
+                guard let path = try? writeRollout(
+                    in: app.home, sessionId: "e2e-codex-1", cwd: cwd,
+                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                ), let held = try? FakeCodex(holding: path, in: app.home) else {
+                    a.expect(false, "the fixture could not be set up")
+                    return
+                }
+                defer { held.letGo() }
+
+                a.expect(
+                    app.waitUntil { app.session(id: "e2e-codex-1") != nil },
+                    "no hook was sent, and the row still has to arrive"
+                )
+
+                let session = app.session(id: "e2e-codex-1")
+                a.expectEqual(session?.harness, "codex", "the agent it belongs to")
+                a.expectEqual(session?.workspace, "lampboard-e2e-codex-project",
+                              "the folder comes from the file, never from a request")
+                a.expectEqual(session?.status, "idle",
+                              "an open descriptor proves it is loaded, not that it is working")
+            },
+
+            TestCase("the executable it runs from decides what a click may promise") { a in
+                // A `codex` of its own, not one inside an application bundle, so
+                // the surface is the command line and the row must not offer a
+                // window: the same binary runs in Terminal, Ghostty and tmux.
+                a.expectEqual(
+                    app.session(id: "e2e-codex-1")?.entrypoint,
+                    CodexSurface.commandLine.entrypoint,
+                    "read from the binary, not from what the transcript calls itself"
+                )
+            },
+
+            TestCase("letting the file go takes the row with it") { a in
+                let cwd = "/tmp/lampboard-e2e-codex-closing"
+                guard let path = try? writeRollout(
+                    in: app.home, sessionId: "e2e-codex-2", cwd: cwd,
+                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                ), let held = try? FakeCodex(holding: path, in: app.home) else {
+                    a.expect(false, "the fixture could not be set up")
+                    return
+                }
+                a.expect(app.waitUntil { app.session(id: "e2e-codex-2") != nil }, "it arrived")
+
+                // The file stays on disk. Closing the conversation closes the
+                // descriptor, and that is the only ending Codex gives us for free.
+                held.letGo()
+                a.expect(
+                    app.waitUntil { app.session(id: "e2e-codex-2") == nil },
+                    "the rollout is still there; nothing is holding it"
+                )
+            },
+
+            TestCase("a rollout nobody holds open is not a session") { a in
+                // Ten rollouts on this machine, three open. The seven others are
+                // conversations that happened, and a panel listing them would be a
+                // column of things nobody can go to.
+                let cwd = "/tmp/lampboard-e2e-codex-cold"
+                guard (try? writeRollout(
+                    in: app.home, sessionId: "e2e-codex-3", cwd: cwd,
+                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                )) != nil else {
+                    a.expect(false, "the fixture could not be written")
+                    return
+                }
+                Thread.sleep(forTimeInterval: 2)
+                a.expect(app.session(id: "e2e-codex-3") == nil, "written, and never opened")
+            },
+        ])
+    }
+}
