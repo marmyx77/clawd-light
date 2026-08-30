@@ -11,6 +11,7 @@ enum CommandLineInterface {
         case install(port: UInt16, includeToolEvents: Bool)
         case uninstall
         case status
+        case codexProbe
         case selfTest(port: UInt16)
         case focus(workspaceName: String, dryRun: Bool)
         case next(port: UInt16)
@@ -41,6 +42,8 @@ enum CommandLineInterface {
             return .uninstall
         case "status":
             return .status
+        case "codex-probe":
+            return .codexProbe
         case "selftest", "doctor":
             return .selfTest(port: port)
         case "focus":
@@ -109,6 +112,9 @@ enum CommandLineInterface {
 
         case .status:
             return runStatus()
+
+        case .codexProbe:
+            return runCodexProbe()
 
         case .selfTest(let port):
             return SelfTest.run(port: port)

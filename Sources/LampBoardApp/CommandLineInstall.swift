@@ -61,3 +61,46 @@ extension CommandLineInterface {
         }
     }
 }
+
+/// The probe behind the Codex scanner, run by hand.
+///
+/// It exists because "the signed bundle can read another process's open files"
+/// had to be **shown** before anything was built on it, not argued from the fact
+/// that a neighbouring call already works. Sandboxing, the hardened runtime and
+/// the entitlements a release is signed with are exactly the kind of boundary
+/// that moves under a plan without telling it.
+///
+/// Kept after the spike because it is also the answer to "why does LampBoard not
+/// see my Codex session": it prints the evidence, or says which part of it is
+/// missing.
+extension CommandLineInterface {
+    static func runCodexProbe() -> Int32 {
+        print("Codex sessions this process can prove are alive")
+        print("Sessions root: \(AppConfig.codexSessionsDirectory.path)")
+
+        let pids = ProcessTree.pids(named: "codex")
+        print("Live codex processes: \(pids.isEmpty ? "none" : pids.map(String.init).joined(separator: ", "))")
+
+        switch CodexProcessScanner.scan() {
+        case .unavailable(let reason):
+            print("\nThe probe could not answer: \(reason)")
+            print("That is not the same as no sessions: nothing was ruled out.")
+            return 1
+
+        case .observed(let evidence) where evidence.isEmpty:
+            print("\nNo process is holding a rollout open.")
+            print("A rollout on disk is a session that existed; only an open one is alive.")
+            return 0
+
+        case .observed(let evidence):
+            print("")
+            for item in evidence {
+                print("  pid \(item.pid)  \(item.surface.label)")
+                print("    rollout:    \(item.rolloutPath)")
+                print("    executable: \(item.executable)")
+                print("    focus from the executable: \(item.surface.focusIsDecidedByExecutable ? "yes" : "no, the ancestry decides")")
+            }
+            return 0
+        }
+    }
+}

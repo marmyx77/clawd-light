@@ -1,13 +1,13 @@
 # Code map
 
-~30,000 lines of Swift across five targets. For each file: what it contains, why
+~30,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,324 lines · 65 files   pure logic, zero AppKit
-  LampBoardApp/    11,863 lines · 65 files   shell: AppKit, network, windows
-  LampBoardTests/  7,541 lines · 40 files   590 cases, instantaneous
+  LampBoardCore/   8,468 lines · 67 files   pure logic, zero AppKit
+  LampBoardApp/    12,000 lines · 66 files   shell: AppKit, network, windows
+  LampBoardTests/  7,657 lines · 41 files   597 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -97,6 +97,26 @@ decides which session is a group's face and which one a click opens.
 The names the user gave to rows, by folder: read, renamed, bounded. A name is
 what the panel shows and nothing that finds a window or a file ever believes it
 (D26).
+
+### `Codex/LsofOpenFiles.swift`
+Which regular files a live process holds open, parsed from `lsof` **field**
+output rather than columns, because a path may contain spaces and the column form
+has already cost this project an afternoon elsewhere.
+
+This is the evidence a Codex session rests on. A rollout on disk proves a session
+existed; a process holding it open proves it is loaded now. An empty result means
+"this call saw nothing", never "the session is gone": the caller has to keep those
+apart or one slow `lsof` deletes every Codex row.
+
+### `Codex/CodexSurface.swift`
+Which Codex a session runs in, read from the executable behind its pid. Better
+evidence than the rollout's own `originator`, which has been seen as four
+different strings in one week inside a format its own documentation calls
+unstable. Matches on path **segments**, so a folder called `ChatGPT.app` in
+somebody's home cannot make a terminal session claim to be the desktop app.
+
+`commandLine` deliberately promises nothing about focus: the same Homebrew binary
+runs in Terminal, Ghostty, tmux and VS Code's integrated terminal.
 
 ### `RowSession.swift`
 The conversations inside one row, told apart. A project can hold several sessions
@@ -511,7 +531,18 @@ through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `CommandLineInstall.swift` · 63
+### `CodexProcessScanner.swift`
+Finds the Codex sessions running here without being told. Codex inside the
+ChatGPT app registers our hooks, marks them trusted, runs a full session, and
+sends no signal at all: measured, with eight events configured and not one line
+in the log. Anything built on hooks alone is blind to it.
+
+So the evidence runs the other way: a live `codex` process holds its rollout open,
+the file says which session and folder, the binary says which surface. Returns
+`.unavailable` rather than an empty list when the probe could not answer, because
+a probe that timed out is not a session that ended.
+
+### `CommandLineInstall.swift` · 106
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
 reached the 800-line ceiling, along the seam that was already there — everything
@@ -666,7 +697,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 590 cases
+## `LampBoardTests/` — 597 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

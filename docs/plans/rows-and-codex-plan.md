@@ -222,7 +222,41 @@ new session appears at the end rather than in a place somebody has to hunt for.
 
 ## 4. Track B, Codex made real
 
-### B0 · The spike, and it can stop the plan
+### B0 · The spike, done, and it moved the premise
+
+**Passed.** From `dist/LampBoard.app` signed with `Developer ID Application:
+Marco Armellino (33Z4MPR4FF)`, hardened runtime on (`flags=0x10000(runtime)`) and
+the two release entitlements, `lampboard codex-probe` listed the rollouts held
+open by this account's Codex processes and classified all three surfaces from the
+executable: `/Applications/ChatGPT.app/…/codex`,
+`/opt/homebrew/Caskroom/codex/0.151.0/bin/codex`, and
+`~/.vscode/extensions/openai.chatgpt-*/bin/macos-aarch64/codex`.
+
+Two things it found that the plan had wrong, and both are worth more than the
+gate itself.
+
+**One process holds several rollouts.** Not a photograph any more: pid 4643, the
+ChatGPT app's Codex, held **three** open at once. The audit asked for this to be
+treated as one-to-many rather than assumed away, and it was right to.
+
+**An open descriptor does not mean a running session.** The VS Code extension's
+Codex, started on 29 August 2026, holds open a rollout whose last record is a
+`turn_aborted` from **29 September 2025**. The file has not been written in a
+year. So the evidence proves a conversation is *loaded in a live program*, which
+is a real and useful fact, and it does not prove the agent is doing anything.
+
+That changes what a scanner-only row is allowed to mean, and it happens to
+strengthen B2 rather than fight it: presence yes, focus yes, state **unknown**,
+never a colour by inference. And it needs no new pruning rule. The row takes the
+rollout's own last-written time as its `updatedAt`, so a conversation loaded but
+untouched for a year falls to the age rule the store already applies to every
+other stale row.
+
+The remaining questions from the audit's list, closing a session and resuming
+one, are answered by the scanner-driven end-to-end in B4 rather than by hand,
+because a claim made by watching once is the kind this plan exists to avoid.
+
+### B0 · The original gate, for the record
 
 From the **signed bundle**, not from a shell: list the `codex` processes of this
 account, read each one's open files, and match them to rollouts under
