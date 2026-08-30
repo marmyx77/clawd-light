@@ -326,7 +326,7 @@ final class StateStore: ObservableObject {
         // reading one line instead of bisecting the app.
         if workspace == nil {
             Diagnostics.log(
-                "signal dropped: \(signal.event.rawValue) for \(signal.cwd) — "
+                "signal dropped: \(signal.event.rawValue) for \(signal.cwd), "
                     + "no editor window claims that folder "
                     + (showsTerminalSessions
                         ? "and no live session file names the session"

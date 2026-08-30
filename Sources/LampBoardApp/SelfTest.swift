@@ -13,7 +13,7 @@ enum SelfTest {
     static func run(port: UInt16, cwd: String = FileManager.default.currentDirectoryPath) -> Int32 {
         var failures = 0
 
-        print("lampboard — self-diagnosis\n")
+        print("LampBoard self-diagnosis\n")
 
         // 1. Is somebody already there?
         //
@@ -139,7 +139,7 @@ enum SelfTest {
         let installer = HookInstaller()
         let events = installer.installedEvents()
         if events.isEmpty {
-            print("✗ no hooks registered — run `lampboard install-hooks`")
+            print("✗ no hooks registered: run `lampboard install-hooks`")
             failures += 1
         } else {
             print("✓ hooks registered for: \(events.joined(separator: ", "))")

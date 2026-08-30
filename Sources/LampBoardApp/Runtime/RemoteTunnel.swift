@@ -44,8 +44,8 @@ final class RemoteTunnel {
             switch self {
             case .starting: return "connecting…"
             case .up: return "connected"
-            case .down(let reason, let retry): return "down — \(reason); retrying in \(Int(retry)) s"
-            case .exposed(let address): return "closed — the machine bound the forward on \(address), not loopback"
+            case .down(let reason, let retry): return "down: \(reason); retrying in \(Int(retry)) s"
+            case .exposed(let address): return "closed: the machine bound the forward on \(address), not loopback"
             case .stopped: return "off"
             }
         }
@@ -272,7 +272,7 @@ final class RemoteTunnel {
             return "the port could not be bound there"
         }
         if text.localizedCaseInsensitiveContains("IDENTIFICATION HAS CHANGED") {
-            return "host key changed — remove its old line from ~/.ssh/known_hosts"
+            return "host key changed: remove its old line from ~/.ssh/known_hosts"
         }
         if text.localizedCaseInsensitiveContains("permission denied") {
             return "ssh refused the key"

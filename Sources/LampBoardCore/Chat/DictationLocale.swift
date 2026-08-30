@@ -77,13 +77,13 @@ public enum DictationAvailability: Sendable, Equatable {
         case .needsDownload(let identifier):
             return "the \(identifier) dictation model has to be downloaded first"
         case .downloading(let fraction):
-            return "downloading the dictation model — \(Int(fraction * 100))%"
+            return "downloading the dictation model: \(Int(fraction * 100))%"
         case .unsupportedSystem:
             return "dictation needs macOS 26"
         case .noLanguage:
             return "no dictation model for any of your languages"
         case .denied:
-            return "microphone access was refused — System Settings › Privacy & Security › Microphone"
+            return "microphone access was refused: System Settings › Privacy & Security › Microphone"
         case .failed(let reason):
             return "dictation failed: \(reason)"
         }

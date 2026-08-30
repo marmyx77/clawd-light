@@ -122,7 +122,7 @@ final class ChatSession: ObservableObject {
             return true
         case .failure(let error):
             sendError = error.description
-            Diagnostics.log("chat \(sessionId): send refused — \(error.description)")
+            Diagnostics.log("chat \(sessionId): send refused: \(error.description)")
             return false
         }
     }
@@ -167,7 +167,7 @@ final class ChatSession: ObservableObject {
                     let megabytes = Double(skipped) / 1_048_576
                     shown.insert(TranscriptEntry(
                         id: "lampboard.window.\(id)", kind: .note,
-                        text: String(format: "The first %.0f MB of this transcript are not loaded — the window shows its tail.", megabytes),
+                        text: String(format: "The first %.0f MB of this transcript are not loaded: the window shows its tail.", megabytes),
                         timestamp: entries.first?.timestamp ?? Date()
                     ), at: 0)
                 }

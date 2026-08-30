@@ -29,13 +29,13 @@ enum RemoteCommandError: LocalizedError, Equatable {
         switch self {
         case .unreachable(let detail):
             if detail.localizedCaseInsensitiveContains("IDENTIFICATION HAS CHANGED") {
-                return "host key changed — remove its old line from ~/.ssh/known_hosts"
+                return "host key changed: remove its old line from ~/.ssh/known_hosts"
             }
             if detail.localizedCaseInsensitiveContains("permission denied") {
                 return "ssh refused the key (BatchMode: no password prompt is possible)"
             }
             if detail.localizedCaseInsensitiveContains("host key") {
-                return "host key not accepted — connect once from a terminal"
+                return "host key not accepted: connect once from a terminal"
             }
             if detail.localizedCaseInsensitiveContains("python3") {
                 return "python3 is missing there"

@@ -74,7 +74,7 @@ struct HookInstaller {
     /// here, and printing this sentence is what stops it costing anybody else one.
     static let codexTrustNotice = """
         Codex will not run these hooks until you trust them. Open Codex, run
-        /hooks, and approve the entry. Until then Codex reports nothing — and
+        /hooks, and approve the entry. Until then Codex reports nothing, and
         says nothing about why.
         """
 

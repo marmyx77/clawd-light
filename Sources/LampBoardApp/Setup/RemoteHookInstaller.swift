@@ -141,9 +141,9 @@ enum RemoteHookInstaller {
         }
 
         var sentence: String {
-            if let address = exposedOn { return "the forward is bound on \(address) there — EXPOSED, the tunnel refuses to carry it" }
+            if let address = exposedOn { return "the forward is bound on \(address) there: EXPOSED, the tunnel refuses to carry it" }
             if answers { return "the tunnel answers from there (loopback only)" }
-            if boundAddresses.isEmpty { return "nothing is bound on the port there yet — is the panel running?" }
+            if boundAddresses.isEmpty { return "nothing is bound on the port there yet: is the panel running?" }
             return "the port is bound there but does not answer as this app"
         }
     }

@@ -34,8 +34,13 @@ public enum PanelIssue: Equatable, Sendable {
         }
     }
 
-    /// The button beside it. A verb, because it does something.
-    public var actionTitle: String { "Fix…" }
+    /// The capsule beside it. A verb, because it does something.
+    ///
+    /// No ellipsis. The three dots are a convention meaning "this opens something
+    /// that will ask you more", and it earned its place while this was plain
+    /// text. Inside an outline the shape already says a control, and four
+    /// characters read better than five in a strip ten points tall.
+    public var actionTitle: String { "Fix" }
 
     /// The System Settings pane that grants it.
     ///
@@ -63,25 +68,24 @@ public enum PanelIssue: Equatable, Sendable {
         switch self {
         case .accessibilityMissing:
             return """
-                macOS calls this “controlling your computer”. lampboard uses it \
-                for one thing: to bring the editor window of the row you clicked to \
-                the front.
+                macOS calls this “controlling your computer”. LampBoard uses it \
+                for one thing: bringing the window of the row you clicked to the front.
 
-                Without it a click still activates the editor, but cannot choose \
-                which window — so you land wherever you were last.
+                Without it a click still activates the editor but cannot choose \
+                which window, so you land wherever you were last.
 
-                In System Settings, turn the switch on next to lampboard.
+                In System Settings, turn on the switch next to LampBoard.
                 """
         case .automationMissing(let app):
             return """
-                lampboard needs to ask \(app) for the titles of its windows, to \
-                tell your projects apart. It reads titles; it does not type, click \
-                or change anything.
+                LampBoard needs to ask \(app) for its window titles, to tell your \
+                projects apart. It reads titles. It does not type, click or change \
+                anything.
 
-                Without it a click still activates the application, but cannot pick \
+                Without it a click still activates the application but cannot pick \
                 the right window or tab.
 
-                In System Settings, enable “\(app)” under lampboard.
+                In System Settings, enable “\(app)” under LampBoard.
                 """
         }
     }
@@ -89,8 +93,8 @@ public enum PanelIssue: Equatable, Sendable {
     /// Said under the explanation, every time, because it is the sentence that
     /// makes the rest safe to accept.
     public var reassurance: String {
-        "You can turn this off again at any time in the same place, and lampboard "
-            + "keeps working — only the click gets less precise."
+        "You can turn this off again at any time in the same place. LampBoard "
+            + "keeps working; only the click gets less precise."
     }
 
     /// The stale-entry cure.
@@ -104,17 +108,16 @@ public enum PanelIssue: Equatable, Sendable {
     ///
     /// Only shown when it applies, which is why it is not part of `explanation`.
     public static let staleEntryCure = """
-        If lampboard is already in the list with the switch on, macOS is \
-        remembering an older copy of the app. Removing it with “−” may not be \
-        enough — there can be several hidden records. This clears them all:
+        Already in the list with the switch on? Then macOS is remembering an \
+        older copy. Removing it with “−” may not be enough, because there can be \
+        several hidden records. This clears them all:
 
             tccutil reset Accessibility com.lampboard.app
             tccutil reset AppleEvents com.lampboard.app
             pkill -x lampboard && open -a LampBoard
 
-        The relaunch is part of the cure: macOS keeps a running process's \
-        accessibility session open until it exits, so without it lampboard \
-        goes on holding what you just took away. Then click a traffic light \
-        again and answer the request.
+        The relaunch matters: macOS keeps a running process's accessibility \
+        session open until it exits. Then click a traffic light again and \
+        answer the request.
         """
 }

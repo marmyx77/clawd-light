@@ -134,7 +134,7 @@ final class RemoteFleet: ObservableObject {
                 case .success(let inspection):
                     hooks = inspection.hooksInstalled ? .installed : .absent
                     var notes = ["python \(inspection.pythonVersion)"]
-                    if !inspection.hasCurl { notes.append("curl missing — the hook script needs it") }
+                    if !inspection.hasCurl { notes.append("curl missing: the hook script needs it") }
                     if let problem = inspection.directoryProblem { notes.append("~/.lampboard there \(problem)") }
                     if let error = inspection.error { notes.append("settings.json unreadable: \(error)") }
                     // The one question only the node can answer: where is the port

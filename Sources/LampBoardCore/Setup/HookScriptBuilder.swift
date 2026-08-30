@@ -48,7 +48,7 @@ public enum HookScriptBuilder {
 
         return """
         #!/bin/bash
-        # lampboard — forwards \(harness.displayName) events to the floating traffic light.\(where_)
+        # LampBoard: forwards \(harness.displayName) events to the floating traffic light.\(where_)
         #
         # Generated automatically: hand edits are overwritten on the next
         # installation. Always exits 0, so the absence of the traffic light can

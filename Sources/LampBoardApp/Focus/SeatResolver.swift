@@ -11,7 +11,7 @@ enum SeatError: Error, Equatable {
 
     var short: String {
         switch self {
-        case .noSession: return "its session file is gone — the session has ended"
+        case .noSession: return "its session file is gone: the session has ended"
         case .processGone: return "its process is gone"
         case .pidReused: return "its pid now belongs to another process"
         }

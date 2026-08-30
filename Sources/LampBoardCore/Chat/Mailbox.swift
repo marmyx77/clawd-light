@@ -201,9 +201,9 @@ public enum MailboxError: Error, Equatable, CustomStringConvertible, LocalizedEr
         case .notDelivered(let reason):
             return reason
         case .disabled:
-            return "answering from the panel is off — turn it on in the panel menu"
+            return "answering from the panel is off: turn it on in the panel menu"
         case .unsafeDirectory(let path):
-            return "\(path) is not a directory belonging to this user — refusing to use it"
+            return "\(path) is not a directory belonging to this user: refusing to use it"
         }
     }
 }

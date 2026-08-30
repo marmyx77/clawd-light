@@ -121,9 +121,20 @@ struct PanelRootView: View {
 
                         Spacer(minLength: 4)
 
+                        // A capsule, not a word. Set as plain text it read as the
+                        // end of the sentence beside it, and the one thing the
+                        // strip has to do is look pressable.
                         Text(issue.actionTitle)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(StatusPalette.warningTint)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(StatusPalette.fixTint)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(
+                                        StatusPalette.fixTint.opacity(0.85), lineWidth: 1
+                                    )
+                            )
                     }
                 }
                 .padding(.horizontal, flags.compact ? 4 : Layout.panelPadding + 6)
@@ -132,7 +143,7 @@ struct PanelRootView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .tooltip(issue.summary + " — click to fix")
+            .tooltip(issue.summary + ". Click to fix.")
         }
     }
 
@@ -187,8 +198,8 @@ struct PanelRootView: View {
                 ? "arrow.up.left.and.arrow.down.right.circle"
                 : "arrow.down.right.and.arrow.up.left.circle",
             help: flags.compact
-                ? "Widen the panel — names, times, context and the drag handles"
-                : "Traffic lights only — a strip thirty-five points wide",
+                ? "Widen the panel: names, times, context and the drag handles"
+                : "Traffic lights only: a strip thirty-five points wide",
             // The width of a light, so the glyph's centre is the lights' centre.
             width: Layout.dotSize,
             action: actions.toggleCompact
@@ -201,7 +212,7 @@ struct PanelRootView: View {
     private var legendButton: some View {
         FooterButton(
             symbol: "questionmark.circle",
-            help: "What the lights mean — and how many of each there are right now",
+            help: "What the lights mean: and how many of each there are right now",
             action: actions.openLegend
         )
     }
@@ -216,7 +227,7 @@ struct PanelRootView: View {
     private var menuButton: some View {
         FooterButton(
             symbol: "ellipsis.circle",
-            help: "Options and Settings — the same menu as a right-click on the panel's edge",
+            help: "Options and Settings: the same menu as a right-click on the panel's edge",
             action: openMenuUnderPointer
         )
     }

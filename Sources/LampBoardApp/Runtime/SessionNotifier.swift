@@ -76,7 +76,7 @@ final class SessionNotifier {
                     // end up hunting for the defect in delivery.
                     Diagnostics.log(
                         "notification authorization: \(granted ? "GRANTED" : "DENIED")"
-                            + (error.map { " — \($0.localizedDescription)" } ?? "")
+                            + (error.map { ": \($0.localizedDescription)" } ?? "")
                     )
                     completion?(granted)
                 }
@@ -162,7 +162,7 @@ final class SessionNotifier {
         // being asked about, which is the worst kind of wrong: fluent, specific,
         // and false. The session's own title is current by construction; where
         // there is none, the plain sentence says only what is true.
-        content.body = session.title.map { "Waiting for your answer — \($0)" }
+        content.body = session.title.map { "Waiting for your answer: \($0)" }
             ?? "Waiting for your answer."
         content.sound = .default
         // Carries the session id: clicking the notification has to take you *there*,

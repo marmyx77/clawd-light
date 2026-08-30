@@ -210,22 +210,22 @@ struct ChatView: View {
             if let pending = session.pending {
                 notice(
                     session.listening
-                        ? "waiting for the session to pick it up — \(pending)"
-                        : "queued — this conversation is asleep, and it will go the "
+                        ? "waiting for the session to pick it up: \(pending)"
+                        : "queued: this conversation is asleep, and it will go the "
                             + "moment anything happens there. ↗ opens it in VS Code.",
                     icon: session.listening ? "clock" : "moon.zzz",
                     tint: session.listening ? StatusPalette.timeColor : .orange
                 )
             } else if !session.canSend {
                 notice(
-                    "reading only — turn on \"Let the panel answer your sessions\" "
+                    "reading only: turn on \"Let the panel answer your sessions\" "
                         + "in the panel menu",
                     icon: "lock",
                     tint: StatusPalette.timeColor
                 )
             } else if !session.listening {
                 notice(
-                    "this conversation is asleep — a message will wait for it, not vanish",
+                    "this conversation is asleep: a message will wait for it, not vanish",
                     icon: "moon.zzz",
                     tint: StatusPalette.timeColor
                 )
@@ -267,7 +267,7 @@ struct ChatView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(draft.trimmed.isEmpty || !session.canSend)
-                .help("Send — it arrives at the end of the session's current turn")
+                .help("Send: it arrives at the end of the session's current turn")
 
                 Button(action: openInEditor) {
                     Image(systemName: "arrow.up.forward.app")

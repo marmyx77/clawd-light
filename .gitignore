@@ -12,3 +12,8 @@ dist/
 # Anything the app writes at runtime, in case someone points
 # LAMPBOARD_HOME at the checkout while testing.
 .lampboard/
+
+# Compiled Python from Scripts/. A build artefact: tracked, it changes on
+# every run of make-icon.py and adds noise to every diff.
+__pycache__/
+*.pyc

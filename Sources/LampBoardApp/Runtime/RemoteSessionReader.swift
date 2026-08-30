@@ -62,7 +62,7 @@ struct RemoteSessionReader {
         do {
             try process.run()
         } catch {
-            Diagnostics.log("remote \(host): ssh would not start — \(error.localizedDescription)")
+            Diagnostics.log("remote \(host): ssh would not start: \(error.localizedDescription)")
             return nil
         }
 
@@ -83,7 +83,7 @@ struct RemoteSessionReader {
             // Named, not swallowed: a host that stops answering has to be visible
             // in the log, or the rows just quietly stop appearing.
             Diagnostics.log(
-                "remote \(host): exit \(process.terminationStatus) — \(message.prefix(160))"
+                "remote \(host): exit \(process.terminationStatus), \(message.prefix(160))"
             )
             return nil
         }

@@ -55,7 +55,7 @@ struct LegendView: View {
                         ),
                         title: "a ring around the light",
                         detail: """
-                            Something is still listening behind that row — a monitor \
+                            Something is still listening behind that row: a monitor \
                             registered and not yet triggered. It is not a state of its \
                             own: the turn ended green, or red, and *besides that* an ear \
                             is open.
@@ -68,7 +68,7 @@ struct LegendView: View {
                         title: "the ring with a letter in it",
                         detail: """
                             How full that session's context is, and which model is \
-                            holding it — O for Opus, S for Sonnet, H for Haiku, F for \
+                            holding it: O for Opus, S for Sonnet, H for Haiku, F for \
                             Fable, M for Mythos, n for one this build does not know. A \
                             paler arc is a floor: at least this much. A dashed circle \
                             means nothing has been read from that session yet.
@@ -142,7 +142,7 @@ struct LegendView: View {
         case .ready:
             return "There is an answer here you have not read. Clicking the row consumes it."
         case .awaiting:
-            return "Claude is blocked on a decision of yours — a permission, or a dialog. This one blinks, and it is the only one that does."
+            return "Claude is blocked on a decision of yours: a permission, or a dialog. This one blinks, and it is the only one that does."
         case .working:
             return "Thinking, or running a tool. The time on the right is how long it has been at it."
         case .waiting:
@@ -150,7 +150,7 @@ struct LegendView: View {
         case .idle:
             return "At rest. Nothing to read, nothing to answer."
         case .failed:
-            return "The turn ended without an answer — interrupted, or it hit an error. The right-hand cell says which."
+            return "The turn ended without an answer: interrupted, or it hit an error. The right-hand cell says which."
         }
     }
 
@@ -162,8 +162,8 @@ struct LegendView: View {
     )
 
     private static let provenance = """
-        The figure is the tokens of the last reply — what was sent, what was \
-        written into the cache and what was read back out of it — over the whole \
+        The figure is the tokens of the last reply (what was sent, what was \
+        written into the cache and what was read back out of it) over the whole \
         context window of that model. Nothing added since that reply is in it, \
         which is why a reading that has been overtaken shows a ≥ and one whose \
         session has been compacted shows nothing at all.

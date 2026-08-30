@@ -60,6 +60,19 @@ enum StatusPalette {
     /// panel has never used would read as belonging to some other application.
     static let warningTint = Color(red: 1.00, green: 0.45, blue: 0.10)
 
+    /// The little capsule that offers to fix the fault the strip names.
+    ///
+    /// The strip's own hue is the `awaiting` amber, which says *this needs you*.
+    /// The capsule is the `failed` red, which the column has already taught means
+    /// *this is stopped*, and that is the truer word for a click that cannot
+    /// raise a window. Two shades the panel already owns, doing the two jobs they
+    /// already do: the sentence reports, the button acts.
+    ///
+    /// A word set in plain text next to a sentence reads as part of the sentence.
+    /// An outline around it is the smallest mark that says "this is a control",
+    /// and at ten points it is the only one that fits.
+    static let fixTint = Color(red: 0.85, green: 0.24, blue: 0.24)
+
     /// The ring around a row that has something listening behind it.
     ///
     /// Exactly the `waiting` blue, and that is the whole idea: the column has

@@ -51,7 +51,7 @@ public enum RewakeScriptBuilder {
     public static func script(inboxPath: String = Mailbox.directory.path) -> String {
         """
         #!/bin/bash
-        # lampboard — carries a message from the chat window into a running session.
+        # LampBoard: carries a message from the chat window into a running session.
         #
         # Generated automatically: hand edits are overwritten on the next
         # installation.
@@ -106,7 +106,7 @@ public enum RewakeScriptBuilder {
             if [ -f "$MSG" ]; then
                 TEXT=$(cat "$MSG" 2>/dev/null)
                 # Claim it before delivering. If we are killed between the read and
-                # the send, the message is lost — which is better than a message
+                # the send, the message is lost, which is better than a message
                 # that arrives twice, because the second copy looks like the user
                 # repeating themselves.
                 rm -f "$MSG"

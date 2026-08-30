@@ -19,7 +19,7 @@ struct SettingsView: View {
             Section {
                 Text("""
                 Sessions running on another machine reach the panel through an ssh \
-                tunnel this app opens and keeps open — a loopback port of your own over \
+                tunnel this app opens and keeps open: a loopback port of your own over \
                 there, checked after every connect to be bound to nothing else. The machine \
                 needs ssh key login (no password prompt), python3 and curl. Add it, then \
                 install the hooks there.
@@ -37,7 +37,7 @@ struct SettingsView: View {
                 }
 
                 HStack {
-                    TextField("name as ssh knows it — node, or user@host", text: $newHost)
+                    TextField("name as ssh knows it: node, or user@host", text: $newHost)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit(add)
                     Button("Add", action: add)
@@ -50,8 +50,8 @@ struct SettingsView: View {
                 Text("Remote machines")
             } footer: {
                 Text("""
-                A machine's sessions appear when they speak — their hooks reach this Mac \
-                through the tunnel — and leave when the machine says the process is gone. \
+                A machine's sessions appear when they speak, because their hooks reach this Mac \
+                through the tunnel, and leave when the machine says the process is gone. \
                 Clicking one raises its Remote-SSH window here, if one is open.
                 """)
                 .font(.caption)
@@ -67,8 +67,8 @@ struct SettingsView: View {
                 Text("Terminal sessions")
             } footer: {
                 Text("""
-                A `claude` started in a terminal — Terminal, iTerm2, Ghostty, a tmux or \
-                zellij pane — in a folder no editor window has open gets a row of its own, \
+                A `claude` started in a terminal (Terminal, iTerm2, Ghostty, a tmux or \
+                zellij pane) in a folder no editor window has open gets a row of its own, \
                 named by its conversation. The panel follows the switch within five seconds. \
                 Clicking such a row will ask, once per terminal application, for the \
                 Automation permission that lets the panel select its tab.

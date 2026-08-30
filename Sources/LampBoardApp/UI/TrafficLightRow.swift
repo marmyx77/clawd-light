@@ -254,7 +254,7 @@ struct TrafficLightRow: View {
         // conversation opens in the local editor: neither entry can mean anything
         // for a row that lives elsewhere, so neither is offered.
         if !row.workspace.isRemote {
-            Button("Read here — opens the conversations", action: { actions.openChat(row) })
+            Button("Read here: opens the conversations", action: { actions.openChat(row) })
         }
         Button("Open", action: { actions.open(row) })
         Button("Open without marking as read", action: { actions.peek(row) })

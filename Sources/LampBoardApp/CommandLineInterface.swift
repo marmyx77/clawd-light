@@ -235,7 +235,7 @@ enum CommandLineInterface {
         case .available:
             print("  Launch at login:  \(LaunchAtLogin.isEnabled ? "enabled" : "available, not enabled")")
         case .needsStableSignature:
-            print("  Launch at login:  BLOCKED — a stable signature is required")
+            print("  Launch at login:  BLOCKED: a stable signature is required")
         case .needsBundle:
             print("  Launch at login:  not applicable (you are running the binary, not the app)")
         }
@@ -314,7 +314,7 @@ enum CommandLineInterface {
 
         switch VSCodeFocuser.focus(workspace: workspace) {
         case .raised:
-            print("✓ window raised with AppleScript — this is the correct behavior")
+            print("✓ window raised with AppleScript, which is the correct behaviour")
             return 0
 
         case .activatedOnly(let reason):
@@ -451,7 +451,7 @@ enum CommandLineInterface {
                 print("No slots occupied.")
                 print()
                 print("The first nine rows of the panel are slots 1 to 9, in the order you")
-                print("arranged them — drag a row by its handle, or right-click → Move up /")
+                print("arranged them: drag a row by its handle, or right-click → Move up /")
                 print("Move down. The column never reorders itself: that is what makes a")
                 print("bound key reliable.")
                 return 0
@@ -515,7 +515,7 @@ enum CommandLineInterface {
 
     private static var helpText: String {
         """
-        lampboard — floating traffic lights for Claude Code sessions in VS Code.
+        LampBoard: floating traffic lights for Claude Code and Codex sessions.
 
         USAGE
           lampboard [--port N]              start the floating panel
@@ -553,7 +553,7 @@ enum CommandLineInterface {
 
         SLOTS
           The first \(AppConfig.maxSlots) rows are slots 1 to \(AppConfig.maxSlots). The column keeps the order you
-          gave it — drag a row by its handle, or right-click → Move up / Move down —
+          gave it: drag a row by its handle, or right-click → Move up / Move down.
           and never reorders itself. That is what makes `lampboard open 3` worth
           binding to a key.
 
@@ -580,7 +580,7 @@ enum CommandLineInterface {
           green      there is an answer to read
 
         READING WITHOUT SWITCHING
-          ⌘+click on a row — or `lampboard chat <n>` — opens the conversation in
+          ⌘+click on a row (or `lampboard chat <n>`) opens the conversation in
           a window of its own, one per session, leaving VS Code where it is. It is
           read-only: the extension refuses to deliver a prompt to a session whose
           panel is already open, so answering still happens in the editor.
@@ -738,7 +738,7 @@ enum CommandLineInterface {
         print("\nRemote hosts (their hooks reach this Mac through the tunnel; presence read over ssh):")
         for host in hosts {
             guard let sessions = RemoteSessionReader(host: host).readLiveSessions() else {
-                print("  · \(host): NO ANSWER — asleep, or ssh cannot reach it")
+                print("  · \(host): NO ANSWER: asleep, or ssh cannot reach it")
                 continue
             }
             let shown = sessions.filter(\.deservesTrafficLight)

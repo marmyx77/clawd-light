@@ -123,11 +123,11 @@ public struct ContextReading: Sendable, Equatable {
     public var explanation: String {
         guard let window, confidence != .unknown else {
             return confidence == .unknown
-                ? "context unknown — the session was compacted since the last reading"
-                : "context \(tokens.formatted()) tokens (\(model) — no window recorded)"
+                ? "context unknown: the session was compacted since the last reading"
+                : "context \(tokens.formatted()) tokens (\(model), no window recorded)"
         }
         let prefix = confidence == .floor ? "at least " : ""
-        return "context \(label) — \(prefix)\(tokens.formatted()) of \(window.formatted()) (\(model))"
+        return "context \(label): \(prefix)\(tokens.formatted()) of \(window.formatted()) (\(model))"
     }
 }
 

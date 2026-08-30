@@ -33,6 +33,18 @@ cp "$BUILD_DIR/LampBoardApp" "$MACOS_DIR/lampboard"
 
 # The icon is committed, not generated here: a build should not depend on
 # Python being present. Scripts/make-icon.py redraws it when the design changes.
+# Keeps Spotlight out of the build directory.
+#
+# `.build` is around 700 MB and every object in it is rewritten on each build.
+# Indexed, that is a background process re-reading hundreds of megabytes each
+# time somebody compiles, and the cost lands as disk queue rather than CPU:
+# the load average climbs while the processor looks idle, and the compositor
+# starts missing frames. Measured on this machine at a load average of 87 on
+# eight cores, with the processor at 40 per cent.
+#
+# One empty file, and Spotlight skips the whole tree.
+touch "$ROOT/.build/.metadata_never_index" 2>/dev/null || true
+
 ICON="$ROOT/Resources/$APP_NAME.icns"
 if [ -f "$ICON" ]; then
     cp "$ICON" "$RESOURCES_DIR/$APP_NAME.icns"

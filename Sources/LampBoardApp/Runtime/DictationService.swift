@@ -138,14 +138,14 @@ final class DictationService: ObservableObject {
                     try await analyzer.start(inputSequence: stream)
                     Diagnostics.log("dictation: analyser finished")
                 } catch {
-                    Diagnostics.log("dictation: analyser failed — \(error)")
+                    Diagnostics.log("dictation: analyser failed: \(error)")
                     await self?.failed(error)
                 }
             }
         } catch {
             await teardown()
             availability = .failed(error.localizedDescription)
-            Diagnostics.log("dictation: failed to start — \(error)")
+            Diagnostics.log("dictation: failed to start: \(error)")
         }
     }
 

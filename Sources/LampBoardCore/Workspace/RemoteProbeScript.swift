@@ -75,9 +75,9 @@ public enum RemoteProbeScript {
                 pass
         # A miniature of the transcript's tail, in the same shape as the real
         # thing, so that the Mac reads a remote session with exactly the code it
-        # reads a local one with. The rule for what these records mean — which
+        # reads a local one with. The rule for what these records mean, which
         # is a reply, what a compaction does to it, when a number is only a
-        # floor — stays in one place, on the machine we actually update. This
+        # floor, stays in one place: on the machine we actually update. This
         # side only projects the fields that rule reads, and judges nothing.
         tail = ""
         own = folder + "/" + str(record.get("sessionId") or "") + ".jsonl"

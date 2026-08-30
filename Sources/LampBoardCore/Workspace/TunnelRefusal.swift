@@ -76,7 +76,7 @@ public enum TunnelRefusal {
 
         if held.isOrphan {
             return "port \(port) is held by a tunnel this app left behind "
-                + "(pid \(held.pid)) — `kill \(held.pid)` and it will reconnect"
+                + "(pid \(held.pid)): `kill \(held.pid)` and it will reconnect"
         }
         return "port \(port) is held by another lampboard (pid \(held.pid))"
     }

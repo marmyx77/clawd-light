@@ -84,7 +84,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         openChat(in: row)
-        return "\(row.displayName) — \(row.status.label)"
+        return "\(row.displayName): \(row.status.label)"
     }
 
     /// `true` when the panel really is under the user's eyes.
@@ -358,7 +358,7 @@ final class PanelController {
             // instead, with the button — the context menu alone was a place
             // nobody looks, which is how a missing permission read as a broken app.
             store.reportError(
-                "Window not raised (\(reason.shortDescription)) — only VS Code was activated.",
+                "Window not raised (\(reason.shortDescription)): only VS Code was activated.",
                 issue: reason.panelIssue
             )
             awaitPermission(for: reason) { [weak self] in
@@ -371,7 +371,7 @@ final class PanelController {
             // useless. The menu says where the session is instead.
             if let remoteHost {
                 store.reportError(
-                    "“\(session.workspace.name)” runs on \(remoteHost) — "
+                    "“\(session.workspace.name)” runs on \(remoteHost): "
                         + "no Remote-SSH window of that folder is open here (\(error.shortDescription))."
                 )
                 return
@@ -423,7 +423,7 @@ final class PanelController {
         let chain: [ProcessAncestor]
         switch SeatResolver.resolve(sessionId: session.id) {
         case .failure(let error):
-            store.reportError("“\(name)” cannot be raised — \(error.short).")
+            store.reportError("“\(name)” cannot be raised: \(error.short).")
             return
         case .success(let found):
             seat = found.seat
@@ -456,7 +456,7 @@ final class PanelController {
             awaitPermission(for: reason) { [weak self] in self?.activateTerminal(session) }
         case .failed(let error):
             store.reportError(
-                "“\(name)” runs in \(seat.label) — \(error.shortDescription).",
+                "“\(name)” runs in \(seat.label): \(error.shortDescription).",
                 issue: error.panelIssue
             )
             awaitPermission(for: error) { [weak self] in self?.activateTerminal(session) }
@@ -498,7 +498,7 @@ final class PanelController {
         // editor window has the focus, which is a conversation in the wrong
         // project — the mess this gate exists to prevent.
         guard !row.isTerminal else {
-            store.reportError("“\(row.displayName)” runs in a terminal — start the new conversation there.")
+            store.reportError("“\(row.displayName)” runs in a terminal: start the new conversation there.")
             return
         }
         activate(row, markSeen: false, opensTab: false)
@@ -514,7 +514,7 @@ final class PanelController {
             return nil
         }
         activate(row, markSeen: true)
-        return "\(row.displayName) — \(row.status.label)"
+        return "\(row.displayName): \(row.status.label)"
     }
 
     /// Raises the project bound to a slot, for `open <n>`.
@@ -529,7 +529,7 @@ final class PanelController {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
         activate(row, markSeen: true)
-        return "\(row.displayName) — \(row.status.label)"
+        return "\(row.displayName): \(row.status.label)"
     }
 
     /// Opens a new conversation in the project bound to a slot, for `new <n>`.
@@ -660,7 +660,7 @@ final class PanelController {
                 voice and your tools. Other accounts on this Mac are kept out; \
                 processes of your own cannot be.
 
-                Off, there is no listener and no mailbox at all — and the window \
+                Off, there is no listener and no mailbox at all, and the window \
                 still shows you every conversation.
                 """,
                 confirmTitle: "Turn on"

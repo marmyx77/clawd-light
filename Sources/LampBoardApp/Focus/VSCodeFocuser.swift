@@ -178,7 +178,7 @@ enum VSCodeFocuser {
             return .raised
         }
 
-        Diagnostics.log("AppleScript failed (\(primaryError.shortDescription)) — falling back")
+        Diagnostics.log("AppleScript failed (\(primaryError.shortDescription)): falling back")
 
         // Strategy 2: just bring the editor to the front.
         if let fallbackError = activate(ide) {

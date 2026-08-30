@@ -59,7 +59,7 @@ enum TerminalFocuser {
                 Diagnostics.log("seat: \(kind.applicationName) \(tty) raised")
                 return .raised
             case .failure(let error):
-                Diagnostics.log("seat: \(kind.applicationName) \(tty) not raised — \(error.shortDescription)")
+                Diagnostics.log("seat: \(kind.applicationName) \(tty) not raised: \(error.shortDescription)")
                 if case .scriptFailed(let reason) = error, reason.contains("-1728") {
                     return .failed(.windowNotFound("a tab on \(tty)"))
                 }
@@ -83,7 +83,7 @@ enum TerminalFocuser {
         let listing: NSAppleEventDescriptor
         switch VSCodeFocuser.runAppleScript(TerminalScripts.ghosttyList, app: app) {
         case .failure(let error):
-            Diagnostics.log("seat: Ghostty listing failed — \(error.shortDescription)")
+            Diagnostics.log("seat: Ghostty listing failed: \(error.shortDescription)")
             return .failed(error)
         case .success(let found): listing = found
         }
@@ -113,7 +113,7 @@ enum TerminalFocuser {
             Diagnostics.log("seat: Ghostty terminal \(chosen.id) (\(chosen.name)) raised")
             return .raised
         case .failure(let error):
-            Diagnostics.log("seat: Ghostty terminal \(chosen.id) not raised — \(error.shortDescription)")
+            Diagnostics.log("seat: Ghostty terminal \(chosen.id) not raised: \(error.shortDescription)")
             return .failed(error)
         }
     }
@@ -158,7 +158,7 @@ enum TerminalFocuser {
         }
         if let error = activate(bundleIdentifier: TerminalKind.kitty.bundleIdentifier) { return .failed(error) }
         return .activatedOnly(reason: .scriptFailed(
-            "kitty's remote control is off or its window was not found — allow_remote_control and listen_on unix:/tmp/kitty in kitty.conf"
+            "kitty's remote control is off or its window was not found: allow_remote_control and listen_on unix:/tmp/kitty in kitty.conf"
         ))
     }
 
@@ -199,7 +199,7 @@ enum TerminalFocuser {
         guard !clients.isEmpty else {
             Diagnostics.log("seat: zellij session \(sessionName) has no client attached")
             return .failed(.windowNotFound(
-                "a terminal attached to zellij session \(sessionName) — it is detached; run `zellij attach \(sessionName)`"
+                "a terminal attached to zellij session \(sessionName): it is detached; run `zellij attach \(sessionName)`"
             ))
         }
         var chosen: pid_t?

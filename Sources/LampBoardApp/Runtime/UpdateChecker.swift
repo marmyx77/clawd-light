@@ -43,7 +43,7 @@ enum UpdateChecker {
                 case 403:
                     // Almost always the anonymous hourly limit, and saying so
                     // saves the next half hour of looking at the network.
-                    return .unreadable("GitHub is rate-limiting anonymous requests — try again later")
+                    return .unreadable("GitHub is rate-limiting anonymous requests: try again later")
                 default:
                     return .unreadable("GitHub answered \(status)")
                 }

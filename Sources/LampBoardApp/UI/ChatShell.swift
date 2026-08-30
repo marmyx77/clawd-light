@@ -105,7 +105,7 @@ final class ChatShell: ObservableObject {
         sessions[sessionId] = session
 
         if case .failure(let error) = mailbox.open(sessionId: sessionId) {
-            Diagnostics.log("chat \(sessionId): mailbox not opened — \(error.description)")
+            Diagnostics.log("chat \(sessionId): mailbox not opened: \(error.description)")
         }
         session.start()
         session.markRead()
