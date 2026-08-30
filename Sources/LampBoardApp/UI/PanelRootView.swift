@@ -55,6 +55,7 @@ struct PanelRootView: View {
     let options: ColumnOptions
     let mutedWorkspaces: Set<String>
     let calmWorkspaces: Set<String>
+    let expandedRows: Set<String>
     let actions: PanelActions
     let rowActions: RowActions
 
@@ -69,6 +70,7 @@ struct PanelRootView: View {
                 mutedWorkspaces: mutedWorkspaces,
                 calmWorkspaces: calmWorkspaces,
                 actions: rowActions,
+                expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain
             )
             issueStrip

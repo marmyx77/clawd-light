@@ -22,6 +22,16 @@ struct RowActions {
     let openChat: (ColumnRow) -> Void
     /// Gives the row the name the user wants to read, by folder.
     let rename: (ColumnRow) -> Void
+    /// Opens or closes the block: what a click on a project holding several
+    /// conversations does, since a row that contains rows is a heading.
+    let toggleExpansion: (ColumnRow) -> Void
+    /// Raises one conversation, and clears only that one.
+    let openSession: (RowSession) -> Void
+    /// Names one conversation, touching nothing else.
+    let renameSession: (RowSession) -> Void
+    /// Names this agent's lane in this project, which every conversation of that
+    /// agent falls back to.
+    let renameLane: (RowSession) -> Void
     /// Opens the folder the session is working in, in the Finder.
     let revealInFinder: (ColumnRow) -> Void
 }
@@ -46,6 +56,8 @@ struct RowFlags {
     let isMuted: Bool
     let isCalm: Bool
     let notificationsEnabled: Bool
+    /// `true` while this project's conversations are shown under it.
+    let isExpanded: Bool
 }
 
 /// One row of the column: a light and, in expanded mode, the project name with
@@ -97,6 +109,8 @@ struct TrafficLightRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
 
+                recall
+
                 if let badge {
                     Text(badge)
                         .font(.system(size: 9, weight: .semibold, design: .rounded))
@@ -108,6 +122,8 @@ struct TrafficLightRow: View {
                         )
                         .fixedSize()
                 }
+
+                blockBadge
 
                 Spacer(minLength: 4)
 
@@ -208,12 +224,31 @@ struct TrafficLightRow: View {
     private func handle(_ drag: RowDragState) -> some View {
         ZStack {
             DragHandle(onChanged: drag.onChanged, onEnded: drag.onEnded)
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(Color.primary.opacity(hovering || drag.isDragged ? 0.6 : 0.3))
-                .allowsHitTesting(false)
+            // Six dots in two columns rather than three lines. Three horizontal
+            // lines are also what a menu looks like, and this is only ever a
+            // handle. Brighter, too: the comment right above said a mark you have
+            // to hover to find is a mark nobody finds, and then drew it at 30
+            // percent.
+            //
+            // Neutral, because a project belongs to no single agent. The tinted
+            // grips are on the conversations inside it.
+            VStack(spacing: 3) {
+                ForEach(0..<3, id: \.self) { _ in
+                    HStack(spacing: 3) {
+                        gripDot(bright: hovering || drag.isDragged)
+                        gripDot(bright: hovering || drag.isDragged)
+                    }
+                }
+            }
+            .allowsHitTesting(false)
         }
         .frame(width: 14, height: Layout.rowHeight)
+    }
+
+    private func gripDot(bright: Bool) -> some View {
+        Circle()
+            .fill(StatusPalette.neutralGrip.opacity(bright ? 1 : 0.72))
+            .frame(width: 2.5, height: 2.5)
     }
 
     // MARK: - Interaction
@@ -225,6 +260,18 @@ struct TrafficLightRow: View {
     /// The menu entry exists because a modifier nobody discovers is dead code.
     private func activate() {
         let modifiers = NSEvent.modifierFlags
+
+        // A project holding several conversations is a heading, and a plain click
+        // on it opens and closes. It used to raise "the most urgent", which
+        // between two conversations both working was decided by our tie-breaking
+        // rather than by anybody: an ambiguous destination traded for an honest
+        // one. The modifiers still mean what they meant, and the bound key still
+        // opens in one press, because that is a gesture made without looking.
+        if row.count > 1, modifiers.isDisjoint(with: [.command, .option, .shift]) {
+            actions.toggleExpansion(row)
+            return
+        }
+
         if modifiers.contains(.command), !row.workspace.isRemote {
             activateChat()
         } else if modifiers.contains(.option) {
@@ -305,10 +352,56 @@ struct TrafficLightRow: View {
     /// The two pieces of information don't share the same space, so the winner is
     /// the one saying something rarer: subagents at work explain *why* the row is
     /// yellow, the session count does not.
+    /// The two facts used to fight over one cell, and the rule was "the rarer one
+    /// wins". They are different kinds of fact and now have different homes: how
+    /// many conversations is about the row's **structure** and sits with the
+    /// chevron, how many subagents is about the **current turn** and stays here.
     private var badge: String? {
-        if row.activeSubagents > 0 { return "×\(row.activeSubagents)" }
-        if row.count > 1 { return "\(row.count)" }
-        return nil
+        row.activeSubagents > 0 ? "×\(row.activeSubagents)" : nil
+    }
+
+    /// The state the dot is covering, if any: the other half of "most urgent".
+    ///
+    /// Hidden while the block is open, where it would repeat something already
+    /// visible on the line below it.
+    private var recall: some View {
+        Group {
+            if !flags.isExpanded, let covered = row.recalledStatus {
+                Circle()
+                    .fill(StatusPalette.color(for: covered))
+                    .frame(width: 7, height: 7)
+            }
+        }
+    }
+
+    /// How many conversations are in here, and which way they are.
+    ///
+    /// The count already appeared only when there was more than one, so it was
+    /// already the sign that a project holds several. Giving it the chevron makes
+    /// it say the other half without a new mark, and it costs nothing on the rows
+    /// that will never open, which is most of them.
+    private var blockBadge: some View {
+        Group {
+            if row.count > 1 {
+                HStack(spacing: 3) {
+                    // The number only while it is closed. Open, the lines are
+                    // right there and countable, and those ten points are worth
+                    // more to the name: `Clawd Light Cod` came out as `Cla…Cod`,
+                    // which is not a name.
+                    if !flags.isExpanded {
+                        Text("\(row.count)")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    }
+                    Image(systemName: flags.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 7, weight: .bold))
+                }
+                .foregroundStyle(StatusPalette.badgeForeground)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(Capsule().fill(StatusPalette.badgeBackground))
+                .fixedSize()
+            }
+        }
     }
 
     /// What the right-hand slot shows.

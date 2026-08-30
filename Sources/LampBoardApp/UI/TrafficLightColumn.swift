@@ -11,6 +11,8 @@ struct TrafficLightColumn: View {
     let mutedWorkspaces: Set<String>
     let calmWorkspaces: Set<String>
     let actions: RowActions
+    /// The projects whose conversations are shown under them.
+    let expandedRows: Set<String>
     let onRevealHidden: () -> Void
 
     /// Reference moment for the time labels.
@@ -37,9 +39,6 @@ struct TrafficLightColumn: View {
         var translation: CGFloat
     }
 
-    /// The distance between two rows' baselines.
-    private static let pitch = Layout.rowHeight + Layout.rowSpacing
-
     private var rendering: ColumnRendering {
         ColumnLayout.render(store.state, options: options)
     }
@@ -65,14 +64,7 @@ struct TrafficLightColumn: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: Layout.rowSpacing) {
                 ForEach(Array(rendering.rows.enumerated()), id: \.element.id) { index, row in
-                    TrafficLightRow(
-                        row: row,
-                        compact: compact,
-                        now: now,
-                        flags: flags(for: row),
-                        actions: actions,
-                        drag: compact ? nil : dragState(for: row, at: index, in: rendering.rows)
-                    )
+                    block(row, at: index, in: rendering.rows)
                 }
 
                 if let hidden = rendering.hidden {
@@ -91,13 +83,129 @@ struct TrafficLightColumn: View {
         .scrollDisabled(rendering.rows.count <= AppConfig.maxVisibleRows)
     }
 
+    // MARK: - The block
+
+    /// A project, and its conversations when it is open.
+    ///
+    /// The fill and the hairline are there whenever the project holds more than
+    /// one conversation, open or not, and that is the sign that it opens: a
+    /// project with a single session has no block, so it cannot pretend to have
+    /// one. A leading chevron would have charged **every** name in the column 13
+    /// points on a 240 point panel, for a minority of rows.
+    private func block(_ row: ColumnRow, at index: Int, in rows: [ColumnRow]) -> some View {
+        let grouped = !compact && row.count > 1
+        let open = grouped && expandedRows.contains(row.id)
+
+        return VStack(spacing: Layout.rowSpacing) {
+            TrafficLightRow(
+                row: row,
+                compact: compact,
+                now: now,
+                flags: flags(for: row, expanded: open),
+                actions: actions,
+                drag: compact ? nil : dragState(for: row, at: index, in: rows)
+            )
+
+            if open { conversations(of: row) }
+        }
+        // Vertical only. Padding the sides too moved the dot of every row inside a
+        // block three points right, and the column of dots is the thing you scan:
+        // one crooked row in twelve is read as the panel being broken. The fill
+        // runs the full width instead, which loses nothing, because what makes the
+        // block a block is the fill and the spine and not an indent.
+        .padding(.vertical, grouped ? Layout.blockInset : 0)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color.white.opacity(grouped ? 0.045 : 0))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color.white.opacity(grouped ? 0.065 : 0), lineWidth: 1)
+                )
+        )
+    }
+
+    /// The conversations under an opened project, and the spine that owns them.
+    ///
+    /// Capped, because twelve of them is 264 points of panel for one project and
+    /// a column that scrolls is a column where the row that needs you can be off
+    /// screen. The tail says how many were left rather than leaving you to count.
+    private func conversations(of row: ColumnRow) -> some View {
+        let shown = Array(row.members.prefix(Layout.subRowCap))
+        let rest = row.members.count - shown.count
+
+        return VStack(spacing: Layout.rowSpacing) {
+            ForEach(shown) { member in
+                SessionSubRow(
+                    member: member,
+                    now: now,
+                    open: actions.openSession,
+                    rename: actions.renameSession,
+                    renameLane: actions.renameLane
+                )
+            }
+
+            if rest > 0 {
+                Text("and \(rest) more")
+                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                    .foregroundStyle(StatusPalette.timeColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 6)
+                    .padding(.bottom, 2)
+            }
+        }
+        .overlay(alignment: .leading) {
+            // Three points inside the margin, so it costs the names nothing.
+            RoundedRectangle(cornerRadius: Layout.spineWidth, style: .continuous)
+                .fill(Color.primary.opacity(0.26))
+                .frame(width: Layout.spineWidth)
+                .padding(.leading, Layout.spineInset)
+                .padding(.vertical, 1)
+        }
+    }
+
+    /// How tall each row draws, including the conversations it is showing.
+    private func heights(of rows: [ColumnRow]) -> [CGFloat] {
+        rows.map { row in
+            let grouped = !compact && row.count > 1
+            guard grouped, expandedRows.contains(row.id) else {
+                return Layout.rowHeight + (grouped ? Layout.blockInset * 2 : 0)
+            }
+            let shown = min(row.members.count, Layout.subRowCap)
+            let tail: CGFloat = row.members.count > shown ? 16 : 0
+            return Layout.rowHeight
+                + CGFloat(shown) * (Layout.subRowHeight + Layout.rowSpacing)
+                + tail + Layout.blockInset * 2
+        }
+    }
+
     // MARK: - Reordering
 
     /// Where the dragged row would land if released now.
+    ///
+    /// By **centres** rather than by a fixed pitch, because a row is no longer one
+    /// height: an opened project is as tall as the conversations it is showing.
+    /// Counting steps of a constant pitch would put the drop one or two rows off
+    /// as soon as anything above it was open, and a drop that lands somewhere else
+    /// is the worst possible outcome for a gesture whose whole content is where it
+    /// lands.
     private func target(of drag: ColumnDrag, in rows: [ColumnRow]) -> (start: Int, end: Int)? {
         guard let start = rows.firstIndex(where: { $0.id == drag.rowId }) else { return nil }
-        let steps = Int((drag.translation / Self.pitch).rounded())
-        return (start, min(max(start + steps, 0), rows.count - 1))
+        let centres = self.centres(of: rows)
+        let wanted = centres[start] + drag.translation
+        let end = centres.enumerated()
+            .min { abs($0.element - wanted) < abs($1.element - wanted) }?.offset ?? start
+        return (start, end)
+    }
+
+    /// The vertical middle of each row, measured from the top of the column.
+    private func centres(of rows: [ColumnRow]) -> [CGFloat] {
+        var result: [CGFloat] = []
+        var top: CGFloat = 0
+        for height in heights(of: rows) {
+            result.append(top + height / 2)
+            top += height + Layout.rowSpacing
+        }
+        return result
     }
 
     /// What this row draws during a drag, and how it reports one of its own.
@@ -109,15 +217,17 @@ struct TrafficLightColumn: View {
         var offset: CGFloat = 0
         var dragged = false
         if let drag, let (start, end) = target(of: drag, in: rows) {
+            let centres = self.centres(of: rows)
+            let step = heights(of: rows)[start] + Layout.rowSpacing
             if drag.rowId == row.id {
                 dragged = true
-                let lowest = -CGFloat(start) * Self.pitch
-                let highest = CGFloat(rows.count - 1 - start) * Self.pitch
+                let lowest = centres.first.map { $0 - centres[start] } ?? 0
+                let highest = centres.last.map { $0 - centres[start] } ?? 0
                 offset = min(max(drag.translation, lowest), highest)
             } else if start < end, index > start, index <= end {
-                offset = -Self.pitch
+                offset = -step
             } else if start > end, index >= end, index < start {
-                offset = Self.pitch
+                offset = step
             }
         }
         return RowDragState(
@@ -139,12 +249,13 @@ struct TrafficLightColumn: View {
         )
     }
 
-    private func flags(for row: ColumnRow) -> RowFlags {
+    private func flags(for row: ColumnRow, expanded: Bool) -> RowFlags {
         RowFlags(
             isHidden: options.hidden.contains(row.workspace.path),
             isMuted: mutedWorkspaces.contains(row.workspace.path),
             isCalm: calmWorkspaces.contains(row.workspace.path),
-            notificationsEnabled: notificationsEnabled
+            notificationsEnabled: notificationsEnabled,
+            isExpanded: expanded
         )
     }
 

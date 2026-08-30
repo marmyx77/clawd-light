@@ -90,6 +90,31 @@ enum StatusPalette {
 
     /// The vertical rule marking a pinned project.
     static let pinMarker = Color.primary.opacity(0.35)
+
+    /// Which agent a line belongs to, on the grip and nowhere else.
+    ///
+    /// The five status colours are spoken for, and a tint that could be mistaken
+    /// for a state would be worse than no tint. These two are chosen against
+    /// that: terracotta is Claude's own, kept at 80 percent because it is the one
+    /// that has to stay clear of `failed` red, and teal is Codex's.
+    ///
+    /// The cell they live in is the last one on the line, two hundred points from
+    /// the dot, and every line has one. That distance is what makes a second
+    /// colour affordable here and nowhere else on the row.
+    ///
+    /// One honest cost: teal is the tested tint nearest `ready` green, so a Codex
+    /// grip on a line that is genuinely green puts two greens on it. The distance
+    /// between the cells is the mitigation, and if a day of use says otherwise
+    /// this is the one line that has to change.
+    static func agentTint(for harness: Harness) -> Color {
+        switch harness {
+        case .claudeCode: return Color(red: 0.85, green: 0.47, blue: 0.34).opacity(0.80)
+        case .codex: return Color(red: 0.18, green: 0.83, blue: 0.75)
+        }
+    }
+
+    /// The grip on a project's own row, which belongs to no agent.
+    static let neutralGrip = Color.primary.opacity(0.46)
 }
 
 /// Interface measurements, gathered here so magic numbers don't scatter through
@@ -103,6 +128,9 @@ enum Layout {
     /// brightness across eleven points, which is exactly the kind of judgement
     /// a glance from across the desk cannot make.
     static let dotSize: CGFloat = 13
+
+    /// The dot on a conversation inside an opened block.
+    static let subDotSize: CGFloat = 9
     /// Thickness of the listening ring, drawn inside the dot. Enough to see from
     /// across a room, and it still leaves a core large enough to read the colour
     /// underneath — which is the whole point of a ring rather than a colour.
@@ -187,11 +215,48 @@ enum Layout {
     /// points taller for as long as the fault lasts.
     static let issueStripHeight: CGFloat = 17
 
-    /// Height needed for `count` rows, capped at `maxVisibleRows`, plus the footer
-    /// and, while there is one, the issue strip.
-    static func height(rowCount: Int, showsIssue: Bool = false) -> CGFloat {
-        let visible = min(max(rowCount, 1), AppConfig.maxVisibleRows)
-        let rows = CGFloat(visible) * rowHeight + CGFloat(max(visible - 1, 0)) * rowSpacing
-        return rows + panelPadding * 2 + footerHeight + (showsIssue ? issueStripHeight : 0)
+    /// A line inside an opened block: one conversation.
+    ///
+    /// Shorter than a row and not by much. It has to read as subordinate without
+    /// becoming a different kind of object, and the dot inside it is 9 points
+    /// against the row's 13, so two points of height is the whole difference the
+    /// eye needs.
+    static let subRowHeight: CGFloat = 22
+
+    /// The block's own inset: the fill and hairline that hold a project and its
+    /// conversations together.
+    static let blockInset: CGFloat = 3
+
+    /// The spine down the left of an opened block, and how far in it sits.
+    ///
+    /// Inside the row's own padding, so it costs the names nothing. A leading
+    /// gutter would have taken 13 points off **every** name in the column, on a
+    /// 240 point panel, for a minority of rows.
+    static let spineWidth: CGFloat = 1.5
+    static let spineInset: CGFloat = 3
+
+    /// How many conversations an opened block shows before a tail line.
+    ///
+    /// Twelve sub-rows is 264 points of panel for one project, past
+    /// `maxVisibleRows`, and a column that scrolls is a column where the row that
+    /// needs you can be off screen. Six is what the narrowest surface can hold,
+    /// and it is the same cap the summary uses, so the panel and the card cannot
+    /// say two different things about one project.
+    static let subRowCap = 6
+
+    /// Height needed for `rowCount` rows and `subRowCount` opened conversations,
+    /// capped at `maxVisibleRows` worth of lines, plus the footer and, while
+    /// there is one, the issue strip.
+    ///
+    /// Counted in **lines** rather than rows since a project can be opened: the
+    /// window has to grow by exactly what it drew, or the last conversation is
+    /// cut off by the footer.
+    static func height(rowCount: Int, subRowCount: Int = 0, showsIssue: Bool = false) -> CGFloat {
+        let rows = min(max(rowCount, 1), AppConfig.maxVisibleRows)
+        let room = max(AppConfig.maxVisibleRows - rows, 0)
+        let subs = min(subRowCount, room * 2)
+        let lines = CGFloat(rows) * rowHeight + CGFloat(subs) * subRowHeight
+        let gaps = CGFloat(max(rows + subs - 1, 0)) * rowSpacing
+        return lines + gaps + panelPadding * 2 + footerHeight + (showsIssue ? issueStripHeight : 0)
     }
 }

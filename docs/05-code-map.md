@@ -1,18 +1,18 @@
 # Code map
 
-~30,400 lines of Swift across five targets. For each file: what it contains, why
+~30,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/   8,468 lines · 67 files   pure logic, zero AppKit
-  LampBoardApp/    12,000 lines · 66 files   shell: AppKit, network, windows
+  LampBoardApp/    12,513 lines · 68 files   shell: AppKit, network, windows
   LampBoardTests/  7,657 lines · 41 files   597 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 767 lines. The limit the project sets itself is 800.
+No file exceeds 759 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -661,10 +661,12 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 768 | holds everything together; row and panel actions |
-| `TrafficLightRow.swift` | 337 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
+| `PanelController.swift` | 758 | holds everything together; row and panel actions |
+| `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
-| `TrafficLightColumn.swift` | 252 | the column, the drag in progress, the hidden summary, the filter note |
+| `TrafficLightColumn.swift` | 363 | the column, the drag in progress, the hidden summary, the filter note |
+| `SessionSubRow.swift` | 137 | one conversation inside an opened block, and the grip that names its agent |
+| `PanelNaming.swift` | 112 | opening a project, and the three levels of name |
 | `PanelRootView.swift` | 393 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
@@ -675,7 +677,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 184 | colors and measurements |
+| `StatusPalette.swift` | 262 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |

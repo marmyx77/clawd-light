@@ -10,9 +10,9 @@ import SwiftUI
 @MainActor
 final class PanelController {
 
-    private let store: StateStore
+    let store: StateStore
     private let installer: HookInstaller
-    private let preferences: Preferences
+    let preferences: Preferences
     private let panel: FloatingPanel
 
     private var compact: Bool
@@ -177,13 +177,14 @@ final class PanelController {
     /// The options the current content was built with.
     private var renderedOptions: ColumnOptions?
 
-    private func rebuildContent() {
+    func rebuildContent() {
         let root = PanelRootView(
             store: store,
             flags: panelFlags,
             options: columnOptions,
             mutedWorkspaces: preferences.mutedWorkspaces,
             calmWorkspaces: preferences.calmBlinkWorkspaces,
+            expandedRows: preferences.expandedRows,
             actions: makeActions(),
             rowActions: makeRowActions()
         )
@@ -211,19 +212,28 @@ final class PanelController {
 
     /// Recomputes the height keeping the top edge fixed: the panel grows downwards,
     /// so the corner the user put it in doesn't move.
-    private func resizeToFit(_ state: TrafficLightState) {
+    func resizeToFit(_ state: TrafficLightState) {
         let rendering = ColumnLayout.render(state, options: columnOptions)
         // The service rows — hidden summary, filter note — take up as much space
         // as the others and have to be counted, otherwise the last one ends up
         // clipped.
         let extras = (rendering.hidden != nil ? 1 : 0) + (rendering.filteredOut > 0 ? 1 : 0)
-        resize(rowCount: rendering.rows.count + extras)
+        // The conversations an opened project is showing are drawn, so they have
+        // to be measured: a window sized for the rows alone clips the last one
+        // behind the footer.
+        let opened = compact ? 0 : rendering.rows.reduce(0) { total, row in
+            guard row.count > 1, preferences.expandedRows.contains(row.id) else { return total }
+            return total + min(row.members.count, Layout.subRowCap)
+        }
+        resize(rowCount: rendering.rows.count + extras, subRowCount: opened)
     }
 
-    private func resize(rowCount: Int) {
+    private func resize(rowCount: Int, subRowCount: Int = 0) {
         let size = NSSize(
             width: Layout.width(compact: compact),
-            height: Layout.height(rowCount: rowCount, showsIssue: store.issue != nil)
+            height: Layout.height(
+                rowCount: rowCount, subRowCount: subRowCount, showsIssue: store.issue != nil
+            )
         )
         guard size != panel.frame.size else { return }
 
@@ -277,6 +287,10 @@ final class PanelController {
             newConversation: { [weak self] row in self?.newConversation(in: row) },
             openChat: { [weak self] row in self?.openChat(in: row) },
             rename: { [weak self] row in self?.rename(row) },
+            toggleExpansion: { [weak self] row in self?.toggleExpansion(row) },
+            openSession: { [weak self] member in self?.activate(session: member) },
+            renameSession: { [weak self] member in self?.rename(session: member) },
+            renameLane: { [weak self] member in self?.renameLane(of: member) },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) }
         )
     }
@@ -315,7 +329,7 @@ final class PanelController {
     /// - Parameter opensTab: `false` brings the window forward **without** opening
     ///   the session's tab. Needed by "new conversation", which would otherwise
     ///   open two: first the existing one and then the new one.
-    private func activate(_ row: ColumnRow, markSeen: Bool, opensTab: Bool = true) {
+    func activate(_ row: ColumnRow, markSeen: Bool, opensTab: Bool = true) {
         if markSeen {
             // Only the sessions that were in the most urgent state: you haven't
             // seen the others in the group, and clearing them would be a loss.
@@ -459,29 +473,6 @@ final class PanelController {
             )
             awaitPermission(for: error) { [weak self] in self?.activateTerminal(session) }
         }
-    }
-
-    /// "Rename…": the name the row shows, by folder, and nothing else changes.
-    ///
-    /// A blank answer puts the original back — the field is prefilled with the
-    /// current name, so clearing it is the gesture for "undo".
-    private func rename(_ row: ColumnRow) {
-        guard let answer = Alerts.ask(
-            title: "Rename “\(row.displayName)”",
-            message: "Only what the panel shows changes. The session, its window and its "
-                + "folder (\(row.workspace.path)) keep their names. Leave it empty to go back to the original.",
-            initialValue: row.alias ?? "",
-            placeholder: row.workspace.name,
-            confirmTitle: "Rename"
-        ) else { return }
-        // The row is the project, so this names the project. A conversation is
-        // named from the extended window, where the lines are conversations, and
-        // an agent's lane from the entry beside this one.
-        preferences.rowNames = RowNames.renaming(
-            row.workspace.path, to: answer, in: preferences.rowNames
-        )
-        store.republish()
-        rebuildContent()
     }
 
     /// Restores every cleared session in the row to "unread".
