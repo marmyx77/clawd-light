@@ -92,12 +92,47 @@ promise, and the card says so rather than leaving you to find out.
 | | Claude Code | Codex |
 |---|---|---|
 | Where its sessions live | `~/.claude` | `~/.codex` |
-| Surfaces it covers | CLI, VS Code extension, the copy inside the desktop app | CLI, VS Code extension, the copy inside the ChatGPT app |
 | Context ring | measured denominator, with a confidence | **window declared by the harness** |
 | Plan allowance | not on disk anywhere | in the card |
 | Amber says *what* is being asked | no, by our choice: see below | **yes**, `Bash: git push origin main` |
 | Red, when a turn fails | yes | **never**: Codex publishes no error event at all |
 | Blue, while background agents work | yes | yes |
+
+### Which surfaces, and how far
+
+A harness is not a surface. The same agent reaches this machine through several
+programs, and they do not all speak to us the same way, so the honest unit is the
+surface rather than the vendor. Measured on 30 August 2026, and a line moves only
+when a test of that surface moves it.
+
+| Surface | Discovered | Liveness | State | Focus | Tested |
+|---|---|---|---|---|---|
+| Claude Code, VS Code extension | yes | window lock | full | window | yes |
+| Claude Code, terminal | yes | session file and pid | full | terminal seat | yes |
+| Claude Code, over the tunnel | yes | probe on the far side | full | Remote-SSH window | yes |
+| Claude Code, desktop app | **no** | | | | no |
+| Codex, CLI | only when a Claude window already claims the folder | none of its own | hooks | may raise the wrong window | no |
+| Codex, VS Code extension | same limit | none of its own | hooks | may raise the wrong window | no |
+| Codex, ChatGPT app | **no** | | | | no |
+
+Three of those lines are worth the words.
+
+**Codex is admitted through a proof that belongs to Claude Code.** A local signal
+is placed by matching its folder against the window locks the Claude Code
+extension writes, or the session files it keeps. A machine with only Codex
+installed has neither, so the session stays invisible. This is the first thing
+being fixed.
+
+**Claude Code inside the desktop app is not a Claude Code we can see.** That app
+runs its sessions inside an isolated Linux VM with an address of its own. A hook
+fired in there would look for this panel on the VM's own loopback, and nothing we
+can install reaches inside. It is a declared limit rather than a missing feature.
+
+**Codex inside the ChatGPT app writes a full rollout and sends no hook.** The
+hooks are registered and trusted; the session runs, answers, and records every
+event in `~/.codex/sessions`; not one signal arrives. Any tool built on hooks
+alone is blind to it, which is why the work in progress reads the rollouts a live
+process holds open rather than waiting to be told.
 
 Two of those rows are worth the words.
 
@@ -519,15 +554,33 @@ open dist/LampBoard.app
 ```
 
 The icon is drawn by [`Scripts/make-icon.py`](Scripts/make-icon.py) and committed
-as `Resources/LampBoard.icns`, so the build needs no Python. Three pilot lamps in
-a row on a dark panel — the object the name comes from, and the product itself:
-one row of lights you read at a glance, never a control you operate. It is
-generated rather than drawn because the rule that keeps it readable at 16 px is
-arithmetic, and here it is an `assert` rather than a habit: the space between two
-lamps is never narrower than a bezel is thick, below which the two glows meet and
-three lit lamps read as one smear of colour. The sizes below 128 px are not the
-large one shrunk — they get bare discs, drawn larger, because a bezel one pixel
-wide turns the lamp the colour of the board and the highlight eats its centre.
+as `Resources/LampBoard.icns`, so the build needs no Python. It is the letter
+**L**, built from six lamps on a dark plate: four down the stem, three along the
+foot, the corner counted once. Four tall and three wide comes to exactly six
+lamps and the panel has exactly six states, so the letter carries the whole
+vocabulary rather than being only an initial — and the lamps sit along the path
+the eye takes anyway, urgency falling as it goes: the orange that is asking for
+you, the green that has an answer, the yellow that is working, the blue that is
+waiting on something it started, then the two reds. Those two are the same hue at
+two brightnesses, which is how the column itself separates a turn that failed
+from a session at rest.
+
+A letter needs every stroke lit, so this is the one drawing here that shows a
+pose the panel never strikes: with half the lamps dark the L breaks in two. The
+resting red is dimmed and never switched off for the same reason — a hole in the
+foot reads as a letter fading out.
+
+It is generated rather than drawn because the rules that keep it readable are
+arithmetic, and here they are three `assert`s rather than a habit: the gap
+between two lamps is never less than a fifth of a lamp, below which the stem
+closes into a bar and the L stops being a letter; four lamps tall always fit
+inside the tile with a margin, because a mark touching the rounded edge reads as
+a rendering fault; and a lamp is never less than two pixels across at 16 px. That
+last one bit immediately — the small sizes draw their lamps larger to survive,
+and the first lift tried was big enough to push the foot into the edge. The sizes
+below 128 px are not the large one shrunk: they get flat discs, drawn larger,
+because at that scale the gradient and the halo land between pixels and only mute
+the colour.
 
 On first launch the app offers to register the hooks in
 `~/.claude/settings.json`. You can also do it from a terminal:
@@ -700,7 +753,7 @@ In this order, because the second step needs the app to still be there:
 ```bash
 pkill -x lampboard
 /Applications/LampBoard.app/Contents/MacOS/lampboard uninstall-hooks
-rm -rf ~/.lampboard "~/Library/Application Support/lampboard"
+rm -rf ~/.lampboard "$HOME/Library/Application Support/lampboard"
 tccutil reset Accessibility com.lampboard.app
 tccutil reset AppleEvents com.lampboard.app
 ```
