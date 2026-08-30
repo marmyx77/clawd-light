@@ -39,6 +39,22 @@ struct TrafficLightColumn: View {
         var translation: CGFloat
     }
 
+    /// The drag inside an opened block: which project, which conversation, how
+    /// far. Separate from the column's own, because the two handles are on
+    /// different lines and must never be able to interfere.
+    @State private var memberDrag: MemberDrag?
+
+    private struct MemberDrag: Equatable {
+        let rowId: String
+        let memberId: String
+        var translation: CGFloat
+    }
+
+    /// Inside a block every line is the same height, so one pitch is enough here,
+    /// unlike the column outside where an opened project is as tall as what it
+    /// shows.
+    private static let memberPitch = Layout.subRowHeight + Layout.rowSpacing
+
     private var rendering: ColumnRendering {
         ColumnLayout.render(store.state, options: options)
     }
@@ -209,14 +225,17 @@ struct TrafficLightColumn: View {
         let rest = row.members.count - shown.count
 
         return VStack(spacing: Layout.rowSpacing) {
-            ForEach(shown) { member in
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, member in
                 SessionSubRow(
                     member: member,
                     now: now,
                     open: actions.openSession,
                     rename: actions.renameSession,
                     renameLane: actions.renameLane,
-                    move: { member, offset in actions.moveSession(row, member, offset) }
+                    move: { member, offset in actions.moveSession(row, member, offset) },
+                    drag: compact ? nil : memberDragState(
+                        for: member, at: index, in: shown, of: row
+                    )
                 )
             }
 
@@ -229,6 +248,61 @@ struct TrafficLightColumn: View {
                     .padding(.leading, 6)
             }
         }
+    }
+
+    /// What one conversation draws during a drag inside its block, and how it
+    /// reports one of its own.
+    ///
+    /// The same shape as the column's, one level down and simpler: the lines are
+    /// all the same height, so the gap travels by whole pitches. The drop is
+    /// applied as a **move by an offset**, which is what the menu entry already
+    /// did, so both gestures end in one place and neither can invent an order the
+    /// other cannot express.
+    private func memberDragState(
+        for member: RowSession, at index: Int, in shown: [RowSession], of row: ColumnRow
+    ) -> RowDragState {
+        var offset: CGFloat = 0
+        var dragged = false
+
+        if let memberDrag, memberDrag.rowId == row.id,
+           let start = shown.firstIndex(where: { $0.id == memberDrag.memberId }) {
+            let steps = Int((memberDrag.translation / Self.memberPitch).rounded())
+            let end = min(max(start + steps, 0), shown.count - 1)
+
+            if memberDrag.memberId == member.id {
+                dragged = true
+                let lowest = -CGFloat(start) * Self.memberPitch
+                let highest = CGFloat(shown.count - 1 - start) * Self.memberPitch
+                offset = min(max(memberDrag.translation, lowest), highest)
+            } else if start < end, index > start, index <= end {
+                offset = -Self.memberPitch
+            } else if start > end, index >= end, index < start {
+                offset = Self.memberPitch
+            }
+        }
+
+        return RowDragState(
+            offset: offset,
+            isDragged: dragged,
+            onChanged: { translation in
+                if memberDrag == nil {
+                    memberDrag = MemberDrag(
+                        rowId: row.id, memberId: member.id, translation: translation
+                    )
+                } else if memberDrag?.memberId == member.id {
+                    memberDrag?.translation = translation
+                }
+            },
+            onEnded: {
+                guard let current = memberDrag, current.memberId == member.id else { return }
+                memberDrag = nil
+                guard let start = shown.firstIndex(where: { $0.id == current.memberId }) else { return }
+                let steps = Int((current.translation / Self.memberPitch).rounded())
+                let end = min(max(start + steps, 0), shown.count - 1)
+                guard end != start else { return }
+                actions.moveSession(row, member, end - start)
+            }
+        )
     }
 
     /// How tall each row draws. The same function the panel sizes itself with, so

@@ -23,6 +23,9 @@ struct SessionSubRow: View {
     let rename: (RowSession) -> Void
     let renameLane: (RowSession) -> Void
     let move: (RowSession, Int) -> Void
+    /// What the block tells this line about the drag in progress. `nil` in the
+    /// narrow panel, where there is no handle and nothing to drag.
+    var drag: RowDragState? = nil
 
     @State private var hovering = false
 
@@ -77,14 +80,28 @@ struct SessionSubRow: View {
                 .layoutPriority(1)
                 .monospacedDigit()
 
-            AgentGrip(harness: session.harness)
+            // A grip that is drawn has to work. Leaving it inert while the menu
+            // did the moving was a promise the panel did not keep, and the model
+            // it broke is the obvious one: the handle on the heading moves the
+            // block, the handle on a line moves the line.
+            if let drag {
+                ZStack {
+                    DragHandle(onChanged: drag.onChanged, onEnded: drag.onEnded)
+                    AgentGrip(harness: session.harness).allowsHitTesting(false)
+                }
+                .frame(width: 14, height: Layout.subRowHeight)
+            } else {
+                AgentGrip(harness: session.harness)
+            }
         }
+        .offset(y: drag?.offset ?? 0)
+        .zIndex(drag?.isDragged == true ? 1 : 0)
         .padding(.horizontal, 6)
         .frame(height: Layout.subRowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.white.opacity(hovering ? 0.10 : 0))
+                .fill(Color.white.opacity(drag?.isDragged == true ? 0.16 : hovering ? 0.10 : 0))
         )
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
@@ -134,11 +151,24 @@ struct AgentGrip: View {
     var height: CGFloat = Layout.subRowHeight
 
     var body: some View {
-        VStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { _ in
-                HStack(spacing: 3) {
-                    dot
-                    dot
+        Group {
+            if harness == nil {
+                // Six dots in two columns for the project. Three horizontal lines
+                // are also what a menu looks like, and this one is only ever a
+                // handle; a grip of dots is the mark half the system uses for a
+                // sortable list and says nothing else.
+                VStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        HStack(spacing: 3) { dot; dot }
+                    }
+                }
+            } else {
+                // Three lines for a conversation, and the difference is the point:
+                // two handles sit a few points apart and each moves a different
+                // thing. Same shape twice would have been the panel asking you to
+                // remember which row you were on.
+                VStack(spacing: 2) {
+                    ForEach(0..<3, id: \.self) { _ in bar }
                 }
             }
         }
@@ -152,9 +182,13 @@ struct AgentGrip: View {
     /// heavier or lighter depending on where its row fell. Reported as "they look
     /// like different sizes", which is exactly what was happening.
     private var dot: some View {
-        Circle()
+        Circle().fill(tint).frame(width: 2, height: 2)
+    }
+
+    private var bar: some View {
+        RoundedRectangle(cornerRadius: 0.5, style: .continuous)
             .fill(tint)
-            .frame(width: 2, height: 2)
+            .frame(width: 9, height: 1)
     }
 
     private var tint: Color {
