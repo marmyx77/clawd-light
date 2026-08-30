@@ -24,49 +24,49 @@ enum RelativeTimeSuite {
 
     static let suite = TestSuite("Last interaction label", [
 
-        TestCase("Today shows the time") { t in
-            t.expectEqual(label(date(29, 14, 49), now: date(29, 16, 10)), "14:49")
+        TestCase("A live turn is counted in seconds, then in minutes") { t in
+            // Seconds survive below a minute because a turn that started ten
+            // seconds ago is the one case where the number moves while you are
+            // looking at it, and `0m` would hide exactly that.
+            t.expectEqual(label(date(29, 16, 9), now: date(29, 16, 10)), "1m")
+            t.expectEqual(ShortSpan.label(seconds: 30), "30s")
+            t.expectEqual(label(date(29, 14, 49), now: date(29, 16, 10)), "81m")
         },
 
-        TestCase("The time is two digits") { t in
-            t.expectEqual(label(date(29, 9, 5), now: date(29, 16, 0)), "09:05")
+        TestCase("Minutes run to 99 before the hour takes over") { t in
+            // `90m` and `1h` are the same fact, and the one with the digits says
+            // it more precisely. The unit steps up only when the number would
+            // reach three digits, which is the whole rule.
+            t.expectEqual(label(date(29, 14, 31), now: date(29, 16, 10)), "99m")
+            t.expectEqual(label(date(29, 14, 30), now: date(29, 16, 10)), "1.7h")
         },
 
-        TestCase("A few seconds ago still shows the time") { t in
-            t.expectEqual(label(date(29, 16, 10), now: date(29, 16, 10)), "16:10")
+        TestCase("The label never grows past two digits and a letter") { t in
+            // The ceiling is the design. This field shares a 240 point line with
+            // the name and has layout priority over it, so every character it
+            // takes comes off the name on that row alone.
+            let cases = [
+                (date(29, 16, 10), "0s"), (date(29, 15, 0), "70m"),
+                (date(28, 10, 0), "30h"), (date(25, 10, 0), "4d"),
+                (date(1, 10, 0), "4w"),
+            ]
+            for (moment, expected) in cases {
+                let text = label(moment, now: date(29, 16, 10))
+                t.expectEqual(text, expected, "\(expected)")
+                t.expect(text.count <= 4, "“\(text)” fits the field")
+            }
         },
 
-        // The row says "1d" and not "yesterday" for eighteen points of width: the
-        // word cost 49.83 points against 13.72, on the column's narrowest field,
-        // and the tooltip below says the whole thing in words.
-        TestCase("The previous day is a day, counted") { t in
-            t.expectEqual(label(date(28, 22, 30), now: date(29, 10, 0)), "1d")
+        TestCase("Hours give way to days at two days, days to weeks at a fortnight") { t in
+            t.expectEqual(label(date(27, 16, 11), now: date(29, 16, 10)), "47h")
+            t.expectEqual(label(date(27, 16, 10), now: date(29, 16, 10)), "2d")
+            t.expectEqual(label(date(16, 16, 10), now: date(29, 16, 10)), "13d")
+            t.expectEqual(label(date(15, 16, 10), now: date(29, 16, 10)), "2w")
         },
 
-        // The case an hours-based difference would get wrong: forty minutes pass
-        // between the two moments, but the day has changed.
-        TestCase("“Yesterday” follows the calendar, not the elapsed hours") { t in
-            t.expectEqual(label(date(28, 23, 50), now: date(29, 0, 30)), "1d")
-        },
-
-        // And the mirror image: almost 24 hours, but it's still today.
-        TestCase("Twenty-three hours within the same day stay a time") { t in
-            t.expectEqual(label(date(29, 0, 10), now: date(29, 23, 50)), "00:10")
-        },
-
-        TestCase("From two to six days it counts days") { t in
-            t.expectEqual(label(date(27, 12, 0), now: date(29, 10, 0)), "2d")
-            t.expectEqual(label(date(23, 12, 0), now: date(29, 10, 0)), "6d")
-        },
-
-        TestCase("From a week onwards it shows the date") { t in
-            t.expectEqual(label(date(22, 12, 0), now: date(29, 10, 0)), "22/07")
-            t.expectEqual(label(date(1, 8, 30), now: date(29, 10, 0)), "01/07")
-        },
-
-        // A clock skew must not produce "-1d ago".
-        TestCase("A moment in the future shows the time") { t in
-            t.expectEqual(label(date(29, 16, 11), now: date(29, 16, 10)), "16:11")
+        // A clock skew must not produce a negative span.
+        TestCase("A moment in the future reads as now") { t in
+            t.expectEqual(label(date(29, 16, 11), now: date(29, 16, 10)), "0s")
         },
 
         TestCase("Today's tooltip quotes the time") { t in
@@ -93,7 +93,7 @@ enum RelativeTimeSuite {
         // whole word on its own.
         TestCase("What the row abbreviates, the tooltip says in words") { t in
             let moment = date(28, 22, 30), now = date(29, 10, 0)
-            t.expectEqual(label(moment, now: now), "1d", "the row is two characters")
+            t.expectEqual(label(moment, now: now), "11h", "the row is three characters")
             t.expectEqual(
                 RelativeTime.detailedLabel(for: moment, now: now, calendar: calendar),
                 "last activity yesterday at 22:30",

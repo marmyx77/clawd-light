@@ -221,7 +221,7 @@ final class PanelController {
         // The conversations an opened project is showing are drawn, so they have
         // to be measured: a window sized for the rows alone clips the last one
         // behind the footer.
-        let opened = compact ? 0 : rendering.rows.reduce(0) { total, row in
+        let opened = rendering.rows.reduce(0) { total, row in
             guard row.count > 1, preferences.expandedRows.contains(row.id) else { return total }
             return total + min(row.members.count, Layout.subRowCap)
         }
@@ -229,12 +229,18 @@ final class PanelController {
     }
 
     private func resize(rowCount: Int, subRowCount: Int = 0) {
-        let size = NSSize(
+        let wanted = NSSize(
             width: Layout.width(compact: compact),
             height: Layout.height(
                 rowCount: rowCount, subRowCount: subRowCount, showsIssue: store.issue != nil
             )
         )
+        // Clamped to what the screen can show. Without this an opened project on a
+        // long column walks the panel off the bottom of the display, which is the
+        // same defect as hiding a row, only harder to notice.
+        let ceiling = (panel.screen ?? NSScreen.main)?.visibleFrame.height ?? wanted.height
+        let size = NSSize(width: wanted.width, height: min(wanted.height, ceiling))
+
         guard size != panel.frame.size else { return }
 
         let top = panel.frame.maxY

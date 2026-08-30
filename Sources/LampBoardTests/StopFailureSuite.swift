@@ -55,10 +55,14 @@ enum CompactDurationSuite {
             t.expectEqual(CompactDuration.label(seconds: 42 * 60), "42m")
         },
 
-        TestCase("From an hour up it shows hours and minutes") { t in
-            t.expectEqual(CompactDuration.label(seconds: 3600), "1h")
-            t.expectEqual(CompactDuration.label(seconds: 3600 + 25 * 60), "1h25")
-            t.expectEqual(CompactDuration.label(seconds: 7 * 3600), "7h")
+        TestCase("Past 99 minutes it is hours, and only hours") { t in
+            // `1h25` was four characters in a field that has to stay at three,
+            // and the composite form is also the only label here that cannot be
+            // read without parsing it. One number, one letter.
+            t.expectEqual(CompactDuration.label(seconds: 99 * 60), "99m")
+            t.expectEqual(CompactDuration.label(seconds: 100 * 60), "1.7h")
+            t.expectEqual(CompactDuration.label(seconds: 3600 + 25 * 60), "85m")
+            t.expectEqual(CompactDuration.label(seconds: 7 * 3600), "7.0h")
         },
 
         TestCase("A negative duration produces no garbage") { t in

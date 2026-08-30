@@ -27,6 +27,13 @@ struct SessionSubRow: View {
 
     private var session: SessionState { member.session }
 
+    /// The conversation as a row of its own, which is what the card knows how to
+    /// read. Without it the only second layer in an opened project would be the
+    /// parent's, and the parent's card can only speak for the project.
+    private var card: ColumnRow {
+        ColumnRow(id: member.id, workspace: session.workspace, sessions: [session], alias: member.name)
+    }
+
     var body: some View {
         HStack(spacing: 7) {
             HStack(spacing: Layout.dotToRing) {
@@ -81,13 +88,13 @@ struct SessionSubRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { open(member) }
+        .tooltip(RowSummary.of(card, now: now, revealable: false))
         .contextMenu {
             Button("Open this conversation") { open(member) }
             Divider()
             Button("Rename this conversation\u{2026}") { rename(member) }
             Button("Rename the \(session.harness.displayName) lane\u{2026}") { renameLane(member) }
         }
-        .help("\(member.name) · \(session.status.label)")
     }
 
     /// The same rule the row uses: how long while it is going, why it stopped
@@ -117,7 +124,10 @@ struct SessionSubRow: View {
 /// grip sits in the last cell, two hundred points away, and every line has one.
 /// A tint that is always there reads as a label, not as an alarm.
 struct AgentGrip: View {
-    let harness: Harness
+    /// `nil` is the project's own grip, which belongs to no agent.
+    let harness: Harness?
+    var bright: Bool = false
+    var height: CGFloat = Layout.subRowHeight
 
     var body: some View {
         VStack(spacing: 3) {
@@ -128,12 +138,23 @@ struct AgentGrip: View {
                 }
             }
         }
-        .frame(width: 14, height: Layout.subRowHeight)
+        .frame(width: 14, height: height)
     }
 
+    /// Whole points, and one implementation for both places. The first version
+    /// drew 2.5 point dots on the row and 2 point dots on the conversations,
+    /// which is two mistakes at once: the two grips did not match, and a 2.5
+    /// point circle lands on half a device pixel, so the same dot rendered
+    /// heavier or lighter depending on where its row fell. Reported as "they look
+    /// like different sizes", which is exactly what was happening.
     private var dot: some View {
         Circle()
-            .fill(StatusPalette.agentTint(for: harness))
+            .fill(tint)
             .frame(width: 2, height: 2)
+    }
+
+    private var tint: Color {
+        guard let harness else { return StatusPalette.neutralGrip.opacity(bright ? 1 : 0.72) }
+        return StatusPalette.agentTint(for: harness)
     }
 }

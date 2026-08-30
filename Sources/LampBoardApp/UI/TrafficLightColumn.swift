@@ -92,36 +92,103 @@ struct TrafficLightColumn: View {
     /// project with a single session has no block, so it cannot pretend to have
     /// one. A leading chevron would have charged **every** name in the column 13
     /// points on a 240 point panel, for a minority of rows.
+    @ViewBuilder
     private func block(_ row: ColumnRow, at index: Int, in rows: [ColumnRow]) -> some View {
-        let grouped = !compact && row.count > 1
-        let open = grouped && expandedRows.contains(row.id)
+        let holdsMany = row.count > 1
+        let open = holdsMany && expandedRows.contains(row.id)
 
-        return VStack(spacing: Layout.rowSpacing) {
+        if compact {
+            narrowBlock(row, at: index, in: rows, holdsMany: holdsMany, open: open)
+        } else {
+            VStack(spacing: Layout.rowSpacing) {
+                TrafficLightRow(
+                    row: row,
+                    compact: false,
+                    now: now,
+                    flags: flags(for: row, expanded: open),
+                    actions: actions,
+                    drag: dragState(for: row, at: index, in: rows)
+                )
+
+                if open { conversations(of: row) }
+            }
+            // Vertical only. Padding the sides too moved the dot of every row
+            // inside a block three points right, and the column of dots is the
+            // thing you scan: one crooked row in twelve is read as the panel being
+            // broken. The fill runs the full width instead, which loses nothing,
+            // because what makes the block a block is the fill and the spine and
+            // not an indent.
+            .padding(.vertical, holdsMany ? Layout.blockInset : 0)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.white.opacity(holdsMany ? 0.045 : 0))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(Color.white.opacity(holdsMany ? 0.065 : 0), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    /// The same block at 35 points, where there is no name, no count and no
+    /// chevron, and a project holding three conversations is otherwise the **same
+    /// pixel** as one holding a single session.
+    ///
+    /// One mark does both jobs. Whole, it runs down the side of the group and says
+    /// these belong together; folded to a stub, it says there is more than one in
+    /// here. The same sign twice rather than a second thing to learn.
+    ///
+    /// Drawn inside the panel's own padding, because 35 points leaves 19 of
+    /// content and the dot takes 13: there is no room beside it. Putting the line
+    /// in the margin is what keeps the dots in one column, and a grouped row
+    /// aligned with one that is not.
+    private func narrowBlock(
+        _ row: ColumnRow, at index: Int, in rows: [ColumnRow], holdsMany: Bool, open: Bool
+    ) -> some View {
+        VStack(spacing: Layout.rowSpacing) {
             TrafficLightRow(
                 row: row,
-                compact: compact,
+                compact: true,
                 now: now,
                 flags: flags(for: row, expanded: open),
                 actions: actions,
-                drag: compact ? nil : dragState(for: row, at: index, in: rows)
+                drag: nil
             )
 
-            if open { conversations(of: row) }
+            if open {
+                ForEach(row.members.prefix(Layout.subRowCap)) { member in
+                    TrafficLightDot(status: member.session.status, calm: true, listening: false)
+                        .scaleEffect(Layout.subDotSize / Layout.dotSize)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: Layout.subRowHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture { actions.openSession(member) }
+                        .tooltip(RowSummary.of(
+                            ColumnRow(
+                                id: member.id,
+                                workspace: row.workspace,
+                                sessions: [member.session],
+                                alias: member.name
+                            ),
+                            now: now,
+                            revealable: false
+                        ))
+                }
+            }
         }
-        // Vertical only. Padding the sides too moved the dot of every row inside a
-        // block three points right, and the column of dots is the thing you scan:
-        // one crooked row in twelve is read as the panel being broken. The fill
-        // runs the full width instead, which loses nothing, because what makes the
-        // block a block is the fill and the spine and not an indent.
-        .padding(.vertical, grouped ? Layout.blockInset : 0)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.white.opacity(grouped ? 0.045 : 0))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(Color.white.opacity(grouped ? 0.065 : 0), lineWidth: 1)
-                )
-        )
+        .overlay(alignment: .leading) {
+            if holdsMany {
+                // At the very left of the content, not in the panel's padding: the
+                // scrolling view clips to its own bounds, so a line drawn outside
+                // them is drawn and never seen. Thirty-five points leave nineteen
+                // of content and the dot takes thirteen, which leaves three on
+                // each side, and this needs two of them.
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Color.primary.opacity(0.38))
+                    .frame(width: 2, height: open ? nil : 11)
+                    .padding(.vertical, open ? 2 : 0)
+            }
+        }
     }
 
     /// The conversations under an opened project, and the spine that owns them.
@@ -166,15 +233,16 @@ struct TrafficLightColumn: View {
     /// How tall each row draws, including the conversations it is showing.
     private func heights(of rows: [ColumnRow]) -> [CGFloat] {
         rows.map { row in
-            let grouped = !compact && row.count > 1
+            let grouped = row.count > 1
+            let inset = (!compact && grouped) ? Layout.blockInset * 2 : 0
             guard grouped, expandedRows.contains(row.id) else {
-                return Layout.rowHeight + (grouped ? Layout.blockInset * 2 : 0)
+                return Layout.rowHeight + inset
             }
             let shown = min(row.members.count, Layout.subRowCap)
             let tail: CGFloat = row.members.count > shown ? 16 : 0
             return Layout.rowHeight
                 + CGFloat(shown) * (Layout.subRowHeight + Layout.rowSpacing)
-                + tail + Layout.blockInset * 2
+                + tail + inset
         }
     }
 

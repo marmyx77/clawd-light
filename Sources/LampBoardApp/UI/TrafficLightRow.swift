@@ -224,32 +224,16 @@ struct TrafficLightRow: View {
     private func handle(_ drag: RowDragState) -> some View {
         ZStack {
             DragHandle(onChanged: drag.onChanged, onEnded: drag.onEnded)
-            // Six dots in two columns rather than three lines. Three horizontal
-            // lines are also what a menu looks like, and this is only ever a
-            // handle. Brighter, too: the comment right above said a mark you have
-            // to hover to find is a mark nobody finds, and then drew it at 30
-            // percent.
-            //
-            // Neutral, because a project belongs to no single agent. The tinted
-            // grips are on the conversations inside it.
-            VStack(spacing: 3) {
-                ForEach(0..<3, id: \.self) { _ in
-                    HStack(spacing: 3) {
-                        gripDot(bright: hovering || drag.isDragged)
-                        gripDot(bright: hovering || drag.isDragged)
-                    }
-                }
-            }
-            .allowsHitTesting(false)
+            // Neutral, because a project belongs to no single agent. The
+            // tinted grips are on the conversations inside it, and both come from
+            // one view so they cannot drift apart again.
+            AgentGrip(harness: nil, bright: hovering || drag.isDragged, height: Layout.rowHeight)
+                .allowsHitTesting(false)
         }
         .frame(width: 14, height: Layout.rowHeight)
     }
 
-    private func gripDot(bright: Bool) -> some View {
-        Circle()
-            .fill(StatusPalette.neutralGrip.opacity(bright ? 1 : 0.72))
-            .frame(width: 2.5, height: 2.5)
-    }
+
 
     // MARK: - Interaction
 
@@ -356,8 +340,14 @@ struct TrafficLightRow: View {
     /// wins". They are different kinds of fact and now have different homes: how
     /// many conversations is about the row's **structure** and sits with the
     /// chevron, how many subagents is about the **current turn** and stays here.
+    /// Not on a block. The number there is a **sum** across the project, so three
+    /// subagents in one conversation and one each in three read the same, and it
+    /// was competing for the line with the count of conversations. Reported from
+    /// use: with both badges present the name disappeared. Inside an opened block
+    /// each line carries its own, where it is true.
     private var badge: String? {
-        row.activeSubagents > 0 ? "×\(row.activeSubagents)" : nil
+        guard row.count == 1, row.activeSubagents > 0 else { return nil }
+        return "×\(row.activeSubagents)"
     }
 
     /// The state the dot is covering, if any: the other half of "most urgent".

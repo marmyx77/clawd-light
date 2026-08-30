@@ -251,12 +251,17 @@ enum Layout {
     /// Counted in **lines** rather than rows since a project can be opened: the
     /// window has to grow by exactly what it drew, or the last conversation is
     /// cut off by the footer.
+    /// Every line drawn is measured, and **nothing caps the opened ones**.
+    ///
+    /// The first version borrowed room from the twelve-row cap, which meant a
+    /// project opened near the bottom of a full column pushed the rows under it
+    /// behind the footer: they were drawn and could not be seen. A panel that
+    /// hides a row is the one thing this app exists not to do, so the height
+    /// follows the content and the caller clamps it to the screen.
     static func height(rowCount: Int, subRowCount: Int = 0, showsIssue: Bool = false) -> CGFloat {
         let rows = min(max(rowCount, 1), AppConfig.maxVisibleRows)
-        let room = max(AppConfig.maxVisibleRows - rows, 0)
-        let subs = min(subRowCount, room * 2)
-        let lines = CGFloat(rows) * rowHeight + CGFloat(subs) * subRowHeight
-        let gaps = CGFloat(max(rows + subs - 1, 0)) * rowSpacing
+        let lines = CGFloat(rows) * rowHeight + CGFloat(subRowCount) * subRowHeight
+        let gaps = CGFloat(max(rows + subRowCount - 1, 0)) * rowSpacing
         return lines + gaps + panelPadding * 2 + footerHeight + (showsIssue ? issueStripHeight : 0)
     }
 }

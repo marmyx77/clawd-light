@@ -8,46 +8,26 @@ import Foundation
 /// minutes have passed. That is how the person looking at it reads it.
 public enum RelativeTime {
 
-    /// Label to show in the row.
+    /// Label to show in the row: one number and one letter, never wider.
     ///
-    /// - today → `14:49`
-    /// - yesterday → `1d`
-    /// - 2 to 6 days → `2d`
-    /// - a week or more → `22/07`
+    /// It used to show a clock time for anything from today, `14:49`, and a date
+    /// past a week, `22/07`. Both were replaced for the same reason, and it is not
+    /// only width: a clock time has to be **computed** against the current time
+    /// before it means anything, while `3h` is read. Reported from use, on a panel
+    /// where the name is the field that matters and was losing to a timestamp
+    /// nobody was subtracting in their head.
     ///
-    /// WHY IT IS THIS TERSE
-    /// This field and the project's name share one line of 240 points, and the
-    /// timestamp has `layoutPriority(1)`: every point it takes comes off the name,
-    /// on that row alone. Measured at 11 points: `yesterday` is 49.83 points and
-    /// `1d` is 13.72 — thirty-six points of name, on precisely the rows that had
-    /// nothing to say for a day and could least afford to be called `AWorld…nance`.
-    ///
-    /// The words moved rather than disappearing: `detailedLabel` says "last
-    /// activity yesterday at 22:30" in the tooltip. That trade only became
-    /// available today — until the panel drew its own tooltips (D32) the sentence
-    /// existed and was never once displayed, so the row was the only surface there
-    /// was and had to carry the whole word.
+    /// It also reasons in elapsed time now rather than in calendar days. Saying
+    /// "yesterday" for something forty minutes old was right for a person thinking
+    /// in days, and wrong in a column where the neighbouring row says `40m` for
+    /// the same distance. The calendar wording survives where there is room for
+    /// it: `spelled` and `detailedLabel` still say "yesterday, 22:30".
     public static func label(
         for date: Date,
         now: Date,
         calendar: Calendar = .current
     ) -> String {
-        // A timestamp in the future is almost always a clock skew of a few
-        // seconds: treating it as "now" is less confusing than "-1d ago".
-        guard date <= now else {
-            return time(date, calendar: calendar)
-        }
-
-        let days = calendarDaysBetween(date, and: now, calendar: calendar)
-
-        switch days {
-        case ..<1:
-            return time(date, calendar: calendar)
-        case 1...6:
-            return "\(days)d"
-        default:
-            return shortDate(date, calendar: calendar)
-        }
+        ShortSpan.label(since: date, now: now)
     }
 
     /// Extended description for the tooltip, where there is room to be precise.

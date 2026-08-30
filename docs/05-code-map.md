@@ -1,18 +1,18 @@
 # Code map
 
-~30,900 lines of Swift across five targets. For each file: what it contains, why
+~31,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,468 lines · 67 files   pure logic, zero AppKit
-  LampBoardApp/    12,513 lines · 68 files   shell: AppKit, network, windows
-  LampBoardTests/  7,657 lines · 41 files   597 cases, instantaneous
+  LampBoardCore/   8,492 lines · 68 files   pure logic, zero AppKit
+  LampBoardApp/    12,603 lines · 68 files   shell: AppKit, network, windows
+  LampBoardTests/  7,661 lines · 41 files   593 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 759 lines. The limit the project sets itself is 800.
+No file exceeds 764 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -117,6 +117,21 @@ somebody's home cannot make a terminal session claim to be the desktop app.
 
 `commandLine` deliberately promises nothing about focus: the same Homebrew binary
 runs in Terminal, Ghostty, tmux and VS Code's integrated terminal.
+
+### `ShortSpan.swift`
+How long ago, in one number and one letter, and **never more than two digits**.
+
+The ceiling is the design. This field shares a 240 point line with the name and
+holds layout priority over it, so every character it takes comes off the name on
+that row alone. It replaced a clock time, `14:49`, and a date, `22/07`, and width
+was only half the reason: a clock time has to be **computed** against the current
+time before it means anything, while `3h` is read.
+
+Minutes run to 99 before the hour takes over, because `90m` and `1h` are the same
+fact and the one with the digits says it more precisely. Between one hour and ten
+there is a decimal, `1.7h`, since `1h` covers everything from one hour to two, and
+on a session you are deciding whether to interrupt that is the difference that
+matters. At ten it stops: `10.5h` is three digits.
 
 ### `RowSession.swift`
 The conversations inside one row, told apart. A project can hold several sessions
@@ -664,8 +679,8 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PanelController.swift` | 758 | holds everything together; row and panel actions |
 | `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
-| `TrafficLightColumn.swift` | 363 | the column, the drag in progress, the hidden summary, the filter note |
-| `SessionSubRow.swift` | 137 | one conversation inside an opened block, and the grip that names its agent |
+| `TrafficLightColumn.swift` | 431 | the column, the drag in progress, the hidden summary, the filter note |
+| `SessionSubRow.swift` | 160 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 112 | opening a project, and the three levels of name |
 | `PanelRootView.swift` | 393 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
@@ -699,7 +714,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 597 cases
+## `LampBoardTests/` — 593 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
