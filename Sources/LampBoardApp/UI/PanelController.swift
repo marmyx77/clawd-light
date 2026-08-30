@@ -45,7 +45,7 @@ final class PanelController {
 
         let size = NSSize(
             width: Layout.width(compact: compact),
-            height: Layout.height(rowCount: 0)
+            height: Layout.height(ofBlocks: [], extras: 0, showsIssue: false)
         )
         let origin = Preferences.clamped(
             preferences.savedOrigin ?? Preferences.defaultOrigin(panelSize: size),
@@ -218,26 +218,31 @@ final class PanelController {
         // as the others and have to be counted, otherwise the last one ends up
         // clipped.
         let extras = (rendering.hidden != nil ? 1 : 0) + (rendering.filteredOut > 0 ? 1 : 0)
-        // The conversations an opened project is showing are drawn, so they have
-        // to be measured: a window sized for the rows alone clips the last one
-        // behind the footer.
-        let opened = rendering.rows.reduce(0) { total, row in
-            guard row.count > 1, preferences.expandedRows.contains(row.id) else { return total }
-            return total + min(row.members.count, Layout.subRowCap)
-        }
-        resize(rowCount: rendering.rows.count + extras, subRowCount: opened)
-    }
 
-    private func resize(rowCount: Int, subRowCount: Int = 0) {
+        // Measured with the same function the column lays out with. They used to
+        // be two formulas that agreed right up until a project was opened, and
+        // then disagreed by the padding a block adds: with two open, the window
+        // came up twelve points short and the last row was cut in half.
+        let blocks = rendering.rows.map { row -> CGFloat in
+            let open = row.count > 1 && preferences.expandedRows.contains(row.id)
+            let shown = open ? min(row.members.count, Layout.subRowCap) : 0
+            return Layout.blockHeight(
+                rowCount: row.count,
+                shownConversations: shown,
+                hasTail: open && row.members.count > shown,
+                compact: compact
+            )
+        }
+
         let wanted = NSSize(
             width: Layout.width(compact: compact),
-            height: Layout.height(
-                rowCount: rowCount, subRowCount: subRowCount, showsIssue: store.issue != nil
-            )
+            height: Layout.height(ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil)
         )
-        // Clamped to what the screen can show. Without this an opened project on a
-        // long column walks the panel off the bottom of the display, which is the
-        // same defect as hiding a row, only harder to notice.
+
+        // Clamped to what the display can show. Without this an opened project on
+        // a long column walks the panel off the bottom of the screen, which is the
+        // same defect as hiding a row, only harder to notice. Past that the column
+        // scrolls, which is the honest answer for somebody with twenty sessions.
         let ceiling = (panel.screen ?? NSScreen.main)?.visibleFrame.height ?? wanted.height
         let size = NSSize(width: wanted.width, height: min(wanted.height, ceiling))
 
@@ -247,6 +252,7 @@ final class PanelController {
         let origin = NSPoint(x: panel.frame.origin.x, y: top - size.height)
         panel.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
     }
+
 
     // MARK: - Row actions
 

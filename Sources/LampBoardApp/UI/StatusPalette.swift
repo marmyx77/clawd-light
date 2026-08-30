@@ -251,17 +251,31 @@ enum Layout {
     /// Counted in **lines** rather than rows since a project can be opened: the
     /// window has to grow by exactly what it drew, or the last conversation is
     /// cut off by the footer.
-    /// Every line drawn is measured, and **nothing caps the opened ones**.
-    ///
-    /// The first version borrowed room from the twelve-row cap, which meant a
-    /// project opened near the bottom of a full column pushed the rows under it
-    /// behind the footer: they were drawn and could not be seen. A panel that
-    /// hides a row is the one thing this app exists not to do, so the height
-    /// follows the content and the caller clamps it to the screen.
-    static func height(rowCount: Int, subRowCount: Int = 0, showsIssue: Bool = false) -> CGFloat {
-        let rows = min(max(rowCount, 1), AppConfig.maxVisibleRows)
-        let lines = CGFloat(rows) * rowHeight + CGFloat(subRowCount) * subRowHeight
-        let gaps = CGFloat(max(rows + subRowCount - 1, 0)) * rowSpacing
-        return lines + gaps + panelPadding * 2 + footerHeight + (showsIssue ? issueStripHeight : 0)
+    /// The panel's own measurements, handed to the arithmetic in Core.
+    static var sizes: PanelMetrics.Sizes {
+        PanelMetrics.Sizes(
+            row: rowHeight, subRow: subRowHeight, spacing: rowSpacing,
+            blockInset: blockInset, tail: tailHeight, padding: panelPadding,
+            footer: footerHeight, issueStrip: issueStripHeight
+        )
     }
+
+    /// The "and N more" line under a project showing more than it can.
+    static let tailHeight: CGFloat = 16
+
+    /// How tall one row draws. Delegates, because arithmetic that decides whether
+    /// a row can be seen is not drawing and belongs where a test can call it.
+    static func blockHeight(
+        rowCount: Int, shownConversations: Int, hasTail: Bool, compact: Bool
+    ) -> CGFloat {
+        PanelMetrics.blockHeight(
+            rowCount: rowCount, shownConversations: shownConversations,
+            hasTail: hasTail, compact: compact, sizes: sizes
+        )
+    }
+
+    static func height(ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool) -> CGFloat {
+        PanelMetrics.height(ofBlocks: blocks, extras: extras, showsIssue: showsIssue, sizes: sizes)
+    }
+
 }

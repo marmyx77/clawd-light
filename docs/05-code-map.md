@@ -1,18 +1,18 @@
 # Code map
 
-~31,000 lines of Swift across five targets. For each file: what it contains, why
+~31,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,492 lines · 68 files   pure logic, zero AppKit
-  LampBoardApp/    12,603 lines · 68 files   shell: AppKit, network, windows
-  LampBoardTests/  7,661 lines · 41 files   593 cases, instantaneous
+  LampBoardCore/   8,575 lines · 69 files   pure logic, zero AppKit
+  LampBoardApp/    12,625 lines · 68 files   shell: AppKit, network, windows
+  LampBoardTests/  7,754 lines · 42 files   602 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 764 lines. The limit the project sets itself is 800.
+No file exceeds 770 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -117,6 +117,19 @@ somebody's home cannot make a terminal session claim to be the desktop app.
 
 `commandLine` deliberately promises nothing about focus: the same Homebrew binary
 runs in Terminal, Ghostty, tmux and VS Code's integrated terminal.
+
+### `PanelMetrics.swift`
+How tall the panel has to be to draw what it is drawing, in Core **because it bit
+twice**. The window sized itself from one formula while the column laid the rows
+out with another, and the two agreed right up until a project could be opened:
+then they differed by the padding a block adds, the window came up short, and the
+last row was cut in half. The first repair corrected one of the two formulas,
+which is how the same defect arrived a second time.
+
+Nothing caps the column here. A ceiling of twelve rows was the first answer and it
+was wrong twice over: it hid the rows under an opened project, and there are
+people with twenty sessions open. The screen is what bounds it, and that is the
+caller's business.
 
 ### `ShortSpan.swift`
 How long ago, in one number and one letter, and **never more than two digits**.
@@ -714,7 +727,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 593 cases
+## `LampBoardTests/` — 602 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

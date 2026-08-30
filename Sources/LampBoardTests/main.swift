@@ -69,6 +69,7 @@ let suites: [TestSuite] = [
     RowNamesSuite.suite,
     RowSessionsSuite.suite,
     OpenFilesSuite.suite,
+    PanelMetricsSuite.suite,
     PanelIssueSuite.suite,
     PermissionWaitSuite.suite,
     TranscriptPathPolicySuite.suite,

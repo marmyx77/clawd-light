@@ -80,7 +80,10 @@ struct TrafficLightColumn: View {
                 }
             }
         }
-        .scrollDisabled(rendering.rows.count <= AppConfig.maxVisibleRows)
+        // Scrolls only when the content genuinely does not fit the screen. The
+        // old rule was a count of rows, which stopped being the same question the
+        // moment a project could open.
+        .scrollDisabled(false)
     }
 
     // MARK: - The block
@@ -216,8 +219,8 @@ struct TrafficLightColumn: View {
                     .font(.system(size: 10, weight: .regular, design: .rounded))
                     .foregroundStyle(StatusPalette.timeColor)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: Layout.tailHeight - Layout.rowSpacing)
                     .padding(.leading, 6)
-                    .padding(.bottom, 2)
             }
         }
         .overlay(alignment: .leading) {
@@ -230,19 +233,18 @@ struct TrafficLightColumn: View {
         }
     }
 
-    /// How tall each row draws, including the conversations it is showing.
+    /// How tall each row draws. The same function the panel sizes itself with, so
+    /// a drop cannot land somewhere the window does not think exists.
     private func heights(of rows: [ColumnRow]) -> [CGFloat] {
         rows.map { row in
-            let grouped = row.count > 1
-            let inset = (!compact && grouped) ? Layout.blockInset * 2 : 0
-            guard grouped, expandedRows.contains(row.id) else {
-                return Layout.rowHeight + inset
-            }
-            let shown = min(row.members.count, Layout.subRowCap)
-            let tail: CGFloat = row.members.count > shown ? 16 : 0
-            return Layout.rowHeight
-                + CGFloat(shown) * (Layout.subRowHeight + Layout.rowSpacing)
-                + tail + inset
+            let open = row.count > 1 && expandedRows.contains(row.id)
+            let shown = open ? min(row.members.count, Layout.subRowCap) : 0
+            return Layout.blockHeight(
+                rowCount: row.count,
+                shownConversations: shown,
+                hasTail: open && row.members.count > shown,
+                compact: compact
+            )
         }
     }
 
