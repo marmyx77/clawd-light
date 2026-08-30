@@ -167,7 +167,6 @@ final class PanelController {
     /// The layout options derived from the preferences.
     private var columnOptions: ColumnOptions {
         ColumnOptions(
-            grouped: preferences.groupsByWorkspace,
             onlyWaiting: preferences.showsOnlyWaiting,
             order: preferences.rowOrder,
             hidden: preferences.hiddenWorkspaces,
@@ -197,7 +196,6 @@ final class PanelController {
         PanelFlags(
             compact: compact,
             opensSessionTab: preferences.opensSessionTab,
-            grouped: preferences.groupsByWorkspace,
             onlyWaiting: preferences.showsOnlyWaiting,
             notificationsEnabled: preferences.notificationsEnabled,
             messageSendingEnabled: preferences.messageSendingEnabled,
@@ -476,10 +474,11 @@ final class PanelController {
             placeholder: row.workspace.name,
             confirmTitle: "Rename"
         ) else { return }
-        // The row you right-clicked, not the project: a folder can hold a Claude
-        // row and a Codex row, and naming one must not name the other.
+        // The row is the project, so this names the project. A conversation is
+        // named from the extended window, where the lines are conversations, and
+        // an agent's lane from the entry beside this one.
         preferences.rowNames = RowNames.renaming(
-            row.workspace.path, harness: row.primary.harness, to: answer, in: preferences.rowNames
+            row.workspace.path, to: answer, in: preferences.rowNames
         )
         store.republish()
         rebuildContent()
@@ -588,10 +587,6 @@ final class PanelController {
             toggleCompact: { [weak self] in self?.toggleCompact() },
             toggleSessionTab: { [weak self] in
                 self?.preferences.opensSessionTab.toggle()
-                self?.rebuildContent()
-            },
-            toggleGrouping: { [weak self] in
-                self?.preferences.groupsByWorkspace.toggle()
                 self?.rebuildContent()
             },
             toggleOnlyWaiting: { [weak self] in

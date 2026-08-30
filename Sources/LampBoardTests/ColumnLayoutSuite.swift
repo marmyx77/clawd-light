@@ -34,29 +34,71 @@ enum ColumnLayoutSuite {
 
         // MARK: Two agents in one project
 
-        TestCase("Two harnesses in one project are two rows, not one") { t in
-            // Reported from use, and it is the failure that grouping was never
-            // designed for. Claude working, Codex finished, same folder: the group
-            // showed the most urgent state, `ready` outranks `working`, and the row
-            // went green while Claude was still going. Green is not wrong about
-            // Codex; it is wrong about the project, and the half it hides is the
-            // half that says do not start anything here yet.
+        TestCase("Two agents in one project are one block, and it says so") { t in
+            // This reverses an earlier correction, and the reason it is safe now is
+            // the only thing that changed. Claude working, Codex finished: `ready`
+            // outranks `working`, so the dot goes green while Claude is still
+            // going. Green is not wrong about Codex; it is wrong about the project,
+            // and the half it hides is the half that says do not start anything
+            // here yet.
             //
-            // Grouping exists because 22 sessions across 12 windows made 22 targets
-            // for 12 raisable windows: the sessions were interchangeable
-            // destinations. Two different agents are not interchangeable, so the
-            // premise does not hold and neither should the grouping.
+            // The first fix was two rows, because one dot could not say two things.
+            // A row can say four now: the dominant state, the state that state is
+            // covering, how many are inside, and the whole list when it is opened.
+            // So the folder goes back to being one place, which is what it is.
             let rendering = ColumnLayout.render(
                 state([
                     session("codex-done", .ready, path: "/dev/project", harness: .codex),
                     session("claude-busy", .working, path: "/dev/project"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
-            t.expectEqual(rendering.rows.count, 2, "one row per agent")
-            let states = Set(rendering.rows.map(\.status))
-            t.expect(states.contains(.ready), "the finished one is still green")
-            t.expect(states.contains(.working), "and the busy one is still yellow")
+            t.expectEqual(rendering.rows.count, 1, "one project, one block")
+            let row = rendering.rows[0]
+            t.expectEqual(row.count, 2, "holding both agents")
+            t.expectEqual(row.status, .ready, "the most urgent still wins the dot")
+            t.expectEqual(row.recalledStatus, .working,
+                          "and the row still says something in here is working")
+        },
+
+        TestCase("Nothing is recalled when the block agrees with itself") { t in
+            let rendering = ColumnLayout.render(
+                state([
+                    session("a", .working, path: "/dev/project"),
+                    session("b", .working, path: "/dev/project"),
+                ]),
+                options: ColumnOptions()
+            )
+            t.expectEqual(rendering.rows.first?.recalledStatus, nil, "one state, nothing to recall")
+        },
+
+        TestCase("A session at rest is not worth recalling") { t in
+            // The recall exists to say "something in here still needs you". An idle
+            // session needs nobody, and a dot for it would spend the one mark the
+            // row has on the least useful thing it could carry.
+            let rendering = ColumnLayout.render(
+                state([
+                    session("busy", .working, path: "/dev/project"),
+                    session("done", .idle, path: "/dev/project"),
+                ]),
+                options: ColumnOptions()
+            )
+            t.expectEqual(rendering.rows.first?.recalledStatus, nil, "idle is not a recall")
+        },
+
+        TestCase("The recall names the most urgent of what the dot is covering") { t in
+            let rendering = ColumnLayout.render(
+                state([
+                    session("a", .working, path: "/dev/project"),
+                    session("b", .ready, path: "/dev/project"),
+                    session("c", .awaiting, path: "/dev/project"),
+                ]),
+                options: ColumnOptions()
+            )
+            let row = rendering.rows[0]
+            t.expectEqual(row.status, .awaiting, "amber leads")
+            t.expectEqual(row.recalledStatus, .ready,
+                          "and of the two it covers, the answer waiting beats the work in progress")
         },
 
         TestCase("Two sessions of the same agent still share one row") { t in
@@ -68,7 +110,7 @@ enum ColumnLayoutSuite {
                     session("a", .ready, path: "/dev/project"),
                     session("b", .working, path: "/dev/project"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectEqual(rendering.rows.count, 1, "one row")
             t.expectEqual(rendering.rows.first?.count, 2, "holding both")
@@ -83,26 +125,15 @@ enum ColumnLayoutSuite {
                     session("b", .idle, path: "/dev/alfa"),
                     session("c", .idle, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectEqual(result.rows.count, 2, "rows")
-            // By path and not by id: a row is now identified by its project **and** its
-            // agent, because two agents in one folder are two rows.
+            // By path and not by id: the row is the project, and every session in
+            // that folder lives inside it whichever agent it belongs to.
             t.expectEqual(
                 result.rows.first { $0.workspace.path == "/dev/alfa" }?.count, 2,
                 "sessions in alfa"
             )
-        },
-
-        TestCase("Without grouping every session gets its own row") { t in
-            let result = ColumnLayout.render(
-                state([
-                    session("a", .idle, path: "/dev/alfa"),
-                    session("b", .idle, path: "/dev/alfa"),
-                ]),
-                options: .plain
-            )
-            t.expectEqual(result.rows.count, 2, "rows")
         },
 
         TestCase("The group's dot shows the most urgent state") { t in
@@ -112,7 +143,7 @@ enum ColumnLayoutSuite {
                     session("b", .awaiting, path: "/dev/alfa"),
                     session("c", .working, path: "/dev/alfa"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectEqual(result.rows.first?.status, .awaiting, "row status")
         },
@@ -123,7 +154,7 @@ enum ColumnLayoutSuite {
                     session("idle-one", .idle, path: "/dev/alfa"),
                     session("blocked", .awaiting, path: "/dev/alfa"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectEqual(result.rows.first?.primary.id, "blocked", "session opened")
         },
@@ -134,7 +165,7 @@ enum ColumnLayoutSuite {
                     session("green", .ready, path: "/dev/alfa"),
                     session("blocked", .awaiting, path: "/dev/alfa"),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             // The green has to survive the click: were it to vanish, grouping
             // would lose an answer nobody ever read.
@@ -147,7 +178,7 @@ enum ColumnLayoutSuite {
                     session("a", .working, path: "/dev/alfa", subagents: 2),
                     session("b", .working, path: "/dev/alfa", subagents: 3),
                 ]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectEqual(result.rows.first?.activeSubagents, 5, "subagents")
         },
@@ -164,7 +195,7 @@ enum ColumnLayoutSuite {
                     session("c", .awaiting, path: "/dev/three"),
                     session("d", .working, path: "/dev/four"),
                 ]),
-                options: ColumnOptions(grouped: true, order: ["/dev/one", "/dev/two", "/dev/three", "/dev/four"])
+                options: ColumnOptions(order: ["/dev/one", "/dev/two", "/dev/three", "/dev/four"])
             )
             t.expectEqual(result.rows.map(\.workspace.name), ["one", "two", "three", "four"], "order")
             t.expectEqual(result.rows.map(\.status), [.idle, .ready, .awaiting, .working], "states, where they are")
@@ -176,7 +207,7 @@ enum ColumnLayoutSuite {
                     session("a", .idle, path: "/dev/alfa"),
                     session("b", .ready, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true, order: ["/dev/alfa", "/dev/beta"])
+                options: ColumnOptions(order: ["/dev/alfa", "/dev/beta"])
             )
             t.expectEqual(result.rows.map(\.workspace.name), ["alfa", "beta"], "order")
         },
@@ -189,23 +220,9 @@ enum ColumnLayoutSuite {
                     session("b", .idle, path: "/dev/alfa"),
                     session("c", .idle, path: "/dev/mike"),
                 ]),
-                options: ColumnOptions(grouped: true, order: ["/dev/zulu"])
+                options: ColumnOptions(order: ["/dev/zulu"])
             )
             t.expectEqual(result.rows.map(\.workspace.name), ["zulu", "alfa", "mike"], "order")
-        },
-
-        // A project's rows share its place; among them the most urgent comes
-        // first, so the click, the key and the group agree about which one they mean.
-        TestCase("With grouping off a project's rows sit together, most urgent first") { t in
-            let result = ColumnLayout.render(
-                state([
-                    session("a1", .idle, path: "/dev/one"),
-                    session("a2", .ready, path: "/dev/one"),
-                    session("b", .awaiting, path: "/dev/two"),
-                ]),
-                options: ColumnOptions(grouped: false, order: ["/dev/one", "/dev/two"])
-            )
-            t.expectEqual(result.rows.map(\.id), ["a2", "a1", "b"], "order")
         },
 
         // MARK: Filter
@@ -219,7 +236,7 @@ enum ColumnLayoutSuite {
                     session("d", .awaiting, path: "/dev/four"),
                     session("e", .failed, path: "/dev/five"),
                 ]),
-                options: ColumnOptions(grouped: true, onlyWaiting: true)
+                options: ColumnOptions(onlyWaiting: true)
             )
             t.expectEqual(result.rows.count, 3, "rows left")
             t.expect(
@@ -235,7 +252,7 @@ enum ColumnLayoutSuite {
                     session("b", .idle, path: "/dev/one"),
                     session("c", .ready, path: "/dev/two"),
                 ]),
-                options: ColumnOptions(grouped: true, onlyWaiting: true)
+                options: ColumnOptions(onlyWaiting: true)
             )
             // Keeping quiet about the number would suggest there's nothing else.
             t.expectEqual(result.filteredOut, 2, "sessions filtered out")
@@ -248,7 +265,7 @@ enum ColumnLayoutSuite {
                     session("b", .idle, path: "/dev/beta"),
                     session("c", .awaiting, path: "/dev/gamma"),
                 ]),
-                options: ColumnOptions(grouped: true, onlyWaiting: true, order: ["/dev/alfa", "/dev/beta", "/dev/gamma"])
+                options: ColumnOptions(onlyWaiting: true, order: ["/dev/alfa", "/dev/beta", "/dev/gamma"])
             )
             t.expectEqual(result.rows.map(\.workspace.name), ["alfa", "gamma"], "order")
         },
@@ -261,7 +278,7 @@ enum ColumnLayoutSuite {
                     session("a", .idle, path: "/dev/alfa"),
                     session("b", .idle, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true, hidden: ["/dev/beta"])
+                options: ColumnOptions(hidden: ["/dev/beta"])
             )
             t.expectEqual(result.rows.count, 1, "rows")
             t.expectEqual(result.rows.first?.workspace.name, "alfa", "row left")
@@ -274,7 +291,7 @@ enum ColumnLayoutSuite {
                     session("b", .idle, path: "/dev/beta"),
                     session("c", .idle, path: "/dev/gamma"),
                 ]),
-                options: ColumnOptions(grouped: true, hidden: ["/dev/beta", "/dev/gamma"])
+                options: ColumnOptions(hidden: ["/dev/beta", "/dev/gamma"])
             )
             t.expectEqual(result.hidden?.sessionCount, 3, "hidden sessions")
             t.expectEqual(result.hidden?.workspaceNames, ["beta", "gamma"], "projects")
@@ -286,7 +303,7 @@ enum ColumnLayoutSuite {
                     session("a", .idle, path: "/dev/beta"),
                     session("b", .awaiting, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true, hidden: ["/dev/beta"])
+                options: ColumnOptions(hidden: ["/dev/beta"])
             )
             // This is what stops "hide" from turning into "forget".
             t.expectEqual(result.hidden?.status, .awaiting, "summary status")
@@ -296,13 +313,13 @@ enum ColumnLayoutSuite {
         TestCase("With nothing hidden there is no summary row") { t in
             let result = ColumnLayout.render(
                 state([session("a", .idle, path: "/dev/alfa")]),
-                options: ColumnOptions(grouped: true)
+                options: ColumnOptions()
             )
             t.expectNil(result.hidden, "summary")
         },
 
         TestCase("An empty column produces nothing") { t in
-            let result = ColumnLayout.render(.empty, options: ColumnOptions(grouped: true))
+            let result = ColumnLayout.render(.empty, options: ColumnOptions())
             t.expectEqual(result.rows.count, 0, "rows")
             t.expectNil(result.hidden, "summary")
         },
@@ -314,8 +331,8 @@ enum ColumnLayoutSuite {
                 session("a", .idle, path: "/dev/alfa"),
                 session("b", .working, path: "/dev/alfa"),
             ])
-            let first = ColumnLayout.render(sessions, options: ColumnOptions(grouped: true))
-            let second = ColumnLayout.render(sessions, options: ColumnOptions(grouped: true))
+            let first = ColumnLayout.render(sessions, options: ColumnOptions())
+            let second = ColumnLayout.render(sessions, options: ColumnOptions())
             // An unstable id would rebuild the rows on every update, and the
             // panel would flicker.
             t.expectEqual(first.rows.map(\.id), second.rows.map(\.id), "identifiers")

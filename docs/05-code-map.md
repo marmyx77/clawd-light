@@ -1,18 +1,18 @@
 # Code map
 
-~29,800 lines of Swift across five targets. For each file: what it contains, why
+~30,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,256 lines · 65 files   pure logic, zero AppKit
-  LampBoardApp/    11,838 lines · 65 files   shell: AppKit, network, windows
-  LampBoardTests/  7,492 lines · 40 files   586 cases, instantaneous
+  LampBoardCore/   8,324 lines · 65 files   pure logic, zero AppKit
+  LampBoardApp/    11,863 lines · 65 files   shell: AppKit, network, windows
+  LampBoardTests/  7,541 lines · 40 files   590 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 772 lines. The limit the project sets itself is 800.
+No file exceeds 767 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -647,7 +647,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `StatusPalette.swift` | 184 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
-| `ChatShell.swift` | 185 | every conversation, the selection, and what each costs |
+| `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 197 | the two columns, and one row of the list |
 | `ChatSession.swift` | 245 | one conversation: transcript on disk + status from the hooks + the composer's state |
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
@@ -666,7 +666,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 586 cases
+## `LampBoardTests/` — 590 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

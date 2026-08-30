@@ -30,9 +30,9 @@ public struct RowSession: Sendable, Equatable, Identifiable {
     }
 }
 
-extension ColumnRow {
+extension RowSession {
 
-    /// The row's conversations, in the order they were opened.
+    /// The conversations of one row, in the order they were opened.
     ///
     /// Deliberately **not** the order of `sessions`, which is most urgent first.
     /// The column does not reorder itself (D23) and neither may the list inside a
@@ -43,26 +43,59 @@ extension ColumnRow {
     /// Ties are broken by id rather than left to the sort. Sessions adopted from
     /// the filesystem in one pass share a timestamp, and an unstable order would
     /// renumber the list between two otherwise identical renders.
-    public var members: [RowSession] {
-        sessions
-            .sorted {
-                $0.firstSeenAt == $1.firstSeenAt
-                    ? $0.id < $1.id
-                    : $0.firstSeenAt < $1.firstSeenAt
-            }
-            .enumerated()
-            .map { index, session in
-                let ordinal = index + 1
-                return RowSession(
-                    id: session.id,
+    static func list(of sessions: [SessionState], in names: [String: String]) -> [RowSession] {
+        let ordered = sessions.sorted {
+            $0.firstSeenAt == $1.firstSeenAt
+                ? $0.id < $1.id
+                : $0.firstSeenAt < $1.firstSeenAt
+        }
+
+        // How many in this row share each lane, so a lane's name is only numbered
+        // when the number is the thing telling two lines apart.
+        var laneSize: [Harness: Int] = [:]
+        for session in ordered { laneSize[session.harness, default: 0] += 1 }
+        var laneSeen: [Harness: Int] = [:]
+
+        return ordered.enumerated().map { index, session in
+            let ordinal = index + 1
+            laneSeen[session.harness, default: 0] += 1
+            return RowSession(
+                id: session.id,
+                ordinal: ordinal,
+                name: name(
+                    of: session,
                     ordinal: ordinal,
-                    // A title appears after the first exchange, not before. An
-                    // empty name in those first seconds would leave two fresh
-                    // conversations indistinguishable at exactly the moment
-                    // somebody opened the second one and is looking for it.
-                    name: session.title ?? "#\(ordinal)",
-                    session: session
-                )
-            }
+                    inLane: laneSeen[session.harness] ?? 1,
+                    laneSize: laneSize[session.harness] ?? 1,
+                    names: names
+                ),
+                session: session
+            )
+        }
+    }
+
+    /// What to call one conversation, in order of how much it was chosen.
+    ///
+    /// The name you gave **this** conversation first: it is the most specific
+    /// thing anybody said about it. Then its own title, which the transcript
+    /// writes after the first exchange. Then the name given to this agent's lane
+    /// in this project, numbered when the lane holds more than one, so naming the
+    /// Codex lane "migration" gives a fresh session "migration #2" rather than
+    /// "#2". Then its position, which is all there is in the first seconds of a
+    /// conversation that has not spoken yet.
+    private static func name(
+        of session: SessionState,
+        ordinal: Int,
+        inLane place: Int,
+        laneSize: Int,
+        names: [String: String]
+    ) -> String {
+        if let own = RowNames.name(ofSession: session.id, in: names) { return own }
+        if let title = session.title { return title }
+        if let lane = RowNames.name(of: session.workspace.path, harness: session.harness, in: names),
+           lane != RowNames.name(of: session.workspace.path, in: names) {
+            return laneSize > 1 ? "\(lane) #\(place)" : lane
+        }
+        return "#\(ordinal)"
     }
 }

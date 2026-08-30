@@ -13,6 +13,38 @@ enum RowNamesSuite {
 
     static let suite = TestSuite("Row names", [
 
+        TestCase("A conversation can carry a name that touches nothing else") { t in
+            // Reported from use: with one row per session, renaming one renamed
+            // every other session in the folder, because the key held the folder
+            // and the agent and never the conversation. A name given to one
+            // conversation has to stop there.
+            var names: [String: String] = ["/dev/project": "Virgilio"]
+            names = RowNames.renaming(session: "abc123", to: "The parser", in: names)
+
+            t.expectEqual(RowNames.name(ofSession: "abc123", in: names), "The parser", "the one named")
+            t.expectEqual(RowNames.name(ofSession: "def456", in: names), nil, "and only that one")
+            t.expectEqual(RowNames.name(of: "/dev/project", in: names), "Virgilio",
+                          "the project keeps its own")
+        },
+
+        TestCase("Clearing a conversation's name gives back what was underneath") { t in
+            var names: [String: String] = ["/dev/project": "Virgilio"]
+            names = RowNames.renaming(session: "abc123", to: "The parser", in: names)
+            names = RowNames.renaming(session: "abc123", to: "", in: names)
+            t.expectEqual(RowNames.name(ofSession: "abc123", in: names), nil, "gone")
+            t.expectEqual(RowNames.name(of: "/dev/project", in: names), "Virgilio", "and nothing else moved")
+        },
+
+        TestCase("A conversation's key cannot collide with a folder's") { t in
+            // Folders are absolute normalized paths, so they start with a slash.
+            // A session id is a UUID. Prefixing the session key keeps the two
+            // families apart whatever a filesystem allows in a name.
+            var names: [String: String] = [:]
+            names = RowNames.renaming(session: "/dev/project", to: "Not a folder", in: names)
+            t.expectEqual(RowNames.name(of: "/dev/project", in: names), nil,
+                          "a session id that looks like a path is still a session id")
+        },
+
         TestCase("Each agent in a folder can carry its own name") { t in
             // Two rows for one folder need two names, or they are told apart only
             // by one letter inside a sixteen-point ring. Renaming one leaves the

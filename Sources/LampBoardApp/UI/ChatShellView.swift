@@ -67,6 +67,9 @@ struct ChatShellView: View {
                             )
                             .contentShape(Rectangle())
                             .onTapGesture { shell.select(row: row) }
+                            .contextMenu {
+                                Button("Rename\u{2026}") { shell.rename(row: row) }
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -159,9 +162,6 @@ struct ChatSidebarRow: View {
 
                     Spacer(minLength: 0)
 
-                    if row.count > 1 {
-                        badge("\(row.count)")
-                    }
                     if row.activeSubagents > 0 {
                         badge("×\(row.activeSubagents)")
                     }

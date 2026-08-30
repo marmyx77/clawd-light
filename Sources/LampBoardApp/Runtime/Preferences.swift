@@ -14,7 +14,6 @@ struct Preferences {
         static let originY = "panel.origin.y"
         static let setupPromptShown = "setup.promptShown"
         static let opensSessionTab = "click.opensSessionTab"
-        static let groupByWorkspace = "panel.groupByWorkspace"
         static let onlyWaiting = "panel.onlyWaiting"
         /// Read only, as the seed of `rowOrder` for whoever upgrades from the
         /// pinned-rows version.
@@ -136,16 +135,6 @@ struct Preferences {
     }
 
     // MARK: - Scale
-
-    /// `true` when sessions from the same project share a single row.
-    ///
-    /// On by default, and the reason is in the real numbers: 22 distinct sessions
-    /// across 12 windows. One row per session draws 22 targets for 12 raisable
-    /// windows, and ten of those targets lead where another one already leads.
-    var groupsByWorkspace: Bool {
-        get { defaults.object(forKey: Key.groupByWorkspace) as? Bool ?? true }
-        nonmutating set { defaults.set(newValue, forKey: Key.groupByWorkspace) }
-    }
 
     /// `true` when the column shows only what is waiting for something.
     var showsOnlyWaiting: Bool {

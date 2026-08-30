@@ -21,6 +21,37 @@ public enum RowNames {
         "\(PathNormalizer.normalize(path))\u{1F}\(harness.rawValue)"
     }
 
+    /// Where one conversation's own name lives.
+    ///
+    /// Prefixed rather than bare, because a folder key is an absolute normalized
+    /// path and a session id is a UUID: without the prefix an id that happened to
+    /// look like a path would land in the folder's cell. The names stored here
+    /// outlive the sessions they name, which costs a few bytes each and can never
+    /// be shown again, since an id is never reused.
+    private static func sessionKey(_ id: String) -> String { "session\u{1F}\(id)" }
+
+    /// The name the user gave one conversation, if any.
+    public static func name(ofSession id: String, in names: [String: String]) -> String? {
+        names[sessionKey(id)]?.trimmed.nilIfEmpty
+    }
+
+    /// The table with **one conversation** renamed, and nothing else touched.
+    ///
+    /// This is the level that was missing, and its absence was a defect somebody
+    /// met: with one row per session, renaming one renamed every other session in
+    /// the folder, because the most specific key held the folder and the agent and
+    /// never the conversation.
+    public static func renaming(session id: String, to name: String?, in names: [String: String]) -> [String: String] {
+        var next = names
+        let key = sessionKey(id)
+        if let name = name?.trimmed.nilIfEmpty {
+            next[key] = String(name.prefix(maxLength))
+        } else {
+            next.removeValue(forKey: key)
+        }
+        return next
+    }
+
     /// The name to show a row: its own if it has one, otherwise the folder's.
     ///
     /// Two lookups and not one, because every name given before rows could split

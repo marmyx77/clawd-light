@@ -114,7 +114,7 @@ enum ColumnSlotSuite {
                     session("a", .idle, path: "/dev/alfa"),
                     session("b", .idle, path: "/dev/beta"),
                 ]),
-                options: ColumnOptions(grouped: true, order: ["/dev/beta", "/dev/alfa"])
+                options: ColumnOptions(order: ["/dev/beta", "/dev/alfa"])
             )
             t.expectEqual(result.row(inSlot: 1)?.workspace.name, "beta", "slot 1")
             t.expectEqual(result.row(inSlot: 2)?.workspace.name, "alfa", "slot 2")
@@ -125,7 +125,7 @@ enum ColumnSlotSuite {
             let paths = (1...10).map { "/dev/p\($0)" }
             let result = ColumnLayout.render(
                 state(paths.enumerated().map { session("s\($0)", .idle, path: $1) }),
-                options: ColumnOptions(grouped: true, order: paths)
+                options: ColumnOptions(order: paths)
             )
             t.expectEqual(result.rows.count, 10, "rows")
             t.expectEqual(result.rows[8].slot, 9, "ninth")
@@ -138,7 +138,7 @@ enum ColumnSlotSuite {
                     session("a", .idle, path: "/dev/one"),
                     session("c", .idle, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, order: ["/dev/one", "/dev/two", "/dev/three"])
+                options: ColumnOptions(order: ["/dev/one", "/dev/two", "/dev/three"])
             )
             t.expectNil(result.row(inSlot: 2), "slot 2 is empty")
             t.expectEqual(result.row(inSlot: 3)?.workspace.name, "three", "three keeps slot 3")
@@ -154,7 +154,7 @@ enum ColumnSlotSuite {
                     session("b", .idle, path: "/dev/two"),
                     session("c", .idle, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, order: order)
+                options: ColumnOptions(order: order)
             )
             let busy = ColumnLayout.render(
                 state([
@@ -162,7 +162,7 @@ enum ColumnSlotSuite {
                     session("b", .awaiting, path: "/dev/two"),
                     session("c", .ready, path: "/dev/three"),
                 ]),
-                options: ColumnOptions(grouped: true, order: order)
+                options: ColumnOptions(order: order)
             )
             t.expectEqual(calm.rows.map(\.workspace.name), busy.rows.map(\.workspace.name), "same rows, same places")
             t.expectEqual(busy.row(inSlot: 2)?.workspace.name, "two", "slot 2 after")

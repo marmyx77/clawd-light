@@ -12,7 +12,6 @@ struct PanelActions {
     let openLegend: () -> Void
     let toggleCompact: () -> Void
     let toggleSessionTab: () -> Void
-    let toggleGrouping: () -> Void
     let toggleOnlyWaiting: () -> Void
     let toggleNotifications: () -> Void
     let toggleMessageSending: () -> Void
@@ -37,7 +36,6 @@ struct PanelActions {
 struct PanelFlags {
     let compact: Bool
     let opensSessionTab: Bool
-    let grouped: Bool
     let onlyWaiting: Bool
     let notificationsEnabled: Bool
     let messageSendingEnabled: Bool
@@ -264,7 +262,6 @@ struct PanelRootView: View {
         Divider()
 
         Button(check(flags.compact, "Traffic lights only"), action: actions.toggleCompact)
-        Button(check(flags.grouped, "One row per project"), action: actions.toggleGrouping)
         Button(check(flags.onlyWaiting, "Show only what's waiting"), action: actions.toggleOnlyWaiting)
         Button(check(flags.showsTerminalSessions, "Show terminal sessions"), action: actions.toggleTerminalSessions)
         // The wording says what it costs, not just what it does: VS Code asks for

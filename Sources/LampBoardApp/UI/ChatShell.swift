@@ -138,7 +138,6 @@ final class ChatShell: ObservableObject {
         let rendering = ColumnLayout.render(
             store.state,
             options: ColumnOptions(
-                grouped: preferences.groupsByWorkspace,
                 // The extended view never hides and never filters: it is the place
                 // you go to look at everything, and a list that quietly omits a
                 // project is the opposite of that.
@@ -148,7 +147,27 @@ final class ChatShell: ObservableObject {
                 names: preferences.rowNames
             )
         )
-        rows = rendering.rows
+
+        // One line per **conversation**, not per project. The panel groups because
+        // a column of a dozen dots has to be readable at a glance; this window is
+        // where you come to look at one conversation, so a project that holds three
+        // is three lines here.
+        //
+        // Each takes the name resolved for it — its own if you gave it one, then
+        // its title, then its lane's, then its position. That last part is a
+        // correction: the name used to be looked up by folder and agent, so
+        // renaming one conversation renamed every other one in the same folder.
+        rows = rendering.rows.flatMap { row in
+            row.members.map { member in
+                ColumnRow(
+                    id: member.id,
+                    workspace: row.workspace,
+                    sessions: [member.session],
+                    slot: row.slot,
+                    alias: member.name
+                )
+            }
+        }
 
         // The selected conversation can end: a session closes, its process dies,
         // pruning removes it. Falling back to the top of the list beats showing an
@@ -156,6 +175,31 @@ final class ChatShell: ObservableObject {
         if let selectedId, sessionState(for: selectedId) == nil {
             select(rows.first?.primary.id)
         }
+    }
+
+    /// Renames **one conversation**, and nothing else.
+    ///
+    /// This window is the only place where every line is a single conversation,
+    /// so it is where a conversation gets a name of its own. The panel's own
+    /// Rename names the project, because there a row is a project.
+    ///
+    /// It exists because the opposite was reported from use: with one line per
+    /// session, renaming one renamed every other session in the same folder, since
+    /// the most specific key held the folder and the agent and never the
+    /// conversation.
+    @MainActor
+    func rename(row: ColumnRow) {
+        guard let answer = Alerts.ask(
+            title: "Rename \u{201C}\(row.displayName)\u{201D}",
+            message: "Only what this window and the panel show changes, and only for "
+                + "this conversation. Its project keeps its own name. Leave it empty "
+                + "to go back to the original.",
+            initialValue: RowNames.name(ofSession: row.id, in: preferences.rowNames) ?? "",
+            placeholder: row.primary.title ?? row.workspace.name,
+            confirmTitle: "Rename"
+        ) else { return }
+        preferences.rowNames = RowNames.renaming(session: row.id, to: answer, in: preferences.rowNames)
+        rebuildRows()
     }
 
     private func sessionState(for sessionId: String) -> SessionState? {

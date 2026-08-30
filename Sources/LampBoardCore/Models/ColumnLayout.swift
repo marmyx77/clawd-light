@@ -27,12 +27,43 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// The name the user gave this row, if any (`RowNames`).
     public let alias: String?
 
-    public init(id: String, workspace: Workspace, sessions: [SessionState], slot: Int? = nil, alias: String? = nil) {
+    /// The row's conversations, named and in the order they were opened.
+    ///
+    /// Computed once here rather than on every read, because resolving a name
+    /// walks three levels and the panel asks for this on every redraw.
+    public let members: [RowSession]
+
+    public init(
+        id: String,
+        workspace: Workspace,
+        sessions: [SessionState],
+        slot: Int? = nil,
+        alias: String? = nil,
+        names: [String: String] = [:]
+    ) {
         self.id = id
         self.workspace = workspace
         self.sessions = sessions
         self.slot = slot
         self.alias = alias?.trimmed.nilIfEmpty
+        self.members = RowSession.list(of: sessions, in: names)
+    }
+
+    /// The most urgent state the dot is **covering**, if any.
+    ///
+    /// The dot shows the most urgent state in the row, which is right and is also
+    /// how a project went green while one of its sessions was still working. This
+    /// is the other half: the most urgent of what the colour is hiding, so the row
+    /// can say "and something in here still needs you" without a second row.
+    ///
+    /// `idle` is never recalled. The recall exists to say something still needs
+    /// you, a session at rest needs nobody, and the row has one mark to spend.
+    public var recalledStatus: SessionStatus? {
+        let dominant = status
+        return sessions
+            .map(\.status)
+            .filter { $0 != dominant && $0 != .idle }
+            .min { $0.urgencyRank < $1.urgencyRank }
     }
 
     /// The state the dot shows: the most urgent one in the group.
@@ -119,7 +150,6 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
 
 /// How the rows should be laid out.
 public struct ColumnOptions: Sendable, Equatable {
-    public let grouped: Bool
     public let onlyWaiting: Bool
 
     /// Project paths in the user's order. Position `i` is drawn `i`-th and is
@@ -136,25 +166,21 @@ public struct ColumnOptions: Sendable, Equatable {
     public let names: [String: String]
 
     public init(
-        grouped: Bool = true,
         onlyWaiting: Bool = false,
         order: [String] = [],
         hidden: Set<String> = [],
         names: [String: String] = [:]
     ) {
-        self.grouped = grouped
         self.onlyWaiting = onlyWaiting
         self.order = order
         self.hidden = hidden
         self.names = names
     }
 
-    /// The name to show a row: its own if it has one, otherwise the folder's.
-    func name(for path: String, harness: Harness) -> String? {
-        RowNames.name(of: path, harness: harness, in: names)
+    /// The name to show a row. The row is a project, so this is the project's.
+    func name(for path: String) -> String? {
+        RowNames.name(of: path, in: names)
     }
-
-    public static let plain = ColumnOptions(grouped: false)
 
     /// The slot a project holds, 1-based, or `nil`.
     func slot(for path: String) -> Int? {
@@ -240,9 +266,7 @@ public enum ColumnLayout {
         let visible = all.filter { !options.hidden.contains($0.workspace.path) }
         let putAside = all.filter { options.hidden.contains($0.workspace.path) }
 
-        let grouped = options.grouped
-            ? group(visible, options: options)
-            : ungrouped(visible, options: options)
+        let grouped = group(visible, options: options)
 
         let filtered = options.onlyWaiting
             ? grouped.filter { $0.status.clearsOnFocus }
@@ -259,65 +283,45 @@ public enum ColumnLayout {
 
     // MARK: - Building the rows
 
-    /// Rows, one per project **and agent**.
+    /// Rows, one per project.
     ///
     /// Grouping exists because of a measurement: 22 sessions across 12 windows
     /// drew 22 targets for 12 raisable windows, and ten of those targets led where
     /// another already led. The sessions were **interchangeable destinations**,
     /// and one dot for them was the whole point.
     ///
-    /// Two different agents are not interchangeable, and the day a project could
-    /// hold both, the premise stopped holding. Reported from use within hours:
-    /// Claude working, Codex finished, same folder. The group shows its most
-    /// urgent state, `ready` outranks `working`, and the row went green while
-    /// Claude was still going. Green was not wrong about Codex. It was wrong about
-    /// the project, and the half it hid was the half that says *do not start
-    /// anything here yet*. The click was wrong too: it opens the most urgent
-    /// session, so it landed in the agent that had finished.
+    /// For one day this keyed on the project **and the agent**, because a folder
+    /// that held Claude and Codex at once went green while Claude was still
+    /// working: `ready` outranks `working`, and the half the dot hid was the half
+    /// that says *do not start anything here yet*. Two rows fixed it by giving
+    /// each agent a dot of its own.
     ///
-    /// The slot and the name stay keyed on the **path**, so two agents in one
-    /// project share them. That is not an oversight and it has a precedent right
-    /// below: `ungrouped` already lets several rows of one project share its slot,
-    /// because a slot addresses a project and a key must go to the same place
-    /// whether or not grouping is on. The two rows are told apart by the letter in
-    /// the ring, `O` against `G`, which costs no pixels because it was already there.
+    /// It keys on the project again, and what changed is not the danger but what a
+    /// row can say. One dot could not say two things. A row can now say four: the
+    /// dominant state, the state that state is **covering** (`recalledStatus`), how
+    /// many sessions are inside, and the whole list when it is opened. So a folder
+    /// goes back to being one place, which is what a folder is, and the agent moves
+    /// down to the line that actually belongs to it.
     private static func group(_ sessions: [SessionState], options: ColumnOptions) -> [ColumnRow] {
-        var byProjectAndAgent: [String: [SessionState]] = [:]
+        var byProject: [String: [SessionState]] = [:]
         var order: [String] = []
         for session in sessions {
-            let key = "\(session.workspace.path)\u{1F}\(session.harness.rawValue)"
-            if byProjectAndAgent[key] == nil { order.append(key) }
-            byProjectAndAgent[key, default: []].append(session)
+            let key = session.workspace.path
+            if byProject[key] == nil { order.append(key) }
+            byProject[key, default: []].append(session)
         }
 
         return order.compactMap { key in
-            guard let members = byProjectAndAgent[key] else { return nil }
-            let path = members[0].workspace.path
+            guard let members = byProject[key] else { return nil }
             // `state.ordered` arrives already sorted by urgency, and grouping
             // preserves that order: the first one is the most urgent.
             return ColumnRow(
                 id: key,
                 workspace: members[0].workspace,
                 sessions: members,
-                slot: options.slot(for: path),
-                alias: options.name(for: path, harness: members[0].harness)
-            )
-        }
-    }
-
-    /// Without grouping, several rows of the same project share its slot.
-    ///
-    /// That is deliberate: the slot addresses a **project**, and the key must
-    /// take you to the same place whether or not grouping is on. Addressing
-    /// resolves the ambiguity the same way a click does — the most urgent row wins.
-    private static func ungrouped(_ sessions: [SessionState], options: ColumnOptions) -> [ColumnRow] {
-        sessions.map { session in
-            ColumnRow(
-                id: session.id,
-                workspace: session.workspace,
-                sessions: [session],
-                slot: options.slot(for: session.workspace.path),
-                alias: options.name(for: session.workspace.path, harness: session.harness)
+                slot: options.slot(for: key),
+                alias: options.name(for: key),
+                names: options.names
             )
         }
     }
@@ -365,7 +369,7 @@ public enum ColumnLayout {
             .min { $0.urgencyRank < $1.urgencyRank } ?? .idle
 
         let names = Set(sessions.map {
-            options.name(for: $0.workspace.path, harness: $0.harness) ?? $0.displayName
+            options.name(for: $0.workspace.path) ?? $0.displayName
         }).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }
