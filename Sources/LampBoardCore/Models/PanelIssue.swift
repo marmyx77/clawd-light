@@ -74,7 +74,14 @@ public enum PanelIssue: Equatable, Sendable {
                 Without it a click still activates the editor but cannot choose \
                 which window, so you land wherever you were last.
 
-                In System Settings, turn on the switch next to LampBoard.
+                What to do:
+
+                1. Press “Open System Settings” below. macOS may ask right there, \
+                and if it does you can say yes and you are finished.
+                2. Otherwise System Settings opens on the exact page: \
+                Privacy & Security, then Accessibility.
+                3. Find LampBoard in that list and turn its switch on.
+                4. Come back and click a traffic light.
                 """
         case .automationMissing(let app):
             return """
@@ -85,7 +92,13 @@ public enum PanelIssue: Equatable, Sendable {
                 Without it a click still activates the application but cannot pick \
                 the right window or tab.
 
-                In System Settings, enable “\(app)” under LampBoard.
+                What to do:
+
+                1. Press “Open System Settings” below. It opens the exact page: \
+                Privacy & Security, then Automation.
+                2. Find LampBoard in that list and open it.
+                3. Turn on the switch beside “\(app)”.
+                4. Come back and click a traffic light.
                 """
         }
     }
@@ -108,16 +121,24 @@ public enum PanelIssue: Equatable, Sendable {
     ///
     /// Only shown when it applies, which is why it is not part of `explanation`.
     public static let staleEntryCure = """
-        Already in the list with the switch on? Then macOS is remembering an \
-        older copy. Removing it with “−” may not be enough, because there can be \
-        several hidden records. This clears them all:
+        If LampBoard is already in that list with its switch on:
+
+        macOS is remembering an older copy of the app, and switching it off \
+        and on will not help. Removing the row with the “−” button usually is not \
+        enough either, because several hidden records can share one name.
+
+        Clearing them takes three lines in Terminal, which is an app that comes \
+        with your Mac. Open Finder, go to Applications and then Utilities, and \
+        open Terminal. Paste these three lines and press Return:
 
             tccutil reset Accessibility com.lampboard.app
             tccutil reset AppleEvents com.lampboard.app
             pkill -x lampboard && open -a LampBoard
 
-        The relaunch matters: macOS keeps a running process's accessibility \
-        session open until it exits. Then click a traffic light again and \
-        answer the request.
+        The third line quits LampBoard and opens it again, and that part matters: \
+        macOS keeps a running app's permission alive until it quits, so without \
+        it LampBoard would go on using what you have just taken away.
+
+        Then click a traffic light and answer the request macOS shows.
         """
 }

@@ -18,12 +18,19 @@ enum PermissionRequest {
     static func offer(_ issue: PanelIssue) -> Bool {
         var message = issue.explanation + "\n\n" + issue.reassurance
 
-        // Only for Accessibility: it is the one macOS keys on the signature in a
-        // way that leaves records behind, and the one where the list can show a
-        // switch that is on while the running app holds nothing.
-        if case .accessibilityMissing = issue {
+        // The Terminal recipe is for one situation only: somebody who has already
+        // been here, turned the switch on, and found it made no difference. Shown
+        // to everybody it is three lines of shell in a dialog whose first reader
+        // has done nothing wrong yet, and it turns a four-step instruction into a
+        // wall nobody finishes.
+        //
+        // So it appears from the second time onward. Anybody seeing this window
+        // twice for the same permission has followed the steps and is still stuck,
+        // which is exactly the case the recipe describes.
+        if case .accessibilityMissing = issue, hasOfferedBefore(issue) {
             message += "\n\n" + PanelIssue.staleEntryCure
         }
+        remember(issue)
 
         guard Alerts.confirm(
             title: issue.summary,
@@ -40,5 +47,27 @@ enum PermissionRequest {
 
         if let url = issue.settingsURL { NSWorkspace.shared.open(url) }
         return true
+    }
+
+    /// Whether this exact permission has been explained before.
+    ///
+    /// Across launches, not only within one: the person who turns a switch on and
+    /// finds nothing changed usually restarts the app before coming back, and a
+    /// counter that forgot at quit would show them the short version forever.
+    private static func hasOfferedBefore(_ issue: PanelIssue) -> Bool {
+        UserDefaults.standard.bool(forKey: key(for: issue))
+    }
+
+    private static func remember(_ issue: PanelIssue) {
+        UserDefaults.standard.set(true, forKey: key(for: issue))
+    }
+
+    /// One key per kind, and Automation gets one per target application: being
+    /// stuck on VS Code says nothing about Ghostty.
+    private static func key(for issue: PanelIssue) -> String {
+        switch issue {
+        case .accessibilityMissing: return "permission.offered.accessibility"
+        case .automationMissing(let app): return "permission.offered.automation.\(app)"
+        }
     }
 }

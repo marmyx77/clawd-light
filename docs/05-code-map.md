@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,076 lines · 64 files   pure logic, zero AppKit
-  LampBoardApp/    11,770 lines · 65 files   shell: AppKit, network, windows
-  LampBoardTests/  7,221 lines · 39 files   570 cases, instantaneous
+  LampBoardCore/   8,097 lines · 64 files   pure logic, zero AppKit
+  LampBoardApp/    11,799 lines · 65 files   shell: AppKit, network, windows
+  LampBoardTests/  7,246 lines · 39 files   571 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -632,7 +632,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
-| `PermissionRequest.swift` | 45 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
+| `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 184 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
@@ -655,7 +655,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 570 cases
+## `LampBoardTests/` — 571 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

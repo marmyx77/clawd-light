@@ -65,8 +65,33 @@ enum PanelIssueSuite {
                          "the accessibility record")
             t.expect(cure.contains("tccutil reset AppleEvents com.lampboard.app"),
                          "and the automation one, which is a separate database")
-            t.expect(cure.lowercased().contains("may not be enough"),
+            t.expect(cure.lowercased().contains("not enough"),
                          "and it warns that “−” alone can leave records behind")
+
+            // Three lines of shell in a dialog, with nothing saying they are shell,
+            // is not an instruction: it is a puzzle handed to somebody whose app is
+            // already not working. The text has to name the application and say
+            // where it lives, because the person who needs this recipe is by
+            // definition the one for whom nothing has gone to plan.
+            t.expect(cure.contains("Terminal"), "it names the application")
+            t.expect(cure.contains("Utilities"), "and says where to find it")
+            t.expect(cure.lowercased().contains("press return"),
+                         "and what to do once the lines are pasted")
+        },
+
+        TestCase("The explanation is a procedure, not a paragraph") { t in
+            // The first version said “In System Settings, turn on the switch next
+            // to LampBoard” and stopped there, which leaves the reader to find a
+            // pane out of a few dozen. The button below the text opens the exact
+            // page, so the text says so and numbers the steps around it.
+            for issue in [PanelIssue.accessibilityMissing, .automationMissing(app: "Ghostty")] {
+                let text = issue.explanation
+                t.expect(text.contains("Privacy & Security"), "it names the pane")
+                t.expect(text.contains("Open System Settings"),
+                             "and the button that goes straight there")
+                t.expect(text.contains("1.") && text.contains("2."),
+                             "and it is numbered, so it can be followed")
+            }
         },
 
         TestCase("Equality distinguishes the two, and the application within one") { t in
