@@ -4,6 +4,14 @@ import LampBoardCore
 // Entry point. The configuration commands run without an interface and exit;
 // only `run` starts the AppKit event loop.
 
+// Before anything reads a preference or a support file, and before the command
+// runs: renaming the bundle hid everything the user had chosen under the old
+// identifier, and a getter that imports on first read has already written its
+// empty default by the time anybody notices. `status` reads preferences, so this
+// has to sit above the command too.
+Preferences.migrateFromPreviousName()
+SupportDirectoryMigration.run()
+
 let command = CommandLineInterface.parse(CommandLine.arguments)
 
 if let exitCode = CommandLineInterface.execute(command) {

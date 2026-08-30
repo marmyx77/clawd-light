@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/   8,066 lines · 64 files   pure logic, zero AppKit
-  LampBoardApp/    11,632 lines · 64 files   shell: AppKit, network, windows
+  LampBoardApp/    11,746 lines · 65 files   shell: AppKit, network, windows
   LampBoardTests/  7,221 lines · 39 files   570 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -525,7 +525,8 @@ there, the hooks are registered — and it names the link that broke.
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 587 | `@MainActor`, `@Published`, periodic realignment |
-| `Preferences.swift` | 294 | `UserDefaults`, separate domain under `LAMPBOARD_HOME` |
+| `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |

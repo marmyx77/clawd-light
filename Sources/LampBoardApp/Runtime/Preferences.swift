@@ -50,6 +50,52 @@ struct Preferences {
         return UserDefaults(suiteName: suite) ?? .standard
     }()
 
+    /// The preference domain this app had before it was renamed.
+    ///
+    /// `UserDefaults.standard` is keyed on the bundle identifier, so renaming the
+    /// bundle does not move preferences: it hides them. Everything the user chose
+    /// is still on disk under the old name and simply never read again.
+    private static let legacyDomain = "com.clawdlight.app"
+
+    /// Marks that the one-time import has happened, so it never runs twice.
+    private static let migrationKey = "migrated.from.clawdlight"
+
+    /// Brings across everything the previous name held, once.
+    ///
+    /// This is not housekeeping. What lives here is the part of the app that is
+    /// **the user's**: the names they gave the rows, the order they dragged them
+    /// into, where on the screen they put the panel, whether notifications are
+    /// on. A rename that silently discarded that would be indistinguishable, from
+    /// where they sit, from the app forgetting who they are — and the row names
+    /// in particular took real thought to write and are nowhere else on disk.
+    ///
+    /// Everything is copied, not a chosen subset. The domain holds window frames
+    /// and other keys AppKit writes without asking anybody, and a migration that
+    /// listed what to carry would drop each new key added after it was written,
+    /// silently, in exactly the way nobody notices for a year.
+    ///
+    /// It runs before anything reads a preference, so the first read already sees
+    /// the imported value. That ordering is the whole of the correctness here: a
+    /// getter that imports on first read — `remoteHosts` has one — will otherwise
+    /// have already written its empty default and closed the door.
+    static func migrateFromPreviousName(into defaults: UserDefaults = Preferences.sharedDefaults) {
+        guard !AppConfig.isUsingHomeOverride else { return }
+        guard !defaults.bool(forKey: migrationKey) else { return }
+        defer { defaults.set(true, forKey: migrationKey) }
+
+        guard let legacy = UserDefaults(suiteName: legacyDomain),
+              let values = legacy.persistentDomain(forName: legacyDomain),
+              !values.isEmpty
+        else { return }
+
+        var imported = 0
+        for (key, value) in values where defaults.object(forKey: key) == nil {
+            defaults.set(value, forKey: key)
+            imported += 1
+        }
+        Diagnostics.log("preferences: imported \(imported) keys from \(legacyDomain)")
+    }
+
     var isCompact: Bool {
         get { defaults.bool(forKey: Key.compact) }
         nonmutating set { defaults.set(newValue, forKey: Key.compact) }
