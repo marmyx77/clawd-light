@@ -111,28 +111,35 @@ when a test of that surface moves it.
 | Claude Code, terminal | yes | session file and pid | full | terminal seat | yes |
 | Claude Code, over the tunnel | yes | probe on the far side | full | Remote-SSH window | yes |
 | Claude Code, desktop app | **no** | | | | no |
-| Codex, CLI | only when a Claude window already claims the folder | none of its own | hooks | may raise the wrong window | no |
-| Codex, VS Code extension | same limit | none of its own | hooks | may raise the wrong window | no |
-| Codex, ChatGPT app | **no** | | | | no |
+| Codex, CLI | open rollout | open descriptor | hooks, never red | **declared unavailable** | yes |
+| Codex, VS Code extension | open rollout | open descriptor | hooks, never red | window | yes |
+| Codex, ChatGPT app | open rollout | open descriptor | **presence only** | raises the app | yes |
 
-Three of those lines are worth the words.
+Four of those lines are worth the words.
 
-**Codex is admitted through a proof that belongs to Claude Code.** A local signal
-is placed by matching its folder against the window locks the Claude Code
-extension writes, or the session files it keeps. A machine with only Codex
-installed has neither, so the session stays invisible. This is the first thing
-being fixed.
+**A Codex session is found, not announced.** Codex inside the ChatGPT app
+registers our hooks, marks them trusted, runs a whole session and sends nothing at
+all: measured here, with eight events configured and not one line in the log. So
+the evidence runs the other way. A live `codex` process holds its rollout open;
+that file says which session and which folder; the binary behind the pid says which
+surface. Nothing is sent to us and nothing unauthenticated is believed, which is
+the property the old admission gate had and the reason it could not simply be
+widened.
+
+**An open rollout is a conversation loaded, not a model working.** The editor
+extension was seen holding one open whose last record was a year old. A session
+found this way and never heard from carries presence and focus and no colour it
+cannot prove; the states come from hooks, where hooks arrive.
 
 **Claude Code inside the desktop app is not a Claude Code we can see.** That app
 runs its sessions inside an isolated Linux VM with an address of its own. A hook
 fired in there would look for this panel on the VM's own loopback, and nothing we
 can install reaches inside. It is a declared limit rather than a missing feature.
 
-**Codex inside the ChatGPT app writes a full rollout and sends no hook.** The
-hooks are registered and trusted; the session runs, answers, and records every
-event in `~/.codex/sessions`; not one signal arrives. Any tool built on hooks
-alone is blind to it, which is why the work in progress reads the rollouts a live
-process holds open rather than waiting to be told.
+**A terminal Codex is deliberately not raised.** The same binary runs in Terminal,
+Ghostty, tmux and VS Code's own terminal, so the executable proves which program
+it is and not where it is being typed. The row says so instead of opening the
+folder's editor window, which would be the convincing wrong answer.
 
 Two of those rows are worth the words.
 

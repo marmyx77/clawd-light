@@ -389,6 +389,38 @@ Both are additive with defaults.
 Recommended order: **Gate 0, then B0, then A2 and A3 while B1 is built**, because
 B0 can invalidate track B entirely and must not be discovered late.
 
+## 5b. Where this stands
+
+Everything in tracks A and B has landed except the two things named in section 7
+as deliberately out of scope. What follows is what was **checked**, not what was
+attempted.
+
+| Step | State | Proved by |
+|---|---|---|
+| Gate 0, the README | done | a per-surface matrix; a line moves only when a test does |
+| A1, the icon | done | three asserts, drawn at 16, 32 and 512 |
+| A2, one block per project | done | the folder is one place; the recall dot carries the half the colour hides |
+| A2b, three levels of name | done | project, agent lane, conversation; the last one fixed a reported defect |
+| A3, the block drawn | done | looked at on screen, which is how both of its defects were found |
+| A4, click and what it clears | done | a sub-row clears only itself |
+| A5, the grip and the agent | done | one view, whole points, terracotta and teal |
+| A6, the narrow panel | done | a line down the group, folded to a stub |
+| A7, order inside a block | done | arranged first, newcomers at the end, dead ids not a hole |
+| B0, the process spike | done | from a Developer ID bundle with the hardened runtime on |
+| B1, discovery and liveness | done | five sessions across three surfaces, none of which sent a hook |
+| B2, capabilities and the invariant | done | Codex cannot be made red, checked by removing the guard |
+| B3, focus by surface | done | the ChatGPT app is raised; a terminal Codex says it cannot be |
+| B4, lifecycle and the two chains | done | six end-to-end cases, one of which never calls `/signal` |
+| B5, the unstable format | done | a gate that names the field that went and the version that wrote it |
+
+Six defects were found by the tests rather than by reading, and they are the
+reason the work is worth trusting: a scanner that matched nothing because `/var`
+is a link, a `reconcile` that ignored an empty set and so kept the last Codex row
+for ever, a bundle name that any folder could impersonate, a notification burst
+from permissions nobody was being asked for, a window and a column measuring
+themselves with two different formulas, and a file's modification date standing in
+for a conversation having spoken.
+
 ## 6. The gates that close this
 
 Panel:
