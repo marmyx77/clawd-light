@@ -1,14 +1,14 @@
 # Code map
 
-~32,600 lines of Swift across five targets. For each file: what it contains, why
+~32,978 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,832 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    13,211 lines · 69 files   shell: AppKit, network, windows
-  LampBoardTests/  8,131 lines · 45 files   630 cases, instantaneous
-  LampBoardE2E/    2,128 lines · 10 files   88 cases, the real binary
+  LampBoardCore/   8,911 lines · 73 files   pure logic, zero AppKit
+  LampBoardApp/    13,294 lines · 69 files   shell: AppKit, network, windows
+  LampBoardTests/  8,215 lines · 45 files   633 cases, instantaneous
+  LampBoardE2E/    2,189 lines · 10 files   89 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -107,6 +107,17 @@ This is the evidence a Codex session rests on. A rollout on disk proves a sessio
 existed; a process holding it open proves it is loaded now. An empty result means
 "this call saw nothing", never "the session is gone": the caller has to keep those
 apart or one slow `lsof` deletes every Codex row.
+
+### `Codex/CodexHolders.swift`
+Which process is holding one rollout open, right now. The scanner asks this of
+every Codex process at once to draw the column; the click asks it of a single
+file, because a Codex session leaves no session file naming its pid and the
+descriptor is the only thread from a row back to a process, and from a process up
+to the terminal tab it is typed in.
+
+Two processes on one rollout give the **same** answer every time: the order `lsof`
+prints in is not a promise, and a click that raised a different tab each time
+would be worse than one that raised none.
 
 ### `Codex/CodexSessionMeta.swift`
 What a Codex rollout says about itself in its first line, and the **only** place a
@@ -247,6 +258,20 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
+
+### `CanonicalPath.swift`
+A path as the filesystem itself spells it, through `realpath(3)`.
+
+Two programs can name one folder differently and both be right: the volume is
+case-insensitive and case-preserving, so a shell keeps whatever was typed while
+everything reading the folder from the kernel keeps what it was created with.
+Measured — Ghostty listed a live tab as `…/development/turing` while the session
+in it reported `…/Development/turing`, and the click stopped at activating the
+application. It settles the links on the way too, `/var` to `/private/var`
+included, which Foundation deliberately leaves alone.
+
+A path naming nothing comes back untouched, which is what makes it safe to apply
+anywhere.
 
 ### `RowSummary.swift` · 199
 Everything a row can say about itself, as **fields** rather than as a paragraph:
@@ -751,7 +776,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 630 cases
+## `LampBoardTests/` — 633 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -808,7 +833,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 88 cases
+## `LampBoardE2E/` — 89 cases
 
 | Suite | Covers |
 |---|---|

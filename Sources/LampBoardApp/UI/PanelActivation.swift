@@ -53,14 +53,18 @@ extension PanelController {
                 return
 
             case .commandLine, .unknown:
-                // Not raised, and said out loud. The same Homebrew binary runs in
-                // Terminal, Ghostty, tmux and VS Code's integrated terminal, so
-                // the executable proves which program it is and not where it is
-                // being typed. Opening the folder's editor window would be the
-                // convincing wrong answer.
-                store.reportError(
-                    "This Codex session runs in a terminal LampBoard cannot identify yet."
-                )
+                // The executable proves which program it is and not where it is
+                // being typed: the same binary runs in Terminal, Ghostty, tmux
+                // and VS Code's integrated terminal. So the click asks the
+                // question a terminal row already answers — whose ancestry is
+                // this, and what tab does that application select — starting
+                // from the process holding the rollout open rather than from a
+                // session file, because Codex writes none.
+                //
+                // Until this it stopped here and said so, which was honest and
+                // useless: six rows on this Mac that could be found, coloured
+                // and named, and not gone to.
+                activateTerminal(session)
                 return
 
             case .editorExtension:

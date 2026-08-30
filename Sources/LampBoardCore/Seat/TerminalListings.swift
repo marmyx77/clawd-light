@@ -111,10 +111,11 @@ public enum GhosttyMatcher {
            let byTitle = terminals.first(where: { $0.name.contains(title) }) {
             return byTitle
         }
-        let folder = PathNormalizer.normalize(cwd)
-        if let byFolder = terminals.first(where: {
-            !$0.workingDirectory.isEmpty && PathNormalizer.normalize($0.workingDirectory) == folder
-        }) {
+        // The same folder, however each side spells it. Ghostty reports what the
+        // shell told it, which is what was typed; the session reports what the
+        // kernel says. On a case-insensitive volume those differ, and comparing
+        // them as strings is how a live tab in the right folder was missed.
+        if let byFolder = terminals.first(where: { CanonicalPath.same($0.workingDirectory, cwd) }) {
             return byFolder
         }
         let marked = terminals.filter { $0.name.contains(claudeMarker) }

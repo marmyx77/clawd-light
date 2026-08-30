@@ -379,7 +379,7 @@ final class PanelController {
         let name = session.displayName
         let seat: Seat
         let chain: [ProcessAncestor]
-        switch SeatResolver.resolve(sessionId: session.id) {
+        switch SeatResolver.resolve(session: session) {
         case .failure(let error):
             store.reportError("“\(name)” cannot be raised: \(error.short).")
             return

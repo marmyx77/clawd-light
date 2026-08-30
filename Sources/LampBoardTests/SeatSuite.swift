@@ -259,5 +259,40 @@ enum TerminalListingSuite {
             t.expectNil(TerminalScripts.ghosttyFocus(terminalId: "x\" & \"y"), "a quote is refused")
             t.expect(TerminalScripts.ghosttyList.contains("repeat with t in terminals"), "the listing walks the application's terminals")
         },
+
+        TestCase("One folder spelled two ways is still one folder") { t in
+            // Measured on a live Mac: Ghostty listed a tab as
+            // `/Users/…/development/turing` while the session running in it
+            // reported `/Users/…/Development/turing`. Both are right — the
+            // volume is case-insensitive and case-preserving, so the shell
+            // keeps what was typed and the kernel keeps what the folder was
+            // created with — and the string comparison called them two folders.
+            // The click stopped at activating Ghostty, tab unraised.
+            let root = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("lampboard-ghostty-\(UUID().uuidString)")
+            let folder = root.appendingPathComponent("Development")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+
+            let asTyped = root.appendingPathComponent("development").path
+            guard FileManager.default.fileExists(atPath: asTyped) else {
+                // A case-sensitive volume: there the two really are different
+                // folders, and refusing to match them is the right answer.
+                t.expect(true, "case-sensitive volume, nothing to reconcile")
+                return
+            }
+            let terminals = [GhosttyMatcher.Terminal(id: "A", name: "zsh", workingDirectory: asTyped)]
+            t.expectEqual(
+                GhosttyMatcher.best(among: terminals, cwd: folder.path, title: nil)?.id, "A",
+                "the tab in that folder is found whichever way it is written"
+            )
+            t.expectNil(
+                GhosttyMatcher.best(
+                    among: [GhosttyMatcher.Terminal(id: "B", name: "zsh", workingDirectory: "")],
+                    cwd: "", title: nil
+                ),
+                "and two silences are not a place"
+            )
+        },
     ])
 }

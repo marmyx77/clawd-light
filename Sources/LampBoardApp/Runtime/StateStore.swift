@@ -390,6 +390,32 @@ final class StateStore: ObservableObject {
             origin = .terminal
         }
 
+        // A session that already has a row keeps it, whatever the gate says about
+        // its folder now.
+        //
+        // The gate decides **admission**, not updates: it exists so that a path
+        // from another machine, a forged host header or a process already gone
+        // cannot conjure a row. None of that is in question once the row is
+        // there — it was admitted by evidence of its own, and a signal naming it
+        // can only move its colour.
+        //
+        // What this cost: every Codex session running in a terminal. The scanner
+        // adopts it from the rollout a live process holds open, which is the only
+        // way that surface is ever seen, and then every hook it sent was dropped
+        // because no Claude Code window claims that folder and no Claude session
+        // file names the session. Six rows on this Mac, born idle and idle for
+        // ever, in kitty, iTerm2, WezTerm and Ghostty alike. The same drop is
+        // what silences a VS Code window between a restart and its reconnection,
+        // for a session the column is already showing.
+        //
+        // The folder stays the one the row was admitted with, never the signal's:
+        // a hook's `cwd` follows every `cd` the agent makes, and the rollout's is
+        // written once (D25).
+        if workspace == nil, let known = state.sessions[signal.sessionId] {
+            workspace = known.workspace
+            origin = known.origin
+        }
+
         // A signal whose `cwd` matches no editor window is discarded — there is no
         // row to put it on. That is correct, and it used to be **silent**, which is
         // not.

@@ -131,7 +131,8 @@ final class AppUnderTest {
     ///   the signal is known to have come through the tunnel.
     @discardableResult
     func sendHook(
-        _ payload: [String: Any], entrypoint: String? = "claude-vscode", host: String? = nil
+        _ payload: [String: Any], entrypoint: String? = "claude-vscode", host: String? = nil,
+        harness: String? = nil
     ) -> Int {
         let body = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
         var request = URLRequest(url: url(AppConfig.signalPath))
@@ -142,6 +143,12 @@ final class AppUnderTest {
         }
         if let host {
             request.setValue(host, forHTTPHeaderField: AppConfig.remoteHostHeader)
+        }
+        // The header the installed script adds. Only the hook knows for certain
+        // which agent invoked it, and a Codex signal that arrives without it is
+        // read as Claude Code's — which would quietly rewrite the row's harness.
+        if let harness {
+            request.setValue(harness, forHTTPHeaderField: AppConfig.harnessHeader)
         }
         request.httpBody = body
         return perform(request).status

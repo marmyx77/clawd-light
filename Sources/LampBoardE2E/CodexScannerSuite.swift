@@ -168,6 +168,60 @@ enum CodexScannerSuite {
                 a.expect(text.contains("/somebody/else.sh"),
                          "and somebody else's survived, which is the whole care here")
             },
+            TestCase("a hook about a row that already exists moves its light") { a in
+                // The defect this exists for, measured on a live Mac: six Codex
+                // sessions in six terminals, every one of them born from the
+                // rollout it holds open and every one of them idle for ever.
+                // Their hooks arrived and were discarded, because the gate that
+                // decides whether a folder may **have** a row was also deciding
+                // whether a row already on the column may change colour. No
+                // Claude Code window claims a folder somebody is working in from
+                // a terminal, and Codex writes no session file naming itself.
+                let cwd = "/tmp/lampboard-e2e-codex-live"
+                guard let path = try? writeRollout(
+                    in: app.home, sessionId: "e2e-codex-4", cwd: cwd,
+                    lastSpoken: "2026-08-30T09:05:00.000Z"
+                ), let held = try? FakeCodex(holding: path, in: app.home) else {
+                    a.expect(false, "the fixture could not be set up")
+                    return
+                }
+                defer { held.letGo() }
+                a.expect(app.waitUntil { app.session(id: "e2e-codex-4") != nil }, "the row arrived")
+                a.expectEqual(app.status(of: "e2e-codex-4"), "idle", "and it starts knowing nothing")
+
+                // The shape Codex really sends: no `transcript_path`, and the
+                // harness named in a header, which is the only place it is said.
+                a.expectEqual(
+                    app.sendHook(
+                        ["session_id": "e2e-codex-4", "hook_event_name": "UserPromptSubmit", "cwd": cwd],
+                        entrypoint: nil, harness: "codex"
+                    ),
+                    204, "the signal is accepted"
+                )
+                a.expect(
+                    app.waitUntil { app.status(of: "e2e-codex-4") == "working" },
+                    "a turn started, and the row has to say so"
+                )
+
+                // And the row keeps what found it: the folder from the rollout,
+                // not the one the hook happened to be standing in, and the file
+                // the click follows back to a terminal tab.
+                a.expectEqual(app.session(id: "e2e-codex-4")?.harness, "codex", "still Codex")
+                a.expectEqual(
+                    app.session(id: "e2e-codex-4")?.workspace, "lampboard-e2e-codex-live",
+                    "still the folder the rollout named"
+                )
+                // Compared as the filesystem spells it: the row holds the path
+                // `lsof` reported, and under a temporary home that is reached
+                // through `/var`, which is a link to `/private/var` on every
+                // Mac. The fixture writes one spelling and the evidence carries
+                // the other, and they are one file.
+                a.expect(
+                    CanonicalPath.same(app.session(id: "e2e-codex-4")?.transcriptPath ?? "", path),
+                    "still the rollout, which is the only thread back to its window"
+                )
+            },
+
             TestCase("a rollout nobody holds open is not a session") { a in
                 // Ten rollouts on this machine, three open. The seven others are
                 // conversations that happened, and a panel listing them would be a

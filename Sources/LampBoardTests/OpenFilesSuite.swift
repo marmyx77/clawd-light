@@ -111,5 +111,54 @@ enum OpenFilesSuite {
             t.expect(LsofOpenFiles.parse("").isEmpty, "empty output")
             t.expect(LsofOpenFiles.parse("garbage\nmore garbage").isEmpty, "and nonsense")
         },
+
+        TestCase("The process holding one rollout is the thread from a row to a window") { t in
+            // What a click on a Codex terminal row follows. Codex leaves no
+            // session file naming its pid, so the descriptor is the only way
+            // from the row back to a process and from that process up to the
+            // terminal tab it is typed in.
+            let output = """
+            p900
+            ccodex
+            f44
+            tREG
+            n/Users/dev/.codex/sessions/one.jsonl
+            """
+            let files = LsofOpenFiles.parse(output)
+            t.expectEqual(
+                CodexHolders.first(holding: "/Users/dev/.codex/sessions/one.jsonl", in: files), 900,
+                "the process holding it"
+            )
+            t.expectNil(
+                CodexHolders.first(holding: "/Users/dev/.codex/sessions/other.jsonl", in: files),
+                "a rollout nobody holds open leads nowhere, and says so"
+            )
+            t.expectNil(CodexHolders.first(holding: "", in: []), "and nothing leads nowhere too")
+        },
+
+        TestCase("Two processes on one rollout give the same answer every time") { t in
+            // `lsof` prints in whatever order it walks the table, and a click
+            // that raised a different tab each time would be worse than one that
+            // raised none. The editor extension and a `codex` of its own can
+            // both have the file open; the one running Codex wins, and among
+            // equals the lowest pid does.
+            let files = [
+                OpenFile(pid: 900, command: "Code Helper", path: "/Users/dev/.codex/sessions/one.jsonl"),
+                OpenFile(pid: 700, command: "codex", path: "/Users/dev/.codex/sessions/one.jsonl"),
+                OpenFile(pid: 500, command: "codex", path: "/Users/dev/.codex/sessions/one.jsonl"),
+            ]
+            t.expectEqual(
+                CodexHolders.first(holding: "/Users/dev/.codex/sessions/one.jsonl", in: files), 500,
+                "the lowest pid among the ones running Codex"
+            )
+            t.expectEqual(
+                CodexHolders.first(
+                    holding: "/Users/dev/.codex/sessions/one.jsonl",
+                    in: [files[0]]
+                ),
+                900,
+                "and whoever is there when none of them is Codex"
+            )
+        },
     ])
 }
