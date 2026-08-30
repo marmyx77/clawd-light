@@ -67,16 +67,52 @@ struct LiveSessionReader {
     ///
     /// Falls back to the session file when the transcript cannot be found, which
     /// happens for a session running inside a git worktree.
+    /// When the conversation last said something.
+    ///
+    /// From the last **timestamped** record in the transcript, not from the file's
+    /// modification date. The comment this replaced said the transcript is the
+    /// only file that moves when a session does something, and that was measured
+    /// to be false: three projects untouched for days all read as active within
+    /// the hour, because tooling around the session had appended `last-prompt` and
+    /// `bridge-session` records carrying no timestamp at all. A row that invents
+    /// activity is worse than a row that says nothing.
+    ///
+    /// The mtime stays as the fallback for a tail with nothing timestamped in it,
+    /// which is a file being written heavily enough that something is genuinely
+    /// happening to it.
     private func lastActivity(of session: LiveSession, fallback: Date) -> Date {
         let candidate = TranscriptLocator.candidateURL(
             sessionId: session.sessionId, cwd: session.cwd
         )
+        // Not `max` with the session file's date, and that mattered: those files
+        // are rewritten while nothing is said, so taking the later of the two put
+        // every one of these rows back where they were. When the transcript says
+        // when it last spoke, that **is** the answer, and a file being touched is
+        // not a second opinion about it.
+        if let spoken = lastSpokenMoment(atPath: candidate.path) { return spoken }
         guard let attributes = try? FileManager.default.attributesOfItem(
             atPath: candidate.path
         ), let modified = attributes[.modificationDate] as? Date else {
             return fallback
         }
         return max(modified, fallback)
+    }
+
+    /// Reads the end of the transcript and asks Core when it last said anything.
+    private func lastSpokenMoment(atPath path: String) -> Date? {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
+        defer { try? handle.close() }
+        guard let size = (try? handle.seekToEnd()) else { return nil }
+
+        let slice = UInt64(TranscriptActivity.tailLimit)
+        let wholeFile = slice >= size
+        guard (try? handle.seek(toOffset: wholeFile ? 0 : size - slice)) != nil,
+              let data = try? handle.readToEnd(), !data.isEmpty
+        else { return nil }
+
+        return TranscriptActivity.lastTimestamp(
+            inTailChunk: String(decoding: data, as: UTF8.self), isWholeFile: wholeFile
+        )
     }
 
     /// `kill(pid, 0)` sends nothing: it only checks existence and permissions.

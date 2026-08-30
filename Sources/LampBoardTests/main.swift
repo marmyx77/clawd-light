@@ -70,6 +70,7 @@ let suites: [TestSuite] = [
     RowSessionsSuite.suite,
     OpenFilesSuite.suite,
     PanelMetricsSuite.suite,
+    TranscriptActivitySuite.suite,
     PanelIssueSuite.suite,
     PermissionWaitSuite.suite,
     TranscriptPathPolicySuite.suite,

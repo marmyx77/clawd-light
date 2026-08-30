@@ -1,13 +1,13 @@
 # Code map
 
-~31,300 lines of Swift across five targets. For each file: what it contains, why
+~31,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,575 lines · 69 files   pure logic, zero AppKit
-  LampBoardApp/    12,625 lines · 68 files   shell: AppKit, network, windows
-  LampBoardTests/  7,754 lines · 42 files   602 cases, instantaneous
+  LampBoardCore/   8,636 lines · 70 files   pure logic, zero AppKit
+  LampBoardApp/    12,661 lines · 68 files   shell: AppKit, network, windows
+  LampBoardTests/  7,848 lines · 43 files   609 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -165,6 +165,18 @@ releases: an answer arriving over HTTPS is still only an answer, and a field tha
 could name any host would be choosing the code that runs on a Mac where this app
 holds the Accessibility permission. Drafts and pre-releases are published without
 being offered, which is what they are for.
+
+### `Transcript/TranscriptActivity.swift`
+When a conversation last **said** something, which the file's modification date is
+not. The comment this replaced claimed the transcript is the only file that moves
+when a session does something, and that was measured to be false: three projects
+untouched for days all read as active within the hour, because tooling around the
+session had appended `last-prompt` and `bridge-session` records carrying no
+timestamp at all.
+
+So the answer comes from the last record that carries one. A record with no
+timestamp is not a moment, whatever it did to the file, and a row that invents
+activity is worse than a row that says nothing.
 
 ### `TranscriptPathPolicy.swift`
 Which transcript paths the app will open: only those under `~/.claude`, after
@@ -614,7 +626,7 @@ there, the hooks are registered — and it names the link that broke.
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
-| `LiveSessionReader.swift` | 90 | reads the live sessions; takes activity from the **transcript**, not the session file |
+| `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
@@ -727,7 +739,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 602 cases
+## `LampBoardTests/` — 609 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
