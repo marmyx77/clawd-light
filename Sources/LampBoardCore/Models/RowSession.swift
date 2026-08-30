@@ -105,8 +105,8 @@ extension RowSession {
     ) -> String {
         if let own = RowNames.name(ofSession: session.id, in: names) { return own }
         if let title = session.title { return title }
-        if let lane = RowNames.name(of: session.workspace.path, harness: session.harness, in: names),
-           lane != RowNames.name(of: session.workspace.path, in: names) {
+        if let lane = RowNames.name(of: session.workspace.key, harness: session.harness, in: names),
+           lane != RowNames.name(of: session.workspace.key, in: names) {
             return laneSize > 1 ? "\(lane) #\(place)" : lane
         }
         return "#\(ordinal)"

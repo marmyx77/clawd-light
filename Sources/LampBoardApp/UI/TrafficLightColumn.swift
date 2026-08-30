@@ -404,9 +404,9 @@ struct TrafficLightColumn: View {
 
     private func flags(for row: ColumnRow, expanded: Bool) -> RowFlags {
         RowFlags(
-            isHidden: options.hidden.contains(row.workspace.path),
-            isMuted: mutedWorkspaces.contains(row.workspace.path),
-            isCalm: calmWorkspaces.contains(row.workspace.path),
+            isHidden: options.hidden.contains(row.workspace.key),
+            isMuted: mutedWorkspaces.contains(row.workspace.key),
+            isCalm: calmWorkspaces.contains(row.workspace.key),
             notificationsEnabled: notificationsEnabled,
             isExpanded: expanded
         )

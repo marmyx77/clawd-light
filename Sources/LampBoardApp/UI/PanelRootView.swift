@@ -304,9 +304,9 @@ struct PanelRootView: View {
                 action: actions.toggleMessageSending
             )
 
-            Button("Remove the hooks from Claude Code", action: actions.uninstallHooks)
+            Button("Remove the hooks", action: actions.uninstallHooks)
         } else {
-            Button("Install the hooks in Claude Code…", action: actions.installHooks)
+            Button("Install the hooks…", action: actions.installHooks)
         }
 
         if flags.canLaunchAtLogin {

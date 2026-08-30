@@ -175,7 +175,7 @@ final class SessionNotifier {
             Diagnostics.log("notification suppressed (muted until \(until)): \(session.workspace.name)")
             return false
         }
-        if preferences.mutedWorkspaces.contains(session.workspace.path) {
+        if preferences.mutedWorkspaces.contains(session.workspace.key) {
             Diagnostics.log("notification suppressed (project muted): \(session.workspace.name)")
             return false
         }
@@ -187,7 +187,7 @@ final class SessionNotifier {
         guard Bundle.main.bundleIdentifier != nil else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = RowNames.name(of: session.workspace.path, in: preferences.rowNames) ?? session.displayName
+        content.title = RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName
         // Not `lastMessage`, and this is a correction rather than a preference.
         // A `Notification` payload carries no `last_assistant_message`, and
         // `with(lastMessage:)` keeps the previous value when the new one is

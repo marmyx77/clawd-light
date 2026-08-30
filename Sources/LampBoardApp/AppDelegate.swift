@@ -127,7 +127,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the context menu, and anyone launching the app at login doesn't want a
     /// dialog waiting for a click on every sign-in.
     private var shouldPromptForInstallation: Bool {
-        !skipSetupPrompt && !preferences.wasSetupPromptShown && !installer.isInstalled()
+        // Every agent on this machine, not just Claude Code. Asked of the
+        // Claude installer alone, a person with Codex installed and Claude
+        // already registered was never offered the other half and never told it
+        // was missing.
+        !skipSetupPrompt && !preferences.wasSetupPromptShown && HookSetup.needsInstalling()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -199,12 +203,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Without registered hooks the panel would stay empty forever, and the user
     /// would have no way of working out why: better to say so straight away.
     private func promptForInstallation() {
+        let agents = HookSetup.state()
+            .filter { $0.outcome != .notPresent }
+            .map(\.harness.displayName)
+            .joined(separator: " and ")
+
         let installed = Alerts.confirm(
             title: "One last step",
             message: """
-            Claude Code doesn't know lampboard exists yet. To make the traffic \
+            \(agents) do not know lampboard exists yet. To make the traffic \
             lights react, \(HookConfigMerger.defaultEvents.count) hooks have to be \
-            registered in ~/.claude/settings.json.
+            registered in each one's own configuration.
 
             Existing hooks are preserved and a backup copy is created. You can \
             remove them at any time from the panel's context menu (right-click).
@@ -213,19 +222,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         guard installed else { return }
 
-        do {
-            let backup = try installer.install(port: port)
-            Alerts.info(
-                title: "Done",
-                message: """
-                The hooks are active. Claude Code sessions that are already open \
-                pick up the new configuration the next time they start.
-                \(backup.map { "\nBackup: \($0.lastPathComponent)" } ?? "")
-                """
-            )
-        } catch {
-            Alerts.warn(title: "Installation failed", message: error.localizedDescription)
+        let reports = HookSetup.install(port: port)
+        if HookSetup.hasFailure(in: reports) {
+            // Named per agent rather than as one failure: one working and the
+            // other not is a normal state, and the person has to be able to see
+            // which is which.
+            Alerts.warn(title: "Not everything was installed", message: HookSetup.summary(of: reports))
+            return
         }
+        Alerts.info(
+            title: "Done",
+            message: """
+            \(HookSetup.summary(of: reports))
+
+            Sessions that are already open pick up the new configuration the \
+            next time they start.
+            """
+        )
     }
 }
 

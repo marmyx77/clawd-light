@@ -72,4 +72,27 @@ public enum DeepLinkPolicy {
         guard let entrypoint else { return true }
         return entrypoint == hostedEntrypoint
     }
+
+    /// Whether a row may offer to start a **new** conversation in an editor.
+    ///
+    /// A different question from `opensTab`, and it was answered by accident.
+    /// The menu item was gated on the row's `origin`, which a session found on
+    /// disk does not have: adoption leaves it at the default, `.editor`. So a
+    /// Codex row in a terminal offered "New conversation here", and taking it
+    /// raised the terminal and then opened a **Claude** tab in an editor: two
+    /// surfaces, neither of them the one that was asked for.
+    ///
+    /// The rule is what the item actually does. It opens a Claude Code
+    /// conversation in an editor window, so it belongs to a Claude Code session
+    /// that lives in one. Codex is another agent and its rows would get the
+    /// wrong one; a Claude Desktop conversation has no editor tab to open.
+    ///
+    /// The unknown entrypoint is permitted, as it is above and for the same
+    /// reason: a Claude Code session adopted from disk has none until its first
+    /// hook, and refusing it would take the item away from a row that is about
+    /// to prove it deserves it.
+    public static func opensNewConversation(harness: Harness, entrypoint: String?) -> Bool {
+        guard harness == .claudeCode else { return false }
+        return entrypoint != ClaudeDesktop.entrypoint
+    }
 }

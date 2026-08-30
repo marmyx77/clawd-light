@@ -65,6 +65,23 @@ public enum ReducerAction: Sendable, Equatable {
     /// already known: what the hooks know is always more precise than a deduction.
     case adopt(SessionState)
 
+    /// Moves a row a **derived** colour, and only ever forward in time.
+    ///
+    /// Every other colour in this state machine was reported: a hook fired, said
+    /// what happened, and the panel repeated it. A Claude Desktop conversation
+    /// cannot report — it runs with its own `CLAUDE_CONFIG_DIR` and never reads
+    /// the hooks on this machine — so its colour is read off its transcript on a
+    /// timer, which makes it the one colour that would otherwise be re-asserted
+    /// for ever.
+    ///
+    /// That is why the moment is part of the action and the rule is in here
+    /// rather than at the call site. Without it, clearing a green row sets it
+    /// seen, five seconds later the transcript still ends in the same answer,
+    /// and the row lights up again for something already read: the click would
+    /// be undone by the machine that is supposed to obey it. A hook satisfies
+    /// this condition by existing, which is exactly why hooks never needed it.
+    case derive(sessionId: String, status: SessionStatus, at: Date)
+
     /// Replaces the whole state (used when the app restarts).
     case reset
 }
@@ -112,6 +129,13 @@ public enum StateReducer {
         case .adopt(let session):
             guard state.sessions[session.id] == nil else { return state }
             return state.upserting(session)
+
+        case .derive(let sessionId, let status, let moment):
+            guard let session = state.sessions[sessionId],
+                  session.status != status,
+                  moment > session.statusSince
+            else { return state }
+            return state.upserting(session.with(status: status, at: moment))
 
         case .markSeen(let sessionId):
             guard let session = state.sessions[sessionId], session.status.clearsOnFocus else {

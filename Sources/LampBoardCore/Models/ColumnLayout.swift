@@ -88,6 +88,19 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// `true` when the row's place is a terminal tab, not an editor window.
     public var isTerminal: Bool { primary.origin == .terminal }
 
+    /// `true` when "New conversation here" is a thing this row can honestly do.
+    ///
+    /// Three ways it cannot: the folder is on another machine, the place is a
+    /// terminal with no tab to open one in, or the surface does not host a
+    /// Claude Code conversation at all. See `DeepLinkPolicy.opensNewConversation`
+    /// for what the third one did before anybody asked it.
+    public var hostsNewConversation: Bool {
+        guard !workspace.isRemote, !isTerminal else { return false }
+        return DeepLinkPolicy.opensNewConversation(
+            harness: primary.harness, entrypoint: primary.entrypoint
+        )
+    }
+
     /// What a person reads on the row.
     ///
     /// The name the user gave it wins. Otherwise a row holding one session is
@@ -275,8 +288,8 @@ public enum ColumnLayout {
         let all = state.ordered
         guard !all.isEmpty else { return .empty }
 
-        let visible = all.filter { !options.hidden.contains($0.workspace.path) }
-        let putAside = all.filter { options.hidden.contains($0.workspace.path) }
+        let visible = all.filter { !options.hidden.contains($0.workspace.key) }
+        let putAside = all.filter { options.hidden.contains($0.workspace.key) }
 
         let grouped = group(visible, options: options)
 
@@ -318,7 +331,7 @@ public enum ColumnLayout {
         var byProject: [String: [SessionState]] = [:]
         var order: [String] = []
         for session in sessions {
-            let key = session.workspace.path
+            let key = session.workspace.key
             if byProject[key] == nil { order.append(key) }
             byProject[key, default: []].append(session)
         }
@@ -356,13 +369,13 @@ public enum ColumnLayout {
     /// mean, then the longest wait, then the id, so nothing jitters between updates.
     private static func sorted(_ rows: [ColumnRow], options: ColumnOptions) -> [ColumnRow] {
         rows.sorted { lhs, rhs in
-            let left = options.position(for: lhs.workspace.path)
-            let right = options.position(for: rhs.workspace.path)
+            let left = options.position(for: lhs.workspace.key)
+            let right = options.position(for: rhs.workspace.key)
             if left != right { return left < right }
-            if lhs.workspace.path != rhs.workspace.path {
+            if lhs.workspace.key != rhs.workspace.key {
                 let byName = lhs.workspace.name.localizedStandardCompare(rhs.workspace.name)
                 if byName != .orderedSame { return byName == .orderedAscending }
-                return lhs.workspace.path < rhs.workspace.path
+                return lhs.workspace.key < rhs.workspace.key
             }
             if lhs.status.urgencyRank != rhs.status.urgencyRank {
                 return lhs.status.urgencyRank < rhs.status.urgencyRank
@@ -382,7 +395,7 @@ public enum ColumnLayout {
             .min { $0.urgencyRank < $1.urgencyRank } ?? .idle
 
         let names = Set(sessions.map {
-            options.name(for: $0.workspace.path) ?? $0.displayName
+            options.name(for: $0.workspace.key) ?? $0.displayName
         }).sorted {
             $0.localizedStandardCompare($1) == .orderedAscending
         }

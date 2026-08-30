@@ -205,7 +205,7 @@ final class PanelController {
             showsTerminalSessions: preferences.showsTerminalSessions,
             mutedUntil: preferences.mutedUntil,
             hasHidden: !preferences.hiddenWorkspaces.isEmpty,
-            hooksInstalled: installer.isInstalled(),
+            hooksInstalled: !HookSetup.needsInstalling(),
             launchesAtLogin: LaunchAtLogin.isEnabled,
             canLaunchAtLogin: LaunchAtLogin.availability != .needsBundle
         )
@@ -275,35 +275,35 @@ final class PanelController {
             move: { [weak self] row, offset in
                 guard let self else { return }
                 preferences.rowOrder = RowOrder.moving(
-                    row.workspace.path, by: offset, among: visiblePaths(), in: preferences.rowOrder
+                    row.workspace.key, by: offset, among: visibleKeys(), in: preferences.rowOrder
                 )
                 rebuildContent()
             },
             place: { [weak self] row, index in
                 guard let self else { return }
                 preferences.rowOrder = RowOrder.placing(
-                    row.workspace.path, at: index, among: visiblePaths(), in: preferences.rowOrder
+                    row.workspace.key, at: index, among: visibleKeys(), in: preferences.rowOrder
                 )
                 rebuildContent()
             },
             toggleHidden: { [weak self] row in
                 guard let self else { return }
                 preferences.hiddenWorkspaces = Preferences.toggling(
-                    row.workspace.path, in: preferences.hiddenWorkspaces
+                    row.workspace.key, in: preferences.hiddenWorkspaces
                 )
                 rebuildContent()
             },
             toggleMuted: { [weak self] row in
                 guard let self else { return }
                 preferences.mutedWorkspaces = Preferences.toggling(
-                    row.workspace.path, in: preferences.mutedWorkspaces
+                    row.workspace.key, in: preferences.mutedWorkspaces
                 )
                 rebuildContent()
             },
             toggleCalmBlink: { [weak self] row in
                 guard let self else { return }
                 preferences.calmBlinkWorkspaces = Preferences.toggling(
-                    row.workspace.path, in: preferences.calmBlinkWorkspaces
+                    row.workspace.key, in: preferences.calmBlinkWorkspaces
                 )
                 rebuildContent()
             },
@@ -324,8 +324,11 @@ final class PanelController {
     /// The projects drawn right now, top to bottom: what a drag or a "move" is
     /// relative to. The full order also holds hidden, filtered and sessionless
     /// projects, which the user cannot see and therefore cannot mean.
-    private func visiblePaths() -> [String] {
-        ColumnLayout.render(store.state, options: columnOptions).rows.map(\.workspace.path)
+    ///
+    /// Keys rather than paths, because the same path on two machines is two
+    /// projects and moving one must not move the other. See `Workspace.key`.
+    private func visibleKeys() -> [String] {
+        ColumnLayout.render(store.state, options: columnOptions).rows.map(\.workspace.key)
     }
 
     /// Opens the row's conversation in a window of its own.
@@ -447,8 +450,12 @@ final class PanelController {
         // There is no tab to open one in: the deep link would land in whatever
         // editor window has the focus, which is a conversation in the wrong
         // project — the mess this gate exists to prevent.
-        guard !row.isTerminal else {
-            store.reportError("“\(row.displayName)” runs in a terminal: start the new conversation there.")
+        guard row.hostsNewConversation else {
+            store.reportError(
+                row.isTerminal
+                    ? "\u{201C}\(row.displayName)\u{201D} runs in a terminal: start the new conversation there."
+                    : "\u{201C}\(row.displayName)\u{201D} does not host Claude Code conversations."
+            )
             return
         }
         activate(row, markSeen: false, opensTab: false)
@@ -494,7 +501,7 @@ final class PanelController {
     @discardableResult
     func newConversationInSlot(_ slot: Int) -> String? {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
-        guard let row = rendering.row(inSlot: slot), !row.isTerminal else { return nil }
+        guard let row = rendering.row(inSlot: slot), row.hostsNewConversation else { return nil }
         newConversation(in: row)
         return row.displayName
     }
@@ -619,6 +626,12 @@ final class PanelController {
     }
 
     /// Re-registers the hooks so the delivery listener follows the switch.
+    ///
+    /// Claude Code alone, and deliberately: message delivery rides a second
+    /// `Stop` hook that answers a mailbox, and Codex has no path back into a
+    /// session to answer through. Everything else about installing goes through
+    /// `HookSetup` and reaches both agents; this one thing is not shared because
+    /// only one agent has it.
     private func reinstallHooksForMessageSending() {
         guard installer.isInstalled() else { return }
         do {
@@ -671,44 +684,50 @@ final class PanelController {
     }
 
     private func installHooks() {
-        guard Alerts.confirm(
-            title: "Install the hooks in Claude Code?",
-            message: """
-            lampboard will register \(HookConfigMerger.defaultEvents.count) hooks in \
-            ~/.claude/settings.json so it knows when sessions change state.
+        // Every agent on this machine, and the alert names them: the menu used
+        // to say "in Claude Code" and mean it, leaving Codex unregistered for
+        // anyone who never opened a terminal to run the installer.
+        let agents = HookSetup.state()
+            .filter { $0.outcome != .notPresent }
+            .map(\.harness.displayName)
+            .joined(separator: " and ")
 
-            Existing hooks are preserved and a backup copy of the file is created. \
+        guard Alerts.confirm(
+            title: "Install the hooks?",
+            message: """
+            lampboard will register \(HookConfigMerger.defaultEvents.count) hooks in the \
+            configuration of \(agents), so it knows when sessions change state.
+
+            Existing hooks are preserved and a backup copy of each file is created. \
             Sessions that are already open pick up the new configuration the next \
             time they start.
             """,
             confirmTitle: "Install"
         ) else { return }
 
-        do {
-            let backup = try installer.install()
-            rebuildContent()
-            Alerts.info(
-                title: "Hooks installed",
-                message: backup.map { "Backup saved to \($0.lastPathComponent)." }
-                    ?? "No previous file to save."
-            )
-        } catch {
-            store.reportError(error.localizedDescription)
-            Alerts.warn(title: "Installation failed", message: error.localizedDescription)
+        let reports = HookSetup.install(includeMessageDelivery: preferences.messageSendingEnabled)
+        rebuildContent()
+        guard !HookSetup.hasFailure(in: reports) else {
+            let summary = HookSetup.summary(of: reports)
+            store.reportError(summary)
+            Alerts.warn(title: "Not everything was installed", message: summary)
+            return
         }
+        Alerts.info(title: "Hooks installed", message: HookSetup.summary(of: reports))
     }
 
     private func uninstallHooks() {
-        do {
-            try installer.uninstall()
-            rebuildContent()
-            Alerts.info(
-                title: "Hooks removed",
-                message: "lampboard will no longer receive signals from Claude Code."
-            )
-        } catch {
-            store.reportError(error.localizedDescription)
-            Alerts.warn(title: "Removal failed", message: error.localizedDescription)
+        let reports = HookSetup.remove()
+        rebuildContent()
+        guard !HookSetup.hasFailure(in: reports) else {
+            let summary = HookSetup.summary(of: reports)
+            store.reportError(summary)
+            Alerts.warn(title: "Removal failed", message: summary)
+            return
         }
+        Alerts.info(
+            title: "Hooks removed",
+            message: "lampboard will no longer receive signals from either agent."
+        )
     }
 }

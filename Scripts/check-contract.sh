@@ -675,7 +675,17 @@ fi
 head_ "Codex rollout shape"
 
 CODEX_SESSIONS="${CODEX_HOME:-$HOME/.codex}/sessions"
-ROLLOUT="$(find "$CODEX_SESSIONS" -name '*.jsonl' -type f 2>/dev/null | sort | tail -1)"
+# The directory is checked before `find` is asked about it, and the search is
+# allowed to come back empty. Under `set -euo pipefail` a `find` on a path that
+# does not exist ends the whole script: on a machine without Codex this gate died
+# with exit 1 **before** printing the skip it was written to print, which is the
+# one failure a gate must never have. A check that cannot say "I saw nothing" is
+# not a check.
+if [ -d "$CODEX_SESSIONS" ]; then
+    ROLLOUT="$(find "$CODEX_SESSIONS" -name '*.jsonl' -type f 2>/dev/null | sort | tail -1 || true)"
+else
+    ROLLOUT=""
+fi
 
 if [ -z "$ROLLOUT" ]; then
     skip "no rollout on this machine, so nothing about Codex was verified"

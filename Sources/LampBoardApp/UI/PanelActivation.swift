@@ -29,6 +29,29 @@ extension PanelController {
             return
         }
 
+        // A Claude Desktop session lives in Claude Desktop, whatever folder it is
+        // working on. Without this it went to the folder's VS Code window, which
+        // is the convincing wrong answer: the folder really is open there, and
+        // the conversation really is not.
+        //
+        // Raising the application is the whole of what this surface offers and
+        // therefore the whole truth: there is one window, and the conversation is
+        // a tab inside it that nothing outside the app can select. So it is
+        // reported as raised, not as "only activated" — that phrasing exists for
+        // a click that fell short of what it could have done, and this one did
+        // not.
+        if session.entrypoint == ClaudeDesktop.entrypoint {
+            guard let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: ClaudeDesktop.bundleIdentifier
+            ) else {
+                store.reportError("Claude Desktop is not on this Mac any more.")
+                return
+            }
+            NSWorkspace.shared.openApplication(at: url, configuration: .init())
+            store.clearError()
+            return
+        }
+
         // A Codex session is raised by its own surface, not by the folder's.
         //
         // Until this, clicking one opened a VS Code window for its project, which

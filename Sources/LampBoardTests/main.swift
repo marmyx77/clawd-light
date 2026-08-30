@@ -12,6 +12,7 @@ Instrument.prove()
 let suites: [TestSuite] = [
     PathNormalizerSuite.suite,
     PanelPlacementSuite.suite,
+    ClaudeDesktopSuite.suite,
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,
     IDELockParserSuite.suite,

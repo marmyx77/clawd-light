@@ -161,6 +161,27 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         self.transcriptPath = transcriptPath
     }
 
+    /// `true` when this row's folder is **evidence the panel found**, not
+    /// something it was told.
+    ///
+    /// A Claude Code session announces itself and its folder follows the latest
+    /// resolution: opening its directory in an editor genuinely moves it into
+    /// that window, which is the behaviour D25 describes. A Codex session and a
+    /// Claude Desktop session are the opposite case. Nobody announces them: one
+    /// is read out of the rollout a live process holds open, the other out of the
+    /// index beside its session home, and in both the folder was established
+    /// before any signal existed.
+    ///
+    /// So for these two a later hook may move the **colour** and nothing else. It
+    /// was not so, and the hole was real: a hook naming a known session id, with
+    /// a `cwd` that happened to match some other window, moved the row into that
+    /// other project — transcript, click and all. `POST /signal` is not
+    /// authenticated, so "only our hooks send that" is an assumption and not a
+    /// bound.
+    public var folderIsEvidence: Bool {
+        harness == .codex || entrypoint == ClaudeDesktop.entrypoint
+    }
+
     /// The state the traffic light actually shows.
     ///
     /// As long as a subagent is alive the session **is working**, whatever the

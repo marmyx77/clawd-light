@@ -130,6 +130,60 @@ enum RemoteSessionsSuite {
             t.expect(here != there, "they must not collapse into one row")
         },
 
+        TestCase("And the column draws them as three rows, each with its own everything") { t in
+            // The test above was the whole proof, and it proved the wrong thing.
+            // `Workspace` did keep `host` in its identity; every caller that
+            // needed a key threw it away and used the path. So two machines
+            // holding `/w/project` drew **one** row, in whichever state the more
+            // urgent member happened to be, and hiding it hid the other machine's
+            // too. A value being distinct is worth nothing until something asks
+            // it for its name.
+            let moment = Date(timeIntervalSince1970: 1_788_000_000)
+            func session(_ id: String, on host: String?, _ status: SessionStatus) -> SessionState {
+                SessionState(
+                    id: id, status: status,
+                    workspace: Workspace(path: "/w/project", host: host),
+                    updatedAt: moment, statusSince: moment
+                )
+            }
+            let state = TrafficLightState(sessions: [
+                "here": session("here", on: nil, .working),
+                "one": session("one", on: "node-one", .ready),
+                "two": session("two", on: "node-two", .idle),
+            ])
+
+            let rows = ColumnLayout.render(state, options: ColumnOptions()).rows
+            t.expectEqual(rows.count, 3, "one folder per machine")
+            t.expectEqual(Set(rows.map(\.id)).count, 3, "and three keys, not one used three times")
+
+            // Each row must be reachable on its own terms: its state is its own,
+            // and so is every preference stored against it.
+            let byHost = Dictionary(uniqueKeysWithValues: rows.map { ($0.workspace.host, $0) })
+            t.expectEqual(byHost[nil]?.status, .working, "the one here is working")
+            t.expectEqual(byHost["node-one"]?.status, .ready, "one machine has an answer")
+            t.expectEqual(byHost["node-two"]?.status, .idle, "the other has nothing")
+
+            // Hiding one machine's folder leaves the others where they were.
+            guard let hiddenKey = byHost["node-one"]?.workspace.key else {
+                t.expect(false, "no key to hide")
+                return
+            }
+            let afterHiding = ColumnLayout.render(
+                state, options: ColumnOptions(hidden: [hiddenKey])
+            )
+            t.expectEqual(afterHiding.rows.count, 2, "one row put aside")
+            t.expect(!afterHiding.rows.contains { $0.workspace.host == "node-one" }, "the right one")
+
+            // And a name given to one is not worn by the others.
+            let named = ColumnLayout.render(
+                state, options: ColumnOptions(names: [hiddenKey: "Bestia"])
+            )
+            t.expectEqual(
+                named.rows.filter { $0.displayName == "Bestia" }.count, 1,
+                "the name belongs to one machine's folder"
+            )
+        },
+
         TestCase("The label says where it is, the name does not") { t in
             let w = Workspace(path: "/home/dev/.notes", host: host)
             t.expectEqual(w.label, ".notes @node", "label")

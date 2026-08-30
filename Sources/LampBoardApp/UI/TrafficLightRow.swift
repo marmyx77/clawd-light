@@ -328,8 +328,10 @@ struct TrafficLightRow: View {
                    action: { actions.toggleMuted(row) })
         }
 
-        // A terminal row has no tab to open a conversation in either.
-        if !row.workspace.isRemote && !row.isTerminal {
+        // Only where a new Claude conversation can actually be opened: not on
+        // another machine, not in a terminal, and not on a surface that hosts
+        // some other agent.
+        if row.hostsNewConversation {
             Divider()
             Button("New conversation here", action: { actions.newConversation(row) })
         }

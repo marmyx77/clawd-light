@@ -29,6 +29,35 @@ public struct Workspace: Sendable, Equatable, Hashable {
     /// bring to the front, and no local transcript to open.
     public var isRemote: Bool { host != nil }
 
+    /// The string that identifies this workspace wherever one is needed: the
+    /// grouping key, the row's id, and the key under which its name, its slot,
+    /// its place in the order, its hiding and its muting are all remembered.
+    ///
+    /// It exists because the type's own promise above was not being kept. `host`
+    /// is part of `Equatable` and `Hashable`, and every one of those callers
+    /// keyed on `path` alone: a folder called `/w/project` on this Mac and one on
+    /// a remote node became **one row**, in whichever state the more urgent
+    /// member happened to be, and hiding one hid both. A comment claiming an
+    /// identity the code does not enforce is worse than no comment, because the
+    /// next reader stops checking.
+    ///
+    /// A local workspace keys on its path and nothing else, which is not a
+    /// convenience: every name, slot and hidden flag anybody has saved is stored
+    /// under that string, so keeping it identical is what makes this change cost
+    /// nobody their layout.
+    ///
+    /// A remote one is the host, a colon, then the path. The first spelling
+    /// tried was `//host` and the path, and it was quietly wrong: these keys pass
+    /// through `PathNormalizer.normalize` on their way into `RowNames`, which
+    /// collapses every run of slashes, so the key that went in was never the key
+    /// that came back out and a renamed remote row lost its name. A leading
+    /// character that is not a slash cannot be a path at all, so the colon form
+    /// collides with nothing and survives being normalised.
+    public var key: String {
+        guard let host else { return path }
+        return host + ":" + path
+    }
+
     /// Name shown next to the traffic light — it matches what VS Code writes in
     /// the window title, and it is the key used to find that window again.
     ///

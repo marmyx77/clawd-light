@@ -32,7 +32,7 @@ extension PanelController {
         // named from the extended window, where the lines are conversations, and
         // an agent's lane from the entry beside this one.
         preferences.rowNames = RowNames.renaming(
-            row.workspace.path, to: answer, in: preferences.rowNames
+            row.workspace.key, to: answer, in: preferences.rowNames
         )
         store.republish()
         rebuildContent()
@@ -113,7 +113,7 @@ extension PanelController {
     /// a conversation's own id dies with its process.
     func renameLane(of member: RowSession) {
         let harness = member.session.harness
-        let path = member.session.workspace.path
+        let path = member.session.workspace.key
         guard let answer = Alerts.ask(
             title: "Rename the \(harness.displayName) lane",
             message: "Every \(harness.displayName) conversation in this project that has no "

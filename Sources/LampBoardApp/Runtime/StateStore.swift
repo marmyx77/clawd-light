@@ -28,7 +28,16 @@ final class StateStore: ObservableObject {
     private let snapshots: SnapshotBox?
     private let preferences: Preferences
     /// Finds Codex sessions that will never send a signal.
-    private let codexScanner = CodexProcessScanner()
+    // Not private, and deliberately: these two and the one action below are what
+    // `StateStoreAdoption` needs, and that file exists because this one reached
+    // the ceiling the project sets itself. The same seam `PanelActivation` opened
+    // in `PanelController`, for the same reason.
+    /// The Codex probe lives on an actor of its own: it spawns a subprocess, and
+    /// this store draws. See `CodexProbe` for the measurement that moved it.
+    private let codexProbe = CodexProbe()
+    private var codexScanInFlight = false
+
+    let desktopScanner = ClaudeDesktopScanner()
 
     private var pollTimer: Timer?
     private var remoteTimer: Timer?
@@ -133,40 +142,6 @@ final class StateStore: ObservableObject {
     /// descriptor, so a network mount whose server has gone away stops it: that is
     /// absence of evidence, and this project already draws the same line for a
     /// remote host that has gone quiet.
-    private func adoptCodexSessions(at now: Date) {
-        guard case .observed(let evidence) = codexScanner.scan() else { return }
-
-        for item in evidence where state.sessions[item.meta.sessionId] == nil {
-            apply(
-                .adopt(
-                    SessionState(
-                        id: item.meta.sessionId,
-                        status: .idle,
-                        workspace: Workspace(path: item.meta.cwd),
-                        updatedAt: item.lastActivity,
-                        statusSince: item.lastActivity,
-                        harness: .codex,
-                        transcriptPath: item.rolloutPath,
-                        entrypoint: item.surface.entrypoint
-                    )
-                ),
-                now: now
-            )
-            Diagnostics.log(
-                "codex adopted: \(item.meta.sessionId.prefix(8)) in \(item.meta.cwd) "
-                    + "[\(item.surface.label), pid \(item.pid)]"
-            )
-        }
-
-        // Only what a process is still holding open survives. Closing the
-        // conversation closes the descriptor, and that is the one signal Codex
-        // gives us for free.
-        apply(
-            .reconcile(alive: Set(evidence.map(\.meta.sessionId)), harness: .codex, evenIfEmpty: true),
-            now: now
-        )
-    }
-
     /// Reads the conversation's title off the main actor and remembers it.
     ///
     /// For any session that has none yet, wherever it runs. It used to be for
@@ -408,10 +383,21 @@ final class StateStore: ObservableObject {
         // what silences a VS Code window between a restart and its reconnection,
         // for a session the column is already showing.
         //
-        // The folder stays the one the row was admitted with, never the signal's:
-        // a hook's `cwd` follows every `cd` the agent makes, and the rollout's is
-        // written once (D25).
-        if workspace == nil, let known = state.sessions[signal.sessionId] {
+        // And for a row **found** rather than announced, the folder stays the one
+        // it was found in, whatever the signal says.
+        //
+        // This paragraph used to claim that outright and the code did not do it:
+        // the resolver ran first, and a hook whose `cwd` matched any open editor
+        // window moved the row into that window's project. A comment that
+        // describes a guarantee the code does not give is worse than no comment,
+        // because the next person stops looking.
+        //
+        // The distinction is `folderIsEvidence`. A Claude Code session that
+        // announces itself may move — opening its directory in an editor really
+        // does move it there (D25). A Codex or Claude Desktop row may not: its
+        // folder came from a rollout or an index before any hook existed, and a
+        // hook can only move its colour.
+        if let known = state.sessions[signal.sessionId], known.folderIsEvidence || workspace == nil {
             workspace = known.workspace
             origin = known.origin
         }
@@ -561,9 +547,14 @@ final class StateStore: ObservableObject {
 
     /// One realignment pass.
     func poll() {
+        let started = Date()
+        var cost = SweepCost()
+        defer { Self.recordSweepCost(from: started, cost) }
         let now = clock()
-        let live = liveSessionReader.readLiveSessions().filter(\.deservesTrafficLight)
-        let windows = windowReader.readWindows()
+        let live = cost.spending(\.live) {
+            liveSessionReader.readLiveSessions().filter(\.deservesTrafficLight)
+        }
+        let windows = cost.spending(\.windows) { windowReader.readWindows() }
 
         // Remote rows are **confirmed** here, never created. A session on another
         // machine gets its row when it speaks — its hooks reach this machine
@@ -588,10 +579,21 @@ final class StateStore: ObservableObject {
             guard let askedAt = remoteAnsweredAt[host], remoteSessions[host] != nil else { return session.id }
             return session.updatedAt > askedAt ? session.id : nil
         }
-        let confirmed = Set(live.map(\.sessionId)).union(knownRemote.map(\.sessionId))
+        // Claude Desktop's local sessions are Claude Code sessions like any
+        // other; they are simply written somewhere else. Adopted **before** the
+        // sweep and counted among the living, because the sweep prunes by
+        // harness and theirs is Claude Code: left out of the set they would be
+        // born and erased in the same pass.
+        let desktop = cost.spending(\.desktop) { adoptDesktopSessions(at: now) }
+
+        let confirmed = Set(live.map(\.sessionId))
+            .union(knownRemote.map(\.sessionId))
+            .union(desktop)
         apply(.reconcile(alive: confirmed.union(unconfirmed)), now: now)
 
-        adoptCodexSessions(at: now)
+        // Started, not waited for. What it finds is applied when it answers,
+        // which is the same five-second cadence one probe late.
+        refreshCodexProbe()
 
         // The switch turning off takes its rows with it — here, so that a switch
         // flipped from the Settings window is honoured within one poll.
@@ -672,7 +674,72 @@ final class StateStore: ObservableObject {
 
     // MARK: - Internal
 
-    private func apply(_ action: ReducerAction, now: Date) {
+    /// How long the whole sweep took, and how long the worst one took.
+    ///
+    /// Here because a second audit called this out and neither of us could
+    /// settle it by reading: this method runs on the actor that draws, on a
+    /// five-second timer, and two of the things it does — enumerating processes
+    /// and asking `lsof`, walking every Claude Desktop conversation on the disk
+    /// — are unbounded in principle. `lsof` is documented to pause on a
+    /// descriptor sitting on an unreachable mount, and the probe's own deadline
+    /// plus the grace after it is close to nine seconds.
+    ///
+    /// So the sweep now says what it costs, in the log, with its worst case kept
+    /// beside it. A number is what decides whether the work belongs on another
+    /// thread, and it is also what would show it having moved.
+    private static var worstSweep: TimeInterval = 0
+    private static var sweepCount = 0
+    private static var sweepTotal: TimeInterval = 0
+
+    /// Sweeps slower than this are named individually. Roughly three frames:
+    /// below it nobody could see the pause, above it somebody could.
+    private static let notableSweep: TimeInterval = 0.05
+
+    private static func recordSweepCost(from started: Date, _ cost: SweepCost) {
+        guard Diagnostics.isEnabled else { return }
+        let total = Date().timeIntervalSince(started)
+        sweepCount += 1
+        sweepTotal += total
+        if total > worstSweep {
+            worstSweep = total
+            Diagnostics.log("sweep: \(cost.describing(total)), the longest so far")
+        } else if total > notableSweep {
+            Diagnostics.log("sweep: \(cost.describing(total))")
+        }
+        // A periodic average, because a worst case alone cannot say whether a
+        // pause is the cold start or the shape of every pass.
+        if sweepCount % 60 == 0 {
+            Diagnostics.log(String(
+                format: "sweep: %d passes, %.0f ms on average, %.0f ms at worst",
+                sweepCount, sweepTotal / Double(sweepCount) * 1000, worstSweep * 1000
+            ))
+        }
+    }
+
+    /// Asks the Codex probe, off this actor, and applies what it says when it
+    /// says it.
+    ///
+    /// One at a time: a probe that runs long — `lsof` is documented to pause on a
+    /// descriptor sitting on an unreachable mount — must not have a second one
+    /// started on top of it every five seconds. The flag is read and written only
+    /// here, on the main actor, so it needs nothing around it.
+    ///
+    /// A probe still in flight when the app stops simply applies its answer to a
+    /// store nobody is polling any more, which changes a value and draws nothing.
+    private func refreshCodexProbe() {
+        guard !codexScanInFlight else { return }
+        codexScanInFlight = true
+        Task { [weak self] in
+            guard let self else { return }
+            // The suspension is the point: `scan()` runs on the probe's actor,
+            // and only the arithmetic on its answer comes back here.
+            let result = await self.codexProbe.scan()
+            self.codexScanInFlight = false
+            self.adoptCodexSessions(result, at: self.clock())
+        }
+    }
+
+    func apply(_ action: ReducerAction, now: Date) {
         let next = StateReducer.reduce(state, action: action, now: now)
         guard next != state else { return }
         givePlaces(to: next)
@@ -690,7 +757,7 @@ final class StateStore: ObservableObject {
     /// is an order the CLI disagrees with.
     private func givePlaces(to next: TrafficLightState) {
         let order = preferences.rowOrder
-        let merged = RowOrder.absorbing(next.sessions.values.map(\.workspace.path), into: order)
+        let merged = RowOrder.absorbing(next.sessions.values.map(\.workspace.key), into: order)
         if merged != order { preferences.rowOrder = merged }
     }
 
@@ -709,9 +776,9 @@ final class StateStore: ObservableObject {
         snapshots.replace(with: state.ordered.map { session in
             SessionsCodec.snapshot(
                 of: session,
-                muted: muted.contains(session.workspace.path),
-                slot: RowOrder.slot(of: session.workspace.path, in: order, limit: AppConfig.maxSlots),
-                alias: RowNames.name(of: session.workspace.path, harness: session.harness, in: names)
+                muted: muted.contains(session.workspace.key),
+                slot: RowOrder.slot(of: session.workspace.key, in: order, limit: AppConfig.maxSlots),
+                alias: RowNames.name(of: session.workspace.key, harness: session.harness, in: names)
             )
         })
     }

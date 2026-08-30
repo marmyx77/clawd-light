@@ -9,41 +9,45 @@ import Foundation
 /// `~/.codex/hooks.json` — files a person relies on every day and did not write
 /// for us.
 extension CommandLineInterface {
+    /// Registers the hooks with every agent on this machine.
+    ///
+    /// - Returns: `0` when everything that could be installed was, `2` when one
+    ///   agent was set up and another failed. The exit code used to be `0` in
+    ///   both cases, which told a script that had just half-installed the hooks
+    ///   that it was finished. Two codes rather than one, because a partial
+    ///   success is not the same news as nothing working: `1` stays for a run
+    ///   that achieved nothing at all.
     static func runInstall(port: UInt16, includeToolEvents: Bool) -> Int32 {
-        let installer = HookInstaller()
-        do {
-            let backup = try installer.install(port: port, includeToolEvents: includeToolEvents)
-            print("Hooks installed for: \(installer.installedEvents().joined(separator: ", "))")
-            print("Script: \(installer.scriptPath)")
-            if let backup {
-                print("Backup of settings.json: \(backup.path)")
-            }
-            print("\nClaude Code sessions that are already open pick up the new")
-            print("configuration the next time they start.")
+        let reports = HookSetup.install(port: port, includeToolEvents: includeToolEvents)
 
-            // Codex is installed alongside, and only where it is actually
-            // present: writing a hooks file into a directory nobody has ever
-            // used would leave a configuration for a program that is not there.
-            if FileManager.default.fileExists(atPath: AppConfig.codexDirectory.path) {
-                let codex = HookInstaller.codex()
-                do {
-                    try codex.install(port: port, includeToolEvents: includeToolEvents)
-                    let events = codex.installedEvents().joined(separator: ", ")
-                    print("\nCodex hooks installed for: \(events)")
-                    print("Script: \(codex.scriptPath)")
-                    print("\n\(HookInstaller.codexTrustNotice)")
-                } catch {
-                    // A failure here must not undo the Claude Code install that
-                    // already succeeded. One harness working is a normal state,
-                    // and the message says which one did not.
-                    print("\nCodex hooks were not installed: \(error.localizedDescription)")
-                }
+        for (harness, installer) in HookSetup.installers() {
+            guard let report = reports.first(where: { $0.harness == harness }) else { continue }
+            switch report.outcome {
+            case .installed:
+                print("\(harness.displayName) hooks installed for: "
+                    + installer.installedEvents().joined(separator: ", "))
+                print("Script: \(installer.scriptPath)")
+            case .failed(let reason):
+                FileHandle.standardError.write(
+                    Data("\(harness.displayName) hooks were not installed: \(reason)\n".utf8)
+                )
+            case .notPresent, .notInstalled:
+                continue
             }
-            return 0
-        } catch {
-            FileHandle.standardError.write(Data("Error: \(error.localizedDescription)\n".utf8))
-            return 1
         }
+
+        if reports.contains(where: { $0.harness == .codex && $0.outcome == .installed }) {
+            print("\n\(HookInstaller.codexTrustNotice)")
+        }
+
+        guard !HookSetup.hasFailure(in: reports) else {
+            // Everything failing and something failing are different answers,
+            // and a script has to be able to tell them apart.
+            return reports.contains { $0.outcome == .installed } ? 2 : 1
+        }
+        print("\nSessions that are already open pick up the new configuration")
+        print("the next time they start.")
+        return 0
     }
 
     /// Removes what was installed, from **both** configurations.
