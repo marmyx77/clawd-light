@@ -38,12 +38,12 @@ struct SessionSubRow: View {
     var body: some View {
         HStack(spacing: 7) {
             HStack(spacing: Layout.dotToRing) {
-                // Right-aligned inside the parent's 13 points, so a smaller dot
-                // still hangs off the same column and the block reads as one
-                // object rather than two lists side by side.
+                // The same size as the row above it. A smaller one read as an
+                // inconsistency rather than as a hierarchy, and it made the mark
+                // the app exists for the weakest thing on the line. What separates
+                // a conversation from its project is the well, the type and the
+                // dimmer name.
                 TrafficLightDot(status: session.status, calm: true, listening: false)
-                    .scaleEffect(Layout.subDotSize / Layout.dotSize)
-                    .frame(width: Layout.dotSize, alignment: .trailing)
 
                 ContextRing(reading: session.context)
             }

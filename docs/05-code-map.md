@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/   8,832 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    13,070 lines · 69 files   shell: AppKit, network, windows
+  LampBoardApp/    13,103 lines · 69 files   shell: AppKit, network, windows
   LampBoardTests/  8,131 lines · 45 files   630 cases, instantaneous
   LampBoardE2E/    2,128 lines · 10 files   88 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -729,7 +729,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 262 | colors and measurements |
+| `StatusPalette.swift` | 317 | colors and measurements |
 | `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |

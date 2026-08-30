@@ -123,11 +123,11 @@ struct TrafficLightColumn: View {
             // not an indent.
             .padding(.vertical, holdsMany ? Layout.blockInset : 0)
             .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Color.white.opacity(holdsMany ? 0.045 : 0))
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(holdsMany ? StatusPalette.blockWell : Color.clear)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Color.white.opacity(holdsMany ? 0.065 : 0), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(holdsMany ? StatusPalette.blockEdge : Color.clear, lineWidth: 1)
                     )
             )
         }
@@ -161,7 +161,7 @@ struct TrafficLightColumn: View {
             if open {
                 ForEach(row.members.prefix(Layout.subRowCap)) { member in
                     TrafficLightDot(status: member.session.status, calm: true, listening: false)
-                        .scaleEffect(Layout.subDotSize / Layout.dotSize)
+                        .scaleEffect(Layout.compactSubDotSize / Layout.dotSize)
                         .frame(maxWidth: .infinity)
                         .frame(height: Layout.subRowHeight)
                         .contentShape(Rectangle())
@@ -194,7 +194,12 @@ struct TrafficLightColumn: View {
         }
     }
 
-    /// The conversations under an opened project, and the spine that owns them.
+    /// The conversations under an opened project.
+    ///
+    /// There used to be a spine down their left as well, and it went when the
+    /// panel got its own dark floor: the well already says these belong together,
+    /// and a second mark saying the same thing is what made the column feel busy.
+    /// It survives in the narrow panel, where there is no well for it to repeat.
     ///
     /// Capped, because twelve of them is 264 points of panel for one project and
     /// a column that scrolls is a column where the row that needs you can be off
@@ -223,14 +228,6 @@ struct TrafficLightColumn: View {
                     .frame(height: Layout.tailHeight - Layout.rowSpacing)
                     .padding(.leading, 6)
             }
-        }
-        .overlay(alignment: .leading) {
-            // Three points inside the margin, so it costs the names nothing.
-            RoundedRectangle(cornerRadius: Layout.spineWidth, style: .continuous)
-                .fill(Color.primary.opacity(0.26))
-                .frame(width: Layout.spineWidth)
-                .padding(.leading, Layout.spineInset)
-                .padding(.vertical, 1)
         }
     }
 

@@ -89,6 +89,34 @@ enum StatusPalette {
     static let badgeBackground = Color.primary.opacity(0.14)
 
     /// The vertical rule marking a pinned project.
+    /// Laid over the window material, and this is the one colour here that is
+    /// about the **desktop** rather than about a session.
+    ///
+    /// The panel is translucent, so without this its brightness is decided by
+    /// whatever wallpaper is behind it. On a light one the whole thing came up
+    /// pale, the block that holds a project's conversations was a lighter wash on
+    /// an already light ground, and the two were almost the same: reported as
+    /// "you can hardly tell the blocks are anything different, and the smaller
+    /// dots end up looking like a rendering fault".
+    ///
+    /// A fixed floor puts the contrast budget back in our hands. Six lit colours
+    /// on a dark ground is what a board of lamps looks like; six on a pale one is
+    /// a spreadsheet.
+    static let panelScrim = Color.black.opacity(0.45)
+
+    /// The well a project's conversations sit in: **darker** than the panel, not
+    /// lighter.
+    ///
+    /// Lighter was the first attempt and it is the wrong direction on a surface
+    /// that is already bright: it adds haze rather than shape. Darker reads as
+    /// recessed, which is what a container is, and it gives the coloured dots
+    /// inside it more contrast rather than less.
+    static let blockWell = Color.black.opacity(0.34)
+
+    /// One hairline along the well's edge, so it keeps its shape on a bright
+    /// wallpaper where the fill alone would wash out.
+    static let blockEdge = Color.white.opacity(0.08)
+
     static let pinMarker = Color.primary.opacity(0.35)
 
     /// Which agent a line belongs to, on the grip and nowhere else.
@@ -129,8 +157,16 @@ enum Layout {
     /// a glance from across the desk cannot make.
     static let dotSize: CGFloat = 13
 
-    /// The dot on a conversation inside an opened block.
-    static let subDotSize: CGFloat = 9
+    /// The dot on a conversation inside an opened block, in the **narrow** panel.
+    ///
+    /// Only there. In the wide panel a conversation's dot is the same size as its
+    /// project's, and that is a correction: a smaller one read as an
+    /// inconsistency rather than as a hierarchy, and it weakened the one mark the
+    /// whole app exists for. The hierarchy is carried by the well the lines sit
+    /// in, by a lighter type and by a dimmer name, none of which is the light.
+    ///
+    /// At 35 points there is no well and no name, so size is all there is.
+    static let compactSubDotSize: CGFloat = 9
     /// Thickness of the listening ring, drawn inside the dot. Enough to see from
     /// across a room, and it still leaves a core large enough to read the colour
     /// underneath — which is the whole point of a ring rather than a colour.

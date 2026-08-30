@@ -76,7 +76,7 @@ struct PanelRootView: View {
             issueStrip
             footer
         }
-        .background(PanelBackground())
+        .background(PanelBackground().overlay(StatusPalette.panelScrim))
         .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
