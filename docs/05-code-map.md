@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/   9,019 lines · 74 files   pure logic, zero AppKit
-  LampBoardApp/    13,384 lines · 69 files   shell: AppKit, network, windows
+  LampBoardApp/    13,399 lines · 69 files   shell: AppKit, network, windows
   LampBoardTests/  8,322 lines · 45 files   638 cases, instantaneous
   LampBoardE2E/    2,189 lines · 10 files   89 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions

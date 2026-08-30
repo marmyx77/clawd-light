@@ -115,6 +115,7 @@ struct TrafficLightColumn: View {
     private func block(_ row: ColumnRow, at index: Int, in rows: [ColumnRow]) -> some View {
         let holdsMany = row.count > 1
         let open = holdsMany && expandedRows.contains(row.id)
+        let drag = dragState(for: row, at: index, in: rows)
 
         if compact {
             narrowBlock(row, at: index, in: rows, holdsMany: holdsMany, open: open)
@@ -126,7 +127,7 @@ struct TrafficLightColumn: View {
                     now: now,
                     flags: flags(for: row, expanded: open),
                     actions: actions,
-                    drag: dragState(for: row, at: index, in: rows)
+                    drag: drag
                 )
 
                 if open { conversations(of: row) }
@@ -146,6 +147,16 @@ struct TrafficLightColumn: View {
                             .strokeBorder(holdsMany ? StatusPalette.blockEdge : Color.clear, lineWidth: 1)
                     )
             )
+            // The whole block follows the pointer, and steps aside — animated —
+            // when another block is dragged past it. On the block and not on the
+            // row that carries the handle: a project that is open **is** its
+            // header, its conversations and the well around them, and moving one
+            // third of that was the defect. Closed, the two are the same thing,
+            // which is why it only ever looked wrong open.
+            .offset(y: drag.offset)
+            .zIndex(drag.isDragged ? 1 : 0)
+            .shadow(color: .black.opacity(drag.isDragged ? 0.35 : 0), radius: drag.isDragged ? 6 : 0, y: 2)
+            .animation(drag.isDragged ? nil : .easeOut(duration: 0.12), value: drag.offset)
         }
     }
 

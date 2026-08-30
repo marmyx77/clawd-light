@@ -172,12 +172,16 @@ struct TrafficLightRow: View {
         .onTapGesture(perform: activate)
         .contextMenu { menu }
         .tooltip(RowSummary.of(row, now: now, muted: flags.isMuted))
-        // The row follows the pointer while it is the one being dragged, and steps
-        // aside — animated — when another row is dragged past it.
-        .offset(y: drag?.offset ?? 0)
-        .zIndex(isDragged ? 1 : 0)
-        .shadow(color: .black.opacity(isDragged ? 0.35 : 0), radius: isDragged ? 6 : 0, y: 2)
-        .animation(isDragged ? nil : .easeOut(duration: 0.12), value: drag?.offset ?? 0)
+        // The movement is **not** here. A row is the top line of a project, and a
+        // project that is open owns the conversations under it and the well
+        // around them: a header that followed the pointer on its own slid
+        // straight through its own rows and left the card behind, which read as
+        // the panel breaking rather than as a drag. What moves is the block, and
+        // only the column knows where a block begins and ends — see
+        // `TrafficLightColumn.block(_:at:in:)`.
+        //
+        // What stays is the handle and the light it puts in the grip: this row
+        // starts the drag, it just does not draw it.
     }
 
     /// How full this session's context is, and on which model.
