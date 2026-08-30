@@ -259,17 +259,44 @@ public enum ColumnLayout {
 
     // MARK: - Building the rows
 
+    /// Rows, one per project **and agent**.
+    ///
+    /// Grouping exists because of a measurement: 22 sessions across 12 windows
+    /// drew 22 targets for 12 raisable windows, and ten of those targets led where
+    /// another already led. The sessions were **interchangeable destinations**,
+    /// and one dot for them was the whole point.
+    ///
+    /// Two different agents are not interchangeable, and the day a project could
+    /// hold both, the premise stopped holding. Reported from use within hours:
+    /// Claude working, Codex finished, same folder. The group shows its most
+    /// urgent state, `ready` outranks `working`, and the row went green while
+    /// Claude was still going. Green was not wrong about Codex. It was wrong about
+    /// the project, and the half it hid was the half that says *do not start
+    /// anything here yet*. The click was wrong too: it opens the most urgent
+    /// session, so it landed in the agent that had finished.
+    ///
+    /// The slot and the name stay keyed on the **path**, so two agents in one
+    /// project share them. That is not an oversight and it has a precedent right
+    /// below: `ungrouped` already lets several rows of one project share its slot,
+    /// because a slot addresses a project and a key must go to the same place
+    /// whether or not grouping is on. The two rows are told apart by the letter in
+    /// the ring, `O` against `G`, which costs no pixels because it was already there.
     private static func group(_ sessions: [SessionState], options: ColumnOptions) -> [ColumnRow] {
-        var byWorkspace: [String: [SessionState]] = [:]
+        var byProjectAndAgent: [String: [SessionState]] = [:]
+        var order: [String] = []
         for session in sessions {
-            byWorkspace[session.workspace.path, default: []].append(session)
+            let key = "\(session.workspace.path)\u{1F}\(session.harness.rawValue)"
+            if byProjectAndAgent[key] == nil { order.append(key) }
+            byProjectAndAgent[key, default: []].append(session)
         }
 
-        return byWorkspace.map { path, members in
+        return order.compactMap { key in
+            guard let members = byProjectAndAgent[key] else { return nil }
+            let path = members[0].workspace.path
             // `state.ordered` arrives already sorted by urgency, and grouping
             // preserves that order: the first one is the most urgent.
-            ColumnRow(
-                id: path,
+            return ColumnRow(
+                id: key,
                 workspace: members[0].workspace,
                 sessions: members,
                 slot: options.slot(for: path),

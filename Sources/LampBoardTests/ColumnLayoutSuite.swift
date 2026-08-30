@@ -12,7 +12,8 @@ enum ColumnLayoutSuite {
         _ status: SessionStatus,
         path: String,
         since: TimeInterval = 0,
-        subagents: Int = 0
+        subagents: Int = 0,
+        harness: Harness = .claudeCode
     ) -> SessionState {
         SessionState(
             id: id,
@@ -20,6 +21,7 @@ enum ColumnLayoutSuite {
             workspace: Workspace(path: path),
             updatedAt: t0.addingTimeInterval(since),
             statusSince: t0.addingTimeInterval(since),
+            harness: harness,
             activeAgentIds: Set((0..<subagents).map { "agent-\($0)" })
         )
     }
@@ -29,6 +31,48 @@ enum ColumnLayoutSuite {
     }
 
     static let suite = TestSuite("Column composition", [
+
+        // MARK: Two agents in one project
+
+        TestCase("Two harnesses in one project are two rows, not one") { t in
+            // Reported from use, and it is the failure that grouping was never
+            // designed for. Claude working, Codex finished, same folder: the group
+            // showed the most urgent state, `ready` outranks `working`, and the row
+            // went green while Claude was still going. Green is not wrong about
+            // Codex; it is wrong about the project, and the half it hides is the
+            // half that says do not start anything here yet.
+            //
+            // Grouping exists because 22 sessions across 12 windows made 22 targets
+            // for 12 raisable windows: the sessions were interchangeable
+            // destinations. Two different agents are not interchangeable, so the
+            // premise does not hold and neither should the grouping.
+            let rendering = ColumnLayout.render(
+                state([
+                    session("codex-done", .ready, path: "/dev/project", harness: .codex),
+                    session("claude-busy", .working, path: "/dev/project"),
+                ]),
+                options: ColumnOptions(grouped: true)
+            )
+            t.expectEqual(rendering.rows.count, 2, "one row per agent")
+            let states = Set(rendering.rows.map(\.status))
+            t.expect(states.contains(.ready), "the finished one is still green")
+            t.expect(states.contains(.working), "and the busy one is still yellow")
+        },
+
+        TestCase("Two sessions of the same agent still share one row") { t in
+            // The original case is untouched: two Claude sessions in one folder are
+            // two ways into the same window, and one dot for them is the whole
+            // point of grouping.
+            let rendering = ColumnLayout.render(
+                state([
+                    session("a", .ready, path: "/dev/project"),
+                    session("b", .working, path: "/dev/project"),
+                ]),
+                options: ColumnOptions(grouped: true)
+            )
+            t.expectEqual(rendering.rows.count, 1, "one row")
+            t.expectEqual(rendering.rows.first?.count, 2, "holding both")
+        },
 
         // MARK: Grouping
 
@@ -42,7 +86,12 @@ enum ColumnLayoutSuite {
                 options: ColumnOptions(grouped: true)
             )
             t.expectEqual(result.rows.count, 2, "rows")
-            t.expectEqual(result.rows.first { $0.id == "/dev/alfa" }?.count, 2, "sessions in alfa")
+            // By path and not by id: a row is now identified by its project **and** its
+            // agent, because two agents in one folder are two rows.
+            t.expectEqual(
+                result.rows.first { $0.workspace.path == "/dev/alfa" }?.count, 2,
+                "sessions in alfa"
+            )
         },
 
         TestCase("Without grouping every session gets its own row") { t in

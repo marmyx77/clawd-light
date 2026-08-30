@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **571**, instantaneous |
+| Domain tests | **573**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
