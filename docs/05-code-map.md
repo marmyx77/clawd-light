@@ -1,13 +1,13 @@
 # Code map
 
-~31,500 lines of Swift across five targets. For each file: what it contains, why
+~31,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,636 lines · 70 files   pure logic, zero AppKit
-  LampBoardApp/    12,661 lines · 68 files   shell: AppKit, network, windows
-  LampBoardTests/  7,848 lines · 43 files   609 cases, instantaneous
+  LampBoardCore/   8,730 lines · 71 files   pure logic, zero AppKit
+  LampBoardApp/    12,814 lines · 68 files   shell: AppKit, network, windows
+  LampBoardTests/  7,919 lines · 44 files   617 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -107,6 +107,17 @@ This is the evidence a Codex session rests on. A rollout on disk proves a sessio
 existed; a process holding it open proves it is loaded now. An empty result means
 "this call saw nothing", never "the session is gone": the caller has to keep those
 apart or one slow `lsof` deletes every Codex row.
+
+### `Codex/CodexSessionMeta.swift`
+What a Codex rollout says about itself in its first line, and the **only** place a
+scanner-found session may take its folder from. This is the replacement for a
+security property rather than its removal: the old bound on the unauthenticated
+`/signal` route was a Claude Code window lock claiming the folder, which a machine
+running only Codex does not have. Reading the folder out of a file a live process
+is holding open keeps the bound.
+
+Fails closed at every step. A first record that is not `session_meta`, a relative
+`cwd`, an empty id: nothing at all rather than a row pointing somewhere plausible.
 
 ### `Codex/CodexSurface.swift`
 Which Codex a session runs in, read from the executable behind its pid. Better
@@ -606,13 +617,13 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 587 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 688 | `@MainActor`, `@Published`, periodic realignment |
 | `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 154 | talks to the live instance for `sessions` and `next` |
-| `SessionNotifier.swift` | 199 | `awaiting` notifications, anti-duplicate memory, gate |
+| `SessionNotifier.swift` | 241 | `awaiting` notifications, anti-duplicate memory, gate |
 | `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `ContextReader.swift` | 98 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
@@ -739,7 +750,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 609 cases
+## `LampBoardTests/` — 617 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

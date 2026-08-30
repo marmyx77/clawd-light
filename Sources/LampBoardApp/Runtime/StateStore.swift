@@ -27,6 +27,9 @@ final class StateStore: ObservableObject {
     private let clock: () -> Date
     private let snapshots: SnapshotBox?
     private let preferences: Preferences
+    /// Finds Codex sessions that will never send a signal.
+    private let codexScanner = CodexProcessScanner()
+
     private var pollTimer: Timer?
     private var remoteTimer: Timer?
 
@@ -101,6 +104,63 @@ final class StateStore: ObservableObject {
     /// What "Show terminal sessions" turning off does, at once.
     func forgetTerminalSessions() {
         apply(.forget(origin: .terminal), now: clock())
+    }
+
+    /// Adopts the Codex sessions a live process is holding a rollout open for.
+    ///
+    /// They arrive this way because they arrive no other way. Codex inside the
+    /// ChatGPT app registers our hooks, marks them trusted, runs a full session
+    /// and sends nothing: measured, with eight events configured and not one line
+    /// in the log. A row for it has to be found rather than announced.
+    ///
+    /// Three rules hold the honesty of it together.
+    ///
+    /// The folder comes from the rollout's own first record, never from anything
+    /// sent to us. That is the replacement for the admission gate, not its
+    /// removal: the old bound was a Claude Code window lock, which a machine
+    /// running only Codex does not have.
+    ///
+    /// The state is **idle**, which here means the absence of information rather
+    /// than a claim, exactly as it does for a Claude session adopted from disk. An
+    /// open descriptor proves a conversation is loaded in a live program; it does
+    /// not prove the model is doing anything, and the editor extension was
+    /// observed holding open a rollout whose last record was a year old. Reading
+    /// turns out of the rollout is a separate capability and needs fixtures, a
+    /// gate and a version, because the format is declared unstable by the people
+    /// who write it.
+    ///
+    /// And a probe that could not answer removes nothing. `lsof` stats every open
+    /// descriptor, so a network mount whose server has gone away stops it: that is
+    /// absence of evidence, and this project already draws the same line for a
+    /// remote host that has gone quiet.
+    private func adoptCodexSessions(at now: Date) {
+        guard case .observed(let evidence) = codexScanner.scan() else { return }
+
+        for item in evidence where state.sessions[item.meta.sessionId] == nil {
+            apply(
+                .adopt(
+                    SessionState(
+                        id: item.meta.sessionId,
+                        status: .idle,
+                        workspace: Workspace(path: item.meta.cwd),
+                        updatedAt: item.lastActivity,
+                        statusSince: item.lastActivity,
+                        harness: .codex,
+                        transcriptPath: item.rolloutPath
+                    )
+                ),
+                now: now
+            )
+            Diagnostics.log(
+                "codex adopted: \(item.meta.sessionId.prefix(8)) in \(item.meta.cwd) "
+                    + "[\(item.surface.label), pid \(item.pid)]"
+            )
+        }
+
+        // Only what a process is still holding open survives. Closing the
+        // conversation closes the descriptor, and that is the one signal Codex
+        // gives us for free.
+        apply(.reconcile(alive: Set(evidence.map(\.meta.sessionId)), harness: .codex), now: now)
     }
 
     /// Reads the conversation's title off the main actor and remembers it.
@@ -500,6 +560,8 @@ final class StateStore: ObservableObject {
         }
         let confirmed = Set(live.map(\.sessionId)).union(knownRemote.map(\.sessionId))
         apply(.reconcile(alive: confirmed.union(unconfirmed)), now: now)
+
+        adoptCodexSessions(at: now)
 
         // The switch turning off takes its rows with it — here, so that a switch
         // flipped from the Settings window is honoured within one poll.

@@ -3,12 +3,16 @@ import Foundation
 
 /// A Codex session proven to exist right now.
 struct CodexEvidence: Sendable, Equatable {
+    /// From the rollout's own first record, never from anything sent to us.
+    let meta: CodexSessionMeta
     /// The rollout the process holds open.
     let rolloutPath: String
     let pid: Int32
     /// The binary behind the pid, which is what names the surface.
     let executable: String
     let surface: CodexSurface
+    /// The last record in the rollout that carries a timestamp.
+    let lastActivity: Date
 }
 
 /// What the scanner learned, and whether it learned anything at all.
@@ -35,11 +39,19 @@ enum CodexScanResult: Sendable, Equatable {
 /// So the evidence runs the other way. A live `codex` process holds its rollout
 /// open; the file says which session and which folder; the binary says which
 /// surface. Nothing has to be sent to us, and nothing unauthenticated is believed.
-enum CodexProcessScanner {
+final class CodexProcessScanner {
+
+    /// The first record of a rollout never changes, so it is read once per file.
+    private var metaByPath: [String: CodexSessionMeta] = [:]
+
+    /// The tail is re-read only when the file has grown. A poll every five
+    /// seconds across a handful of rollouts would otherwise read a megabyte a
+    /// minute to learn nothing.
+    private var tailByPath: [String: (size: UInt64, moment: Date)] = [:]
 
     /// One pass. Cheap enough for a poll: one process enumeration and one `lsof`,
     /// both bounded.
-    static func scan(
+    func scan(
         sessionsRoot: URL = AppConfig.codexSessionsDirectory,
         deadline: TimeInterval = AppConfig.focusProbeTimeout
     ) -> CodexScanResult {
@@ -75,14 +87,57 @@ enum CodexProcessScanner {
         }
 
         return .observed(open.compactMap { file in
-            guard file.path.hasSuffix(".jsonl") else { return nil }
+            guard file.path.hasSuffix(".jsonl"), let meta = meta(atPath: file.path) else { return nil }
             let executable = ProcessTree.path(of: file.pid)
             return CodexEvidence(
+                meta: meta,
                 rolloutPath: file.path,
                 pid: file.pid,
                 executable: executable,
-                surface: CodexSurface.of(executable: executable)
+                surface: CodexSurface.of(executable: executable),
+                lastActivity: lastActivity(atPath: file.path)
             )
         })
+    }
+
+    // MARK: - Reading the file
+
+    private func meta(atPath path: String) -> CodexSessionMeta? {
+        if let cached = metaByPath[path] { return cached }
+        guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: CodexSessionMetaReader.headLimit),
+              let meta = CodexSessionMetaReader.read(head: String(decoding: data, as: UTF8.self))
+        else { return nil }
+        metaByPath[path] = meta
+        return meta
+    }
+
+    /// When the conversation last said something, from the last record that
+    /// carries a timestamp.
+    ///
+    /// The file's modification date is not that, and this project has already
+    /// been bitten by assuming it was: three Claude projects untouched for days
+    /// read as active within the hour because tooling had appended records with
+    /// no timestamp at all. A rollout is written by a different program and the
+    /// same rule applies, for the same reason.
+    private func lastActivity(atPath path: String) -> Date {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return .distantPast }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd() else { return .distantPast }
+
+        if let cached = tailByPath[path], cached.size == size { return cached.moment }
+
+        let slice = UInt64(TranscriptActivity.tailLimit)
+        let wholeFile = slice >= size
+        guard (try? handle.seek(toOffset: wholeFile ? 0 : size - slice)) != nil,
+              let data = try? handle.readToEnd(),
+              let moment = TranscriptActivity.lastTimestamp(
+                  inTailChunk: String(decoding: data, as: UTF8.self), isWholeFile: wholeFile
+              )
+        else { return tailByPath[path]?.moment ?? .distantPast }
+
+        tailByPath[path] = (size, moment)
+        return moment
     }
 }

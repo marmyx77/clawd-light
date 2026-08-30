@@ -81,7 +81,7 @@ extension CommandLineInterface {
         let pids = ProcessTree.pids(named: "codex")
         print("Live codex processes: \(pids.isEmpty ? "none" : pids.map(String.init).joined(separator: ", "))")
 
-        switch CodexProcessScanner.scan() {
+        switch CodexProcessScanner().scan() {
         case .unavailable(let reason):
             print("\nThe probe could not answer: \(reason)")
             print("That is not the same as no sessions: nothing was ruled out.")
@@ -96,6 +96,8 @@ extension CommandLineInterface {
             print("")
             for item in evidence {
                 print("  pid \(item.pid)  \(item.surface.label)")
+                print("    folder:     \(item.meta.cwd)")
+                print("    session:    \(item.meta.sessionId)")
                 print("    rollout:    \(item.rolloutPath)")
                 print("    executable: \(item.executable)")
                 print("    focus from the executable: \(item.surface.focusIsDecidedByExecutable ? "yes" : "no, the ancestry decides")")

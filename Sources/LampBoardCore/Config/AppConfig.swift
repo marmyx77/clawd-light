@@ -429,6 +429,22 @@ public enum AppConfig {
     // MARK: - Interface
 
     /// Maximum number of traffic lights shown at once before scrolling.
+    /// How long a session must have been waiting before it is worth a
+    /// notification.
+    ///
+    /// A permission a person has to answer stays amber until they answer it. One
+    /// the agent approves itself is amber for a few hundred milliseconds, and
+    /// Codex publishes `PermissionRequest` for **every** tool call, approved or
+    /// not. Without this the first Codex session working through a task fired a
+    /// burst of "waiting for your answer" while nothing was waiting for anybody:
+    /// reported within minutes of Codex rows first appearing.
+    ///
+    /// Four seconds costs a real prompt four seconds of delay, which nobody
+    /// notices, and costs an automatic one the entire notification, which is the
+    /// point. The dot is amber immediately either way: this is about what
+    /// interrupts you in another application.
+    public static let awaitingNotificationDelay: TimeInterval = 4
+
     public static let maxVisibleRows = 12
 
     /// Blink period for the "awaiting permission" state, in seconds.

@@ -23,6 +23,9 @@ final class SessionNotifier {
     /// Without a memory, every state recomputation would resend the same
     /// notification: the column updates continuously, and a repeated notification
     /// is worse than no notification.
+    /// Scheduled while something is amber but not yet old enough to announce.
+    private var recheck: Timer?
+
     private var announced: Set<String> = []
 
     private var cancellables = Set<AnyCancellable>()
@@ -105,10 +108,41 @@ final class SessionNotifier {
             return
         }
 
+        // The earliest moment one of the young ones becomes old enough.
+        var soonest = TimeInterval.greatestFiniteMagnitude
+
         for session in blocked where !announced.contains(session.id) {
+            // Waiting long enough to be waiting **for somebody**. A permission a
+            // person answers stays amber until they do; one the agent approves
+            // itself lasts a few hundred milliseconds, and Codex publishes a
+            // request for every tool call either way. Announcing on the
+            // transition turned a session working through a task into a burst of
+            // alerts about nothing.
+            //
+            // Not marked as announced while it is too young, or it would never be
+            // announced at all: the next pass has to be able to reconsider it.
+            let waited = Date().timeIntervalSince(session.statusSince)
+            guard waited >= AppConfig.awaitingNotificationDelay else {
+                soonest = min(soonest, AppConfig.awaitingNotificationDelay - waited)
+                continue
+            }
+
             announced.insert(session.id)
             guard passesGate(session) else { continue }
             deliver(session)
+        }
+
+        // Come back for the ones that were too young. The store publishes only
+        // when the state **changes**, so a session sitting amber with nothing else
+        // happening would never be looked at again, and a real permission prompt
+        // would wait for an unrelated event to be announced. In practice another
+        // session usually moves within seconds, which is exactly the kind of
+        // accidental correctness that holds until the one morning it matters.
+        recheck?.invalidate()
+        recheck = nil
+        guard soonest < .greatestFiniteMagnitude else { return }
+        recheck = Timer.scheduledTimer(withTimeInterval: soonest + 0.2, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.react(to: state) }
         }
     }
 
