@@ -132,7 +132,7 @@ struct TooltipCard: View {
     private var sessions: some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(Array(summary.sessions.enumerated()), id: \.offset) { _, state in
-                Text("· \(state)")
+                Text(state)
                     .font(.system(size: 10.5))
                     .foregroundStyle(Color.primary.opacity(0.6))
             }

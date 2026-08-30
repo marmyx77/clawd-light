@@ -105,11 +105,17 @@ final class StateStore: ObservableObject {
 
     /// Reads the conversation's title off the main actor and remembers it.
     ///
-    /// Only for a terminal row that has none yet: the title is what names it.
-    /// Called when the row is born and at every `Stop` while it is still
-    /// unnamed — a title appears after the first exchange, not before.
+    /// For any session that has none yet, wherever it runs. It used to be for
+    /// terminal rows only, on the reasoning that an editor row is named by its
+    /// folder anyway. That reasoning held while a folder meant one session: three
+    /// conversations open in the same project were then three rows called the
+    /// same thing, separable only by a UUID the panel never shows. The title is
+    /// what tells them apart, so every session earns one.
+    ///
+    /// Called when the row is born and at every `Stop` while it is still unnamed:
+    /// a title appears after the first exchange, not before.
     private func requestTitleIfMissing(sessionId: String) {
-        guard let session = state.sessions[sessionId], session.origin == .terminal,
+        guard let session = state.sessions[sessionId],
               session.title == nil, !titleReadsInFlight.contains(sessionId)
         else { return }
         // The hook's word first — a session in a git worktree keeps its transcript
@@ -118,6 +124,15 @@ final class StateStore: ObservableObject {
         let derived = TranscriptLocator.candidateURL(sessionId: sessionId, cwd: session.workspace.path).path
         let path = session.transcriptPath.flatMap { FileManager.default.fileExists(atPath: $0) ? $0 : nil }
             ?? derived
+
+        // No file, no read. The check costs one `stat` on this actor and saves a
+        // detached task plus a hop back for a session whose transcript does not
+        // exist yet, which is every session in its first instants and every one
+        // that will never have a transcript at all. It stopped mattering the
+        // moment this stopped being for terminal rows only: twenty-two sessions
+        // arriving together used to mean twenty-two reads of nothing.
+        guard FileManager.default.fileExists(atPath: path) else { return }
+
         titleReadsInFlight.insert(sessionId)
         Task.detached(priority: .utility) { [weak self] in
             let title = SessionTitleReader.title(atPath: path)
@@ -337,7 +352,7 @@ final class StateStore: ObservableObject {
         let before = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
         apply(.signal(signal, workspace: workspace, origin: origin), now: now)
         let after = state.sessions[signal.sessionId]?.status.rawValue ?? "absent"
-        if origin == .terminal, before == "absent" || signal.event == .stop {
+        if before == "absent" || signal.event == .stop {
             requestTitleIfMissing(sessionId: signal.sessionId)
         }
 
@@ -534,8 +549,12 @@ final class StateStore: ObservableObject {
                 ),
                 now: now
             )
-            if !known, origin == .terminal {
-                Diagnostics.log("adopted as a terminal session: \(session.sessionId.prefix(8)) in \(session.cwd)")
+            if !known {
+                if origin == .terminal {
+                    Diagnostics.log(
+                        "adopted as a terminal session: \(session.sessionId.prefix(8)) in \(session.cwd)"
+                    )
+                }
                 requestTitleIfMissing(sessionId: session.sessionId)
             }
         }

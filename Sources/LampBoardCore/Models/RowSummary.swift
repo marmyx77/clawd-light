@@ -122,8 +122,13 @@ public struct RowSummary: Sendable, Equatable {
             status: row.status,
             subtitle: subtitle(of: row),
             fields: fields,
-            sessions: row.count > 1 ? row.sessions.prefix(8).map(\.status.label)
-                + (row.count > 8 ? ["…and \(row.count - 8) more"] : []) : [],
+            // Named, not just counted. Three states with nothing attached to
+            // them was a list you could read and not use: it said something here
+            // is waiting and left you to guess which conversation it was.
+            sessions: row.count > 1
+                ? row.members.prefix(8).map { "\($0.name) · \($0.session.status.label)" }
+                    + (row.count > 8 ? ["…and \(row.count - 8) more"] : [])
+                : [],
             message: row.primary.lastMessage,
             messageIsError: row.status == .failed,
             notice: muted ? "Alerts are off for this project." : nil,

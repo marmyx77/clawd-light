@@ -112,6 +112,17 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// rather than as an empty space.
     public let context: ContextReading?
 
+    /// When this session first appeared to the panel.
+    ///
+    /// The one moment about a session that never moves: `updatedAt` follows every
+    /// signal and `statusSince` follows every transition, so neither can order a
+    /// list that must hold still. It is what numbers the conversations inside a
+    /// row, in the order they were opened, and it is preserved by every copy.
+    ///
+    /// A session built without one is first seen when it was last updated, which
+    /// is the only moment it knows about itself.
+    public let firstSeenAt: Date
+
     public init(
         id: String,
         status: SessionStatus,
@@ -128,8 +139,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         entrypoint: String? = nil,
         origin: SessionOrigin = .editor,
         title: String? = nil,
-        context: ContextReading? = nil
+        context: ContextReading? = nil,
+        firstSeenAt: Date? = nil
     ) {
+        self.firstSeenAt = firstSeenAt ?? updatedAt
         self.context = context
         self.waitingOn = waitingOn
         self.entrypoint = entrypoint?.trimmed.nilIfEmpty
@@ -395,7 +408,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             entrypoint: entrypoint ?? self.entrypoint,
             origin: origin ?? self.origin,
             title: title ?? self.title,
-            context: context ?? self.context
+            context: context ?? self.context,
+            firstSeenAt: firstSeenAt
         )
     }
 }

@@ -30,6 +30,7 @@ struct Preferences {
         static let terminalSessions = "terminal.sessions"
         static let rowNames = "panel.rowNames"
         static let calmBlinkWorkspaces = "panel.calmBlink"
+        static let expandedRows = "panel.expandedRows"
     }
 
     private let defaults: UserDefaults
@@ -216,6 +217,21 @@ struct Preferences {
     var calmBlinkWorkspaces: Set<String> {
         get { readSet(Key.calmBlinkWorkspaces) }
         nonmutating set { writeSet(newValue, to: Key.calmBlinkWorkspaces) }
+    }
+
+    /// Rows the user opened to see the sessions inside, by row id.
+    ///
+    /// By row id and not by folder, because a folder can hold a Claude row and a
+    /// Codex row and each is opened on its own. The id already carries both.
+    ///
+    /// A row stays in here even when its project drops back to a single session.
+    /// Opening is a statement about the project, "I want to see inside this one",
+    /// not about how many sessions it happens to hold right now: an opening that
+    /// evaporated on its own would not come back when a second session started,
+    /// and that is the worse surprise.
+    var expandedRows: Set<String> {
+        get { readSet(Key.expandedRows) }
+        nonmutating set { writeSet(newValue, to: Key.expandedRows) }
     }
 
     // MARK: - Notifications

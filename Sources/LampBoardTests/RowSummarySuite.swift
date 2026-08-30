@@ -35,7 +35,8 @@ enum RowSummarySuite {
         subagents: Int = 0,
         context: ContextReading? = nil,
         message: String? = nil,
-        failure: StopFailureReason? = nil
+        failure: StopFailureReason? = nil,
+        title: String? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -47,6 +48,7 @@ enum RowSummarySuite {
             failureReason: failure,
             activeAgentIds: Set((0..<subagents).map { "agent-\($0)" }),
             waitingOn: waitingOn,
+            title: title,
             context: context
         )
     }
@@ -156,8 +158,24 @@ enum RowSummarySuite {
             t.expectEqual(value(summary(group), "sessions"), "3 in this project", "the count")
             t.expectEqual(
                 summary(group).sessions,
-                ["waiting for your answer", "answer ready", "idle"],
-                "and each state, in the order the row holds them"
+                ["#1 · waiting for your answer", "#2 · answer ready", "#3 · idle"],
+                "each one named, in the order they were opened"
+            )
+        },
+
+        TestCase("A session that has a title is listed by it, not by its number") { t in
+            // Three states with nothing attached to them was a list you could
+            // read and not use: it said something in this project is waiting,
+            // and left you to guess which of three conversations it was.
+            let group = row([
+                session("a", .awaiting, title: "Fix the parser"),
+                session("b", .working, title: "Write the release notes"),
+            ])
+            t.expectEqual(
+                summary(group).sessions,
+                ["Fix the parser · waiting for your answer",
+                 "Write the release notes · working"],
+                "the conversation, then what it is doing"
             )
         },
 

@@ -1,13 +1,13 @@
 # Code map
 
-~29,600 lines of Swift across five targets. For each file: what it contains, why
+~29,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,169 lines · 64 files   pure logic, zero AppKit
-  LampBoardApp/    11,803 lines · 65 files   shell: AppKit, network, windows
-  LampBoardTests/  7,338 lines · 39 files   577 cases, instantaneous
+  LampBoardCore/   8,256 lines · 65 files   pure logic, zero AppKit
+  LampBoardApp/    11,838 lines · 65 files   shell: AppKit, network, windows
+  LampBoardTests/  7,492 lines · 40 files   586 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -97,6 +97,17 @@ decides which session is a group's face and which one a click opens.
 The names the user gave to rows, by folder: read, renamed, bounded. A name is
 what the panel shows and nothing that finds a window or a file ever believes it
 (D26).
+
+### `RowSession.swift`
+The conversations inside one row, told apart. A project can hold several sessions
+at once, and grouped they were identical in every field the panel draws: same
+window label, same entrypoint, same folder, same slot, differing only by a UUID
+nobody sees. `members` gives each one a position and a name.
+
+Ordered by **when it was first seen**, never by urgency: the column does not
+reorder itself (D23) and neither may the list inside a row, where the lines sit
+closer together and a misclick opens the wrong conversation. Ties go to the id,
+because sessions adopted in one pass share a timestamp.
 
 ### `ReleaseVersion.swift` · `ReleaseFeed.swift`
 The update check as a parser that says no. Versions compare as three integers,
@@ -655,7 +666,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 577 cases
+## `LampBoardTests/` — 586 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

@@ -67,6 +67,7 @@ let suites: [TestSuite] = [
     MultiplexerSuite.suite,
     TerminalListingSuite.suite,
     RowNamesSuite.suite,
+    RowSessionsSuite.suite,
     PanelIssueSuite.suite,
     PermissionWaitSuite.suite,
     TranscriptPathPolicySuite.suite,

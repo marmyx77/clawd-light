@@ -696,7 +696,7 @@ of work I shipped without watching it work.
 
 | | |
 |---|---|
-| Domain tests | **577**, instantaneous |
+| Domain tests | **586**, instantaneous |
 | End-to-end tests | **82**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1433,3 +1433,47 @@ mutation, and the run went red saying *"Every file is on the map" has no mutatio
 in bite.sh — nobody has seen it fail*.
 
 Ten documentation gates now, twenty-two mutations, all caught.
+
+## 30 August — the icon says the name
+
+The icon was three lamps in a row on a dark tile, and only one thing wrong with
+it had ever been said out loud: it is horizontal, and the product is a column.
+
+Three more turned up on the way to fixing that one. Red, amber and green in a row
+on a dark rounded tile **are the window controls** — close, minimise, zoom — so in
+the Dock the eye was parsing the app as a piece of window chrome. It said *traffic
+light*, which is one lamp with three states, where this is many lamps with six.
+And it was painted in Apple's system colours while the panel is painted in its
+own, so the icon's amber and the column's amber were quietly different colours.
+
+Twelve directions were generated and eight thrown away. The ninth was mine and it
+was wrong: the annunciator panel the name actually comes from, a field of lamps
+with one lit. The arithmetic killed it before taste could argue. A three by three
+field inside the tile gives each cell eight and a half pixels at 32 px and four at
+16, and four pixels do not hold a housing, a lamp and an arc. It was drawn rather
+than debated, and at 32 px it is a dark tile with one orange speck: an icon that
+looks like it failed to load.
+
+**Then the shape arrived from the other side of the table.** Four lamps tall and
+three wide, in the shape of an L. The corner belongs to both strokes and is
+counted once, so four by three is exactly six lamps — and the panel has exactly
+six states. Nobody arranged that; it falls out of the letter. So the L carries the
+whole vocabulary along the path the eye already takes, down the stem and out along
+the foot, with urgency falling as it goes.
+
+Two things the drawing insisted on. **A letter needs every stroke lit**: the
+honest pose, one lamp asking and the rest at rest, breaks the L in half and leaves
+a constellation. So the letter and the six states are not two options, they are
+the same option, and this is the one drawing in the project that shows a pose the
+panel never strikes. And **the foot must not end on the dim lamp**, or the letter
+reads as fading out — so the two reds moved next to each other at the end, where
+their difference in brightness states the grammar the panel already uses instead
+of hiding it.
+
+Three rules are `assert`s now instead of intentions: lamps never closer than a
+fifth of a lamp, or the stem closes into a bar; the figure always inside the tile
+with a margin, because a mark on the rounded edge reads as a rendering fault; and
+never under two pixels a lamp at 16 px. The third one bit on the first run. The
+small sizes draw their lamps larger to survive, and the lift that had been chosen
+by eye put the foot into the edge — 1.14 refused, 1.10 accepted. A rule nobody has
+watched fail is a rule nobody has.
