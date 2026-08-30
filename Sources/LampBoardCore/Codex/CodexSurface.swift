@@ -43,14 +43,45 @@ public enum CodexSurface: String, Sendable, Equatable, CaseIterable {
         }
     }
 
+    /// What `SessionState.entrypoint` carries for a Codex session, so the click
+    /// can find its way back here. Prefixed, because that field already holds
+    /// `claude-vscode` for the other harness and the two vocabularies must not be
+    /// able to collide.
+    public var entrypoint: String { "codex-\(rawValue)" }
+
+    /// The surface an entrypoint names, or `nil` when it is not a Codex one.
+    public static func named(entrypoint: String?) -> CodexSurface? {
+        guard let entrypoint, entrypoint.hasPrefix("codex-") else { return nil }
+        return CodexSurface(rawValue: String(entrypoint.dropFirst("codex-".count))) ?? .unknown
+    }
+
+    /// The application to raise, where raising one is the right answer.
+    ///
+    /// Only for the surfaces that **are** an application. A `codex` from Homebrew
+    /// running in a terminal is not raised by opening a bundle: the window is the
+    /// terminal's, and finding it is the seat's business.
+    public var bundleIdentifier: String? {
+        switch self {
+        case .chatgptApp: return "com.openai.codex"
+        case .editorExtension, .commandLine, .unknown: return nil
+        }
+    }
+
     /// Reads the surface off the executable's path.
     ///
-    /// Matching is on path segments rather than on substrings anywhere, so a
-    /// project folder called `ChatGPT.app` in somebody's home cannot make a
-    /// terminal session claim to be the desktop application.
+    /// Matched on the **bundle's own shape**, not on a name appearing somewhere in
+    /// the path. `ChatGPT.app` alone is a folder anybody can make, and a project
+    /// called that in somebody's home would have made every terminal session in it
+    /// claim to be the desktop application. `ChatGPT.app/Contents` is a bundle.
+    ///
+    /// The first version matched the bare segment, and a test written to prove it
+    /// was safe is what showed it was not.
     public static func of(executable path: String) -> CodexSurface {
         let segments = path.split(separator: "/").map(String.init)
-        if segments.contains("ChatGPT.app") { return .chatgptApp }
+        if let app = segments.firstIndex(of: "ChatGPT.app"),
+           segments.indices.contains(app + 1), segments[app + 1] == "Contents" {
+            return .chatgptApp
+        }
         // The extension lives under a versioned folder whose name starts with the
         // publisher, and the marketplace guarantees the publisher and not the
         // version, so the prefix is what is matched.

@@ -12,6 +12,9 @@ import TestKit
 /// reason one of them is the wrong answer.
 enum CodexContextSuite {
 
+    /// A fixed moment, so the cases about transitions do not depend on the clock.
+    private static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
     private static func tokenCount(
         last: Int, total: Int, window: Int, at: String, percent: Double = 0.0
     ) -> String {
@@ -155,6 +158,57 @@ enum CodexContextSuite {
             // hour. What is genuinely missing is any error event at all.
             t.expectEqual(Harness.codex.cannotReport, [.failed], "blind spot")
             t.expectEqual(Harness.claudeCode.cannotReport, [], "Claude reports everything")
+        },
+
+        TestCase("Codex cannot be made red, not even on purpose") { t in
+            // The invariant used to hold because no Codex event reached the branch
+            // that produces `.failed`, which is a different thing from being true:
+            // it depended on which hooks we register rather than on the code, and
+            // the header that says which agent a signal belongs to travels on an
+            // unauthenticated route.
+            let signal = HookSignal(
+                sessionId: "codex-1",
+                event: .stopFailure,
+                cwd: "/dev/project",
+                harness: .codex
+            )
+            let before = TrafficLightState(sessions: [
+                "codex-1": SessionState(
+                    id: "codex-1", status: .working, workspace: Workspace(path: "/dev/project"),
+                    updatedAt: t0, statusSince: t0, harness: .codex
+                )
+            ])
+            let after = StateReducer.reduce(
+                before,
+                action: .signal(signal, workspace: Workspace(path: "/dev/project"), origin: .editor),
+                now: t0.addingTimeInterval(60)
+            )
+            t.expectEqual(after.sessions["codex-1"]?.status, .working,
+                          "the state it had, not the one the event asked for")
+        },
+
+        TestCase("Claude is still allowed to fail, which is the point of the list") { t in
+            // A guard that refused everything would pass the case above and be
+            // useless. The same event on the harness that does publish failures has
+            // to go through.
+            let signal = HookSignal(
+                sessionId: "claude-1",
+                event: .stopFailure,
+                cwd: "/dev/project",
+                harness: .claudeCode
+            )
+            let before = TrafficLightState(sessions: [
+                "claude-1": SessionState(
+                    id: "claude-1", status: .working, workspace: Workspace(path: "/dev/project"),
+                    updatedAt: t0, statusSince: t0
+                )
+            ])
+            let after = StateReducer.reduce(
+                before,
+                action: .signal(signal, workspace: Workspace(path: "/dev/project"), origin: .editor),
+                now: t0.addingTimeInterval(60)
+            )
+            t.expectEqual(after.sessions["claude-1"]?.status, .failed, "red where red is real")
         },
 
         // MARK: Living alongside the other harness

@@ -1,18 +1,18 @@
 # Code map
 
-~31,800 lines of Swift across five targets. For each file: what it contains, why
+~31,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,730 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    12,814 lines · 68 files   shell: AppKit, network, windows
-  LampBoardTests/  7,919 lines · 44 files   617 cases, instantaneous
+  LampBoardCore/   8,782 lines · 71 files   pure logic, zero AppKit
+  LampBoardApp/    12,867 lines · 69 files   shell: AppKit, network, windows
+  LampBoardTests/  8,065 lines · 45 files   626 cases, instantaneous
   LampBoardE2E/    1,939 lines ·  9 files   82 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 770 lines. The limit the project sets itself is 800.
+No file exceeds 759 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -441,7 +441,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 431
+### `StateReducer.swift` · 496
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -712,7 +712,8 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 758 | holds everything together; row and panel actions |
+| `PanelController.swift` | 700 | holds everything together; row and panel actions |
+| `PanelActivation.swift` | 122 | where a click goes, which is a different question for every surface |
 | `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 431 | the column, the drag in progress, the hidden summary, the filter note |
@@ -750,7 +751,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 617 cases
+## `LampBoardTests/` — 626 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

@@ -72,6 +72,7 @@ let suites: [TestSuite] = [
     PanelMetricsSuite.suite,
     TranscriptActivitySuite.suite,
     CodexSessionMetaSuite.suite,
+    CodexSurfaceSuite.suite,
     PanelIssueSuite.suite,
     PermissionWaitSuite.suite,
     TranscriptPathPolicySuite.suite,

@@ -146,7 +146,8 @@ final class StateStore: ObservableObject {
                         updatedAt: item.lastActivity,
                         statusSince: item.lastActivity,
                         harness: .codex,
-                        transcriptPath: item.rolloutPath
+                        transcriptPath: item.rolloutPath,
+                        entrypoint: item.surface.entrypoint
                     )
                 ),
                 now: now

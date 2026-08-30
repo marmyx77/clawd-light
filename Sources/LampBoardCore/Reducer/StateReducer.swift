@@ -183,6 +183,27 @@ public enum StateReducer {
             return discovering(signal: signal, workspace: workspace, in: state, now: now)
         }
 
+        // The invariant, enforced rather than only written down.
+        //
+        // `Harness.cannotReport` says a Codex row never turns red, because Codex
+        // publishes no failure event and silence does not tell a crash from a long
+        // turn. Until now that held because no Codex event reached the branch that
+        // produces `.failed`, which is a different thing from being true: the
+        // guarantee is in the model and in the README, and it depended on the hook
+        // configuration rather than on the code.
+        //
+        // A `StopFailure` carrying `X-LampBoard-Harness: codex` is all it would
+        // have taken, and that header is on an unauthenticated route.
+        guard !signal.harness.cannotReport.contains(newStatus) else {
+            return state.upserting(
+                (state.sessions[signal.sessionId] ?? SessionState(
+                    id: signal.sessionId, status: .idle, workspace: workspace,
+                    updatedAt: now, statusSince: now, harness: signal.harness
+                ))
+                .with(workspace: workspace)
+            )
+        }
+
         let existing = state.sessions[signal.sessionId]
 
         // An answer that is already waiting is not downgraded to "working" by a

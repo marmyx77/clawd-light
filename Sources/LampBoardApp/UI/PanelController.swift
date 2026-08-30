@@ -341,76 +341,6 @@ final class PanelController {
     /// - Parameter opensTab: `false` brings the window forward **without** opening
     ///   the session's tab. Needed by "new conversation", which would otherwise
     ///   open two: first the existing one and then the new one.
-    func activate(_ row: ColumnRow, markSeen: Bool, opensTab: Bool = true) {
-        if markSeen {
-            // Only the sessions that were in the most urgent state: you haven't
-            // seen the others in the group, and clearing them would be a loss.
-            for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
-        }
-
-        let session = row.primary
-
-        // A terminal row's place is a terminal tab, found through the session's
-        // process at click time (D25): its pid from the session file, the chain
-        // up to the hosting application, that application's own way of selecting
-        // a tab. Never an editor window of a folder that has none — and never a
-        // modal: the session may simply have ended since the last poll.
-        if session.origin == .terminal {
-            activateTerminal(session)
-            return
-        }
-
-        // A remote session's window, if it has one here, is the Remote-SSH window
-        // of its folder; the focuser knows how to find it. The tab deep link is
-        // off for it — the link goes to the local extension host, and this
-        // session's is on the other machine. Off as well for a session the
-        // extension did not start (`claude` in a terminal): the link would find
-        // no tab for it and open a new one, which is the mess the widget exists
-        // to avoid.
-        let remoteHost = session.workspace.host
-        let hasTab = remoteHost == nil && DeepLinkPolicy.opensTab(entrypoint: session.entrypoint)
-        switch VSCodeFocuser.focus(
-            workspace: session.workspace,
-            sessionId: opensTab && hasTab ? session.id : nil
-        ) {
-        case .raised:
-            store.clearError()
-
-        case .activatedOnly(let reason):
-            // VS Code is in front of the user: interrupting with a modal window
-            // would be out of proportion. The strip under the rows carries it
-            // instead, with the button — the context menu alone was a place
-            // nobody looks, which is how a missing permission read as a broken app.
-            store.reportError(
-                "Window not raised (\(reason.shortDescription)): only VS Code was activated.",
-                issue: reason.panelIssue
-            )
-            awaitPermission(for: reason) { [weak self] in
-                self?.activate(row, markSeen: false, opensTab: opensTab)
-            }
-
-        case .failed(let error):
-            // Normal for a session driven from a terminal on the node: there is no
-            // window here to raise, and a modal saying so would be true and
-            // useless. The menu says where the session is instead.
-            if let remoteHost {
-                store.reportError(
-                    "“\(session.workspace.name)” runs on \(remoteHost): "
-                        + "no Remote-SSH window of that folder is open here (\(error.shortDescription))."
-                )
-                return
-            }
-            store.reportError(error.shortDescription, issue: error.panelIssue)
-            awaitPermission(for: error) { [weak self] in
-                self?.activate(row, markSeen: false, opensTab: opensTab)
-            }
-            Alerts.warn(
-                title: "Cannot open “\(session.workspace.name)”",
-                message: error.localizedDescription
-            )
-        }
-    }
-
     // MARK: - Updates
 
     private func checkForUpdates() {
@@ -431,7 +361,7 @@ final class PanelController {
     /// using it, so there is no way to poll without sending an Apple Event every
     /// second and no way to tell "denied" from "not asked yet". That one is
     /// retried by the next click.
-    private func awaitPermission(for error: FocusError, retry: @escaping () -> Void) {
+    func awaitPermission(for error: FocusError, retry: @escaping () -> Void) {
         guard case .accessibilityDenied = error else { return }
         permissions.watch(retry: retry) { [weak self] in
             guard let self else { return }
@@ -441,7 +371,7 @@ final class PanelController {
     }
 
     /// The click on a terminal row: seat first, then the focuser for that seat.
-    private func activateTerminal(_ session: SessionState) {
+    func activateTerminal(_ session: SessionState) {
         let name = session.displayName
         let seat: Seat
         let chain: [ProcessAncestor]
