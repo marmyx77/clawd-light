@@ -95,8 +95,55 @@ enum SelfTest {
     /// Split out so the two paths — panel running, panel not running — report the
     /// same things. A diagnosis that says less when the app is running says least
     /// exactly when it is needed most.
+    /// The second harness, checked on its own.
+    ///
+    /// It used to say "All good" without ever looking at Codex, which is the worst
+    /// possible answer from a diagnosis: somebody runs this **because** something
+    /// is wrong, and a green line about the half that works sends them away.
+    ///
+    /// Three things are checked and one is deliberately not. Whether Codex is here
+    /// at all; whether our hooks are registered; and whether any session is
+    /// actually visible. Trust is the one this cannot see: it lives inside Codex's
+    /// own configuration and is granted by a person typing `/hooks`, so the line
+    /// says that rather than guessing.
+    private static func reportCodex() -> Int {
+        print("\nCodex")
+        guard FileManager.default.fileExists(atPath: AppConfig.codexDirectory.path) else {
+            print("• not installed on this machine, so nothing about it is wrong")
+            return 0
+        }
+
+        var failures = 0
+        let events = HookInstaller.codex().installedEvents()
+        if events.isEmpty {
+            print("✗ our hooks are not registered in \(AppConfig.codexHooksURL.path)")
+            print("  Run: lampboard install-hooks")
+            failures += 1
+        } else {
+            print("✓ hooks registered: \(events.joined(separator: ", "))")
+            print("• trust cannot be read from here: run /hooks inside Codex to confirm")
+        }
+
+        switch CodexProcessScanner().scan() {
+        case .unavailable(let reason):
+            // A reason to go looking, and told apart from "none" on purpose: this
+            // one means the panel is blind, not that the machine is quiet.
+            print("✗ live sessions could not be read: \(reason)")
+            failures += 1
+        case .observed(let evidence) where evidence.isEmpty:
+            print("• no Codex session is holding a rollout open right now")
+        case .observed(let evidence):
+            print("✓ \(evidence.count) live session\(evidence.count == 1 ? "" : "s") found without hooks")
+            for item in evidence {
+                print("    · \(item.meta.cwd)  [\(item.surface.label)]")
+            }
+        }
+        return failures
+    }
+
     private static func reportEnvironment(cwd: String) -> Int {
         var failures = 0
+        failures += reportCodex()
 
         // 4. Does the current folder match a VS Code window?
         let windows = IDEWindowReader().readWindows()

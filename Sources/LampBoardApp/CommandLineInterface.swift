@@ -164,8 +164,40 @@ enum CommandLineInterface {
         let installer = HookInstaller()
         let events = installer.installedEvents()
 
-        print("Hook script:  \(installer.scriptPath)")
-        print("Registered:   \(events.isEmpty ? "no" : events.joined(separator: ", "))")
+        print("Claude Code")
+        print("  Hook script:  \(installer.scriptPath)")
+        print("  Registered:   \(events.isEmpty ? "no" : events.joined(separator: ", "))")
+
+        // Reported separately, because the two are separately installable and one
+        // of them can be missing while the other is fine. A single line saying
+        // "hooks installed" was true and useless on a machine where Codex was not.
+        print()
+        print("Codex")
+        if FileManager.default.fileExists(atPath: AppConfig.codexDirectory.path) {
+            let codex = HookInstaller.codex()
+            let codexEvents = codex.installedEvents()
+            print("  Hook script:  \(codex.scriptPath)")
+            print("  Registered:   \(codexEvents.isEmpty ? "no" : codexEvents.joined(separator: ", "))")
+            if !codexEvents.isEmpty {
+                print("  Trust:        cannot be read from here; run /hooks inside Codex")
+            }
+            switch CodexProcessScanner().scan() {
+            case .unavailable(let reason):
+                // Told apart from "none", because they are different facts and the
+                // second one is a reason to go looking.
+                print("  Live sessions: could not be read (\(reason))")
+            case .observed(let evidence) where evidence.isEmpty:
+                print("  Live sessions: none holding a rollout open")
+            case .observed(let evidence):
+                print("  Live sessions: \(evidence.count)")
+                for item in evidence {
+                    print("    · \(item.meta.cwd)  [\(item.surface.label)]")
+                }
+            }
+        } else {
+            print("  Not installed on this machine (\(AppConfig.codexDirectory.path) is not there)")
+        }
+        print()
 
         let now = Date()
         let windows = IDEWindowReader().readWindows()

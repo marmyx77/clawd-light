@@ -702,7 +702,7 @@ of work I shipped without watching it work.
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **22**, all caught |
-| Longest file | 759 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
+| Longest file | 791 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 
 ## 27 August — sessions in a terminal
 

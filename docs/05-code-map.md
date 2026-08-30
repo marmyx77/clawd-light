@@ -1,18 +1,18 @@
 # Code map
 
-~32,100 lines of Swift across five targets. For each file: what it contains, why
+~32,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/   8,806 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    12,932 lines · 69 files   shell: AppKit, network, windows
+  LampBoardApp/    13,011 lines · 69 files   shell: AppKit, network, windows
   LampBoardTests/  8,092 lines · 45 files   627 cases, instantaneous
   LampBoardE2E/    2,128 lines · 10 files   88 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 759 lines. The limit the project sets itself is 800.
+No file exceeds 791 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -608,7 +608,7 @@ Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
-### `SelfTest.swift` · 240
+### `SelfTest.swift` · 287
 `lampboard selftest`: the whole chain, link by link — the port opens, a signal
 crosses HTTP, decodes, resolves to a workspace, the Accessibility permission is
 there, the hooks are registered — and it names the link that broke.
