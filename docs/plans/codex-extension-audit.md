@@ -13,7 +13,9 @@
 > `PanelController` e ai relativi test. Introducono nomi distinti per harness con
 > fallback ai vecchi nomi di progetto. Non fanno parte di `5185072`, non sono
 > state alterate da questo audit e vanno preservate. La sezione ROW-001 ne tiene
-> conto.
+> conto. Al controllo finale i documenti del follow-up dichiarano 577 test di
+> dominio e `Scripts/check-docs.sh` supera 10 controlli su 10; build e suite non
+> sono state rieseguite da questo audit sul follow-up non committato.
 
 ## Decisione operativa
 
