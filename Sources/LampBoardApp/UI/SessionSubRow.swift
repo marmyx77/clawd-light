@@ -22,6 +22,7 @@ struct SessionSubRow: View {
     let open: (RowSession) -> Void
     let rename: (RowSession) -> Void
     let renameLane: (RowSession) -> Void
+    let move: (RowSession, Int) -> Void
 
     @State private var hovering = false
 
@@ -91,6 +92,9 @@ struct SessionSubRow: View {
         .tooltip(RowSummary.of(card, now: now, revealable: false))
         .contextMenu {
             Button("Open this conversation") { open(member) }
+            Divider()
+            Button("Move up") { move(member, -1) }
+            Button("Move down") { move(member, 1) }
             Divider()
             Button("Rename this conversation\u{2026}") { rename(member) }
             Button("Rename the \(session.harness.displayName) lane\u{2026}") { renameLane(member) }

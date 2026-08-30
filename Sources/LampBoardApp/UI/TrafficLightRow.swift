@@ -32,6 +32,8 @@ struct RowActions {
     /// Names this agent's lane in this project, which every conversation of that
     /// agent falls back to.
     let renameLane: (RowSession) -> Void
+    /// Moves one conversation up (`-1`) or down (`+1`) inside its project.
+    let moveSession: (ColumnRow, RowSession, Int) -> Void
     /// Opens the folder the session is working in, in the Finder.
     let revealInFinder: (ColumnRow) -> Void
 }

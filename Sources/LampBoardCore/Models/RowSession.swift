@@ -43,11 +43,24 @@ extension RowSession {
     /// Ties are broken by id rather than left to the sort. Sessions adopted from
     /// the filesystem in one pass share a timestamp, and an unstable order would
     /// renumber the list between two otherwise identical renders.
-    static func list(of sessions: [SessionState], in names: [String: String]) -> [RowSession] {
-        let ordered = sessions.sorted {
-            $0.firstSeenAt == $1.firstSeenAt
-                ? $0.id < $1.id
-                : $0.firstSeenAt < $1.firstSeenAt
+    static func list(
+        of sessions: [SessionState], in names: [String: String], order: [String] = []
+    ) -> [RowSession] {
+        // The order the user put them in first, then the order they were opened.
+        // A conversation nobody has moved sorts after the ones somebody did, which
+        // is what makes a new one arrive at the end instead of in the middle of a
+        // list somebody arranged.
+        let placed = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+        let ordered = sessions.sorted { left, right in
+            switch (placed[left.id], placed[right.id]) {
+            case let (l?, r?): return l < r
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil):
+                return left.firstSeenAt == right.firstSeenAt
+                    ? left.id < right.id
+                    : left.firstSeenAt < right.firstSeenAt
+            }
         }
 
         // How many in this row share each lane, so a lane's name is only numbered

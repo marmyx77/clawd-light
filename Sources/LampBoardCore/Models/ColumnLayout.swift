@@ -39,14 +39,15 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
         sessions: [SessionState],
         slot: Int? = nil,
         alias: String? = nil,
-        names: [String: String] = [:]
+        names: [String: String] = [:],
+        order: [String] = []
     ) {
         self.id = id
         self.workspace = workspace
         self.sessions = sessions
         self.slot = slot
         self.alias = alias?.trimmed.nilIfEmpty
-        self.members = RowSession.list(of: sessions, in: names)
+        self.members = RowSession.list(of: sessions, in: names, order: order)
     }
 
     /// The most urgent state the dot is **covering**, if any.
@@ -165,16 +166,27 @@ public struct ColumnOptions: Sendable, Equatable {
     /// The names the user gave to folders (`RowNames`).
     public let names: [String: String]
 
+    /// The order the user put the conversations of a project in, by project.
+    ///
+    /// Kept by **session id**, and that is the honest bargain rather than an
+    /// oversight: a conversation has no identity that outlives its process, so a
+    /// place given to one lasts exactly as long as the conversation does. A new
+    /// one arrives at the end, in the order it was opened, rather than in a spot
+    /// somebody would have to go looking for.
+    public let conversationOrder: [String: [String]]
+
     public init(
         onlyWaiting: Bool = false,
         order: [String] = [],
         hidden: Set<String> = [],
-        names: [String: String] = [:]
+        names: [String: String] = [:],
+        conversationOrder: [String: [String]] = [:]
     ) {
         self.onlyWaiting = onlyWaiting
         self.order = order
         self.hidden = hidden
         self.names = names
+        self.conversationOrder = conversationOrder
     }
 
     /// The name to show a row. The row is a project, so this is the project's.
@@ -321,7 +333,8 @@ public enum ColumnLayout {
                 sessions: members,
                 slot: options.slot(for: key),
                 alias: options.name(for: key),
-                names: options.names
+                names: options.names,
+                order: options.conversationOrder[key] ?? []
             )
         }
     }

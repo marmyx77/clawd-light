@@ -66,6 +66,45 @@ enum RowSessionsSuite {
             t.expectEqual(before, after, "the same two, in the same places")
         },
 
+        TestCase("An order somebody chose beats the order they were opened in") { t in
+            let members = ColumnRow(
+                id: "/dev/project", workspace: Workspace(path: "/dev/project"),
+                sessions: [session("first", .working, born: 100), session("second", .ready, born: 200)],
+                order: ["second", "first"]
+            ).members
+            t.expectEqual(members.map(\.id), ["second", "first"], "as it was arranged")
+            t.expectEqual(members.map(\.ordinal), [1, 2], "and numbered along that")
+        },
+
+        TestCase("A conversation nobody placed arrives at the end") { t in
+            // Not in the middle of a list somebody arranged, which is where it
+            // would land if the two orders were merged by birth. A new line has to
+            // appear somewhere you can find it.
+            let members = ColumnRow(
+                id: "/dev/project", workspace: Workspace(path: "/dev/project"),
+                sessions: [
+                    session("fresh", .working, born: 50),
+                    session("first", .working, born: 100),
+                    session("second", .ready, born: 200),
+                ],
+                order: ["second", "first"]
+            ).members
+            t.expectEqual(members.map(\.id), ["second", "first", "fresh"],
+                          "the arranged ones, then the newcomer")
+        },
+
+        TestCase("An order naming sessions that have ended is not a hole") { t in
+            // The order is kept by session id and a session id dies with its
+            // process, so an order outlives the things it names. What is left has
+            // to keep its places rather than fall back to nothing.
+            let members = ColumnRow(
+                id: "/dev/project", workspace: Workspace(path: "/dev/project"),
+                sessions: [session("second", .ready, born: 200)],
+                order: ["gone", "second", "also-gone"]
+            ).members
+            t.expectEqual(members.map(\.id), ["second"], "what is still here, where it was put")
+        },
+
         TestCase("A session with a title is called by it") { t in
             let members = row([session("a", .working, born: 100, title: "Refactor the parser")]).members
             t.expectEqual(members.first?.name, "Refactor the parser", "its own name")

@@ -170,7 +170,8 @@ final class PanelController {
             onlyWaiting: preferences.showsOnlyWaiting,
             order: preferences.rowOrder,
             hidden: preferences.hiddenWorkspaces,
-            names: preferences.rowNames
+            names: preferences.rowNames,
+            conversationOrder: preferences.conversationOrder
         )
     }
 
@@ -303,6 +304,9 @@ final class PanelController {
             openSession: { [weak self] member in self?.activate(session: member) },
             renameSession: { [weak self] member in self?.rename(session: member) },
             renameLane: { [weak self] member in self?.renameLane(of: member) },
+            moveSession: { [weak self] row, member, offset in
+                self?.move(member, in: row, by: offset)
+            },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) }
         )
     }

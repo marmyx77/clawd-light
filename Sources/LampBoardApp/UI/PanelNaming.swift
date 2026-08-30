@@ -68,6 +68,27 @@ extension PanelController {
         activate(row, markSeen: false)
     }
 
+    /// Moves one conversation up or down inside its project.
+    ///
+    /// A menu entry rather than a drag, and deliberately: the column's drag
+    /// already reorders projects, and a second drag nested inside a block would be
+    /// two gestures a few points apart doing different things. The entry says what
+    /// it does and cannot be started by accident.
+    ///
+    /// The order is stored by session id, so it lasts as long as the conversation
+    /// and no longer. That is said on the menu rather than discovered: a
+    /// conversation has no identity that outlives its process, and inventing one
+    /// would mean a place that pointed at nothing after the next restart.
+    func move(_ member: RowSession, in row: ColumnRow, by offset: Int) {
+        let shown = row.members.map(\.id)
+        let current = preferences.conversationOrder[row.id] ?? shown
+        var next = preferences.conversationOrder
+        next[row.id] = RowOrder.moving(member.id, by: offset, among: shown, in: current)
+        preferences.conversationOrder = next
+        store.republish()
+        rebuildContent()
+    }
+
     /// Names one conversation, and nothing else.
     func rename(session member: RowSession) {
         guard let answer = Alerts.ask(

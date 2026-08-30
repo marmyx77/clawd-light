@@ -1,13 +1,13 @@
 # Code map
 
-~32,400 lines of Swift across five targets. For each file: what it contains, why
+~32,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   8,806 lines · 71 files   pure logic, zero AppKit
-  LampBoardApp/    13,011 lines · 69 files   shell: AppKit, network, windows
-  LampBoardTests/  8,092 lines · 45 files   627 cases, instantaneous
+  LampBoardCore/   8,832 lines · 71 files   pure logic, zero AppKit
+  LampBoardApp/    13,055 lines · 69 files   shell: AppKit, network, windows
+  LampBoardTests/  8,131 lines · 45 files   630 cases, instantaneous
   LampBoardE2E/    2,128 lines · 10 files   88 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -77,7 +77,7 @@ before changing anything here: it is the heart of the subagent correction.
 > **Touching the computation of `status`** risks reintroducing green during
 > background work. Coverage: `SubagentSuite`.
 
-### `ColumnLayout.swift` · 350
+### `ColumnLayout.swift` · 396
 From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
@@ -718,7 +718,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 431 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 160 | one conversation inside an opened block, and the grip that names its agent |
-| `PanelNaming.swift` | 112 | opening a project, and the three levels of name |
+| `PanelNaming.swift` | 133 | opening a project, and the three levels of name |
 | `PanelRootView.swift` | 393 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
@@ -751,7 +751,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 627 cases
+## `LampBoardTests/` — 630 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

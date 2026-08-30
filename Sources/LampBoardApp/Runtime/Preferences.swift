@@ -30,6 +30,7 @@ struct Preferences {
         static let rowNames = "panel.rowNames"
         static let calmBlinkWorkspaces = "panel.calmBlink"
         static let expandedRows = "panel.expandedRows"
+        static let conversationOrder = "panel.conversationOrder"
     }
 
     private let defaults: UserDefaults
@@ -221,6 +222,17 @@ struct Preferences {
     var expandedRows: Set<String> {
         get { readSet(Key.expandedRows) }
         nonmutating set { writeSet(newValue, to: Key.expandedRows) }
+    }
+
+    /// The order the user put a project's conversations in, by project.
+    ///
+    /// By session id, and that is the bargain rather than an oversight: a
+    /// conversation has no identity that outlives its process, so a place given to
+    /// one lasts exactly as long as the conversation. Ids that no longer exist
+    /// cost a few bytes and can never be shown again, since none is ever reused.
+    var conversationOrder: [String: [String]] {
+        get { (defaults.dictionary(forKey: Key.conversationOrder) as? [String: [String]]) ?? [:] }
+        nonmutating set { defaults.set(newValue, forKey: Key.conversationOrder) }
     }
 
     // MARK: - Notifications
