@@ -665,6 +665,89 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Codex writes a rollout per session, and its own documentation says the format
+# is not an interface. That warning is the reason this section exists: since the
+# scanner reads the folder and the session id out of that file, a rename there no
+# longer costs a percentage on a ring, it costs the row.
+#
+# Read from a real rollout on this machine rather than from a fixture, because a
+# fixture only ever proves that the fixture still matches the parser.
+head_ "Codex rollout shape"
+
+CODEX_SESSIONS="${CODEX_HOME:-$HOME/.codex}/sessions"
+ROLLOUT="$(find "$CODEX_SESSIONS" -name '*.jsonl' -type f 2>/dev/null | sort | tail -1)"
+
+if [ -z "$ROLLOUT" ]; then
+    skip "no rollout on this machine, so nothing about Codex was verified"
+    note "install Codex and run one session, then run this again"
+else
+    note "$(basename "$ROLLOUT")"
+    if REPORT="$(python3 - "$ROLLOUT" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+records = []
+with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+    for line in handle:
+        try:
+            records.append(json.loads(line))
+        except Exception:
+            pass
+
+if not records:
+    print("the file holds no readable record at all")
+    sys.exit(1)
+
+missing = []
+
+# What the scanner needs to make a row exist at all.
+first = records[0]
+if first.get("type") != "session_meta":
+    missing.append("the first record is `%s`, not `session_meta`" % first.get("type"))
+else:
+    payload = first.get("payload") or {}
+    if not (payload.get("session_id") or payload.get("id")):
+        missing.append("`session_meta.payload.session_id` (and `id`)")
+    if not payload.get("cwd"):
+        missing.append("`session_meta.payload.cwd` — the row would have no folder")
+
+# What the ring needs. Absent is not a failure on its own: a session that has not
+# answered yet has no token count, and the ring is drawn dashed for exactly that.
+counts = [
+    r for r in records
+    if r.get("type") == "event_msg" and (r.get("payload") or {}).get("type") == "token_count"
+]
+if counts:
+    info = (counts[-1].get("payload") or {}).get("info") or {}
+    if "model_context_window" not in info:
+        missing.append("`token_count.info.model_context_window` — the ring loses its denominator")
+    if "last_token_usage" not in info:
+        missing.append("`token_count.info.last_token_usage` — the ring loses its numerator")
+
+# What tells activity from a file merely being written.
+if not any(r.get("timestamp") for r in records):
+    missing.append("`timestamp` on every record — the row could not say when")
+
+version = ((records[0].get("payload") or {}).get("cli_version")) or "unknown"
+if missing:
+    print("recorded by Codex %s" % version)
+    for item in missing:
+        print(item)
+    sys.exit(1)
+print("recorded by Codex %s" % version)
+PY
+    )"; then
+        ok "every field the scanner and the ring depend on is present"
+        note "$REPORT"
+    else
+        bad "the rollout format has moved"
+        printf '%s\n' "$REPORT" | while IFS= read -r line; do note "$line"; done
+        note "Codex documents this format as unstable; the scanner fails closed,"
+        note "so the symptom is a row that never appears rather than a wrong one."
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 printf '\n%s\n' "────────────────────────────────────────────────────────"
 
 if [ "$CHECKS" = "0" ]; then

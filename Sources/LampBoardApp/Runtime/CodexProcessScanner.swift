@@ -49,6 +49,10 @@ final class CodexProcessScanner {
     /// minute to learn nothing.
     private var tailByPath: [String: (size: UInt64, moment: Date)] = [:]
 
+    /// Paths already complained about, so a poll every five seconds does not
+    /// write the same line twelve times a minute.
+    private var unreadable: Set<String> = []
+
     /// One pass. Cheap enough for a poll: one process enumeration and one `lsof`,
     /// both bounded.
     func scan(
@@ -126,7 +130,18 @@ final class CodexProcessScanner {
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: CodexSessionMetaReader.headLimit),
               let meta = CodexSessionMetaReader.read(head: String(decoding: data, as: UTF8.self))
-        else { return nil }
+        else {
+            // A file a live process is holding open, in Codex's own sessions
+            // directory, whose first record we cannot read. Failing closed is
+            // right and failing **silently** is not: the symptom is a session that
+            // never appears, which from the outside is indistinguishable from the
+            // scanner being switched off. Codex calls this format unstable, so
+            // this line is what will say so the day it moves.
+            if unreadable.insert(path).inserted {
+                Diagnostics.log("codex: cannot read session_meta from \(path)")
+            }
+            return nil
+        }
         metaByPath[path] = meta
         return meta
     }
