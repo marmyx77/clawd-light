@@ -1,14 +1,14 @@
 # Code map
 
-~33,283 lines of Swift across five targets. For each file: what it contains, why
+~35,431 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,086 lines · 75 files   pure logic, zero AppKit
-  LampBoardApp/    13,420 lines · 69 files   shell: AppKit, network, windows
-  LampBoardTests/  8,443 lines · 46 files   645 cases, instantaneous
-  LampBoardE2E/    2,189 lines · 10 files   89 cases, the real binary
+  LampBoardCore/   9,591 lines · 78 files   pure logic, zero AppKit
+  LampBoardApp/    14,153 lines · 74 files   shell: AppKit, network, windows
+  LampBoardTests/  8,931 lines · 47 files   663 cases, instantaneous
+  LampBoardE2E/    2,503 lines · 11 files   94 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -66,7 +66,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 388
+### `SessionState.swift` · 436
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -328,6 +328,46 @@ available once the panel drew its own tooltips (D32).
 `trimmed`, `nilIfEmpty`, `padded(to:)`. The last one exists because
 `String(format:)` **ignores** the width on `%@` placeholders.
 
+## `Desktop/`
+
+The Claude Desktop application, and the one kind of session it runs that this
+machine can see anything of.
+
+### `ClaudeDesktop.swift`
+Where the application keeps a whole Claude Code home per conversation, how a
+session home names its index, and `DesktopSessionIndex` — the folder, the title,
+the model, the transcript's id and the moment of the last activity.
+
+The index is the surface's **only** durable evidence, and that is measured rather
+than chosen. The session file a local session writes is the same one every
+terminal session writes, and it exists for exactly as long as the agent process
+does, which here is **one turn**: a conversation whose last word landed at
+22:44:38 left an empty `.claude/sessions` directory stamped 22:44. A row built on
+it appeared while the model worked and vanished at the moment there was something
+to read.
+
+`resolvedFolderKinds[].kind == "local"` is the application's own answer to
+whether the work is happening on this Mac, and the only thing separating a
+session that is readable from a cloud one that leaves nothing here at all.
+
+### `DesktopConversation.swift`
+The two judgements a Claude Desktop row rests on, kept away from the disk so they
+can be argued with: whether what was found is a row, and what colour it may
+honestly be.
+
+Three gates, each the application's own answer: a folder it resolved as local, not
+archived, active since the horizon — without which every conversation ever held is
+a row, and there are fifty-one of them on this machine going back to April.
+
+The colour carries the moment its evidence is dated, and the two kinds are dated
+differently. A colour read off the transcript is dated by the transcript, so a
+click is never undone by the next sweep re-reading the same answer. A colour read
+off a live process holding the session file is dated **now**, because it is not a
+record of anything: it is true at the moment of looking. Dating that one by the
+transcript is the bug the end-to-end suite caught — a turn that has just started
+has written nothing yet, so a row cleared a moment ago could never go yellow
+again.
+
 ## `Seat/`
 
 Where a session's process lives — what a click on a terminal row has to bring
@@ -371,6 +411,22 @@ file names. The guard against a reused pid.
 
 Reading what was actually **said** in a session. The hooks describe state; this
 describes content, and the two never infer each other.
+
+### `TranscriptTurn.swift`
+Whether a conversation is in the middle of a turn, read from its transcript. The
+one colour in this project that is **derived** rather than reported: a Claude
+Desktop session runs with its own `CLAUDE_CONFIG_DIR` and never reads the hooks on
+this machine, so there is nowhere to put ours that exists before the session does.
+
+Two phases, because two are all the file can carry honestly. The assistant
+speaking in words is the end of a turn; anything else — a tool call, a result
+handed back, a fresh prompt — is the middle of one. A message holding both a
+sentence and a tool call is **running**: the model routinely says what it is about
+to do and then does it, and the tool call is the last thing it did.
+
+What it cannot see is a session stopped waiting for a permission. No record marks
+that pause, so it reads as running. It is the state the panel exists for and this
+surface cannot give it, which is said rather than guessed at.
 
 ### `TranscriptEntry.swift`
 `TranscriptEntry` and `Conversation`. Four kinds of line — human, assistant,
@@ -655,15 +711,20 @@ the file says which session and folder, the binary says which surface. Returns
 `.unavailable` rather than an empty list when the probe could not answer, because
 a probe that timed out is not a session that ended.
 
-### `CommandLineInstall.swift` · 137
+### `CommandLineInstall.swift` · 141
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
 reached the 800-line ceiling, along the seam that was already there — everything
 else in that file reads state or raises a window.
 
-Installing Claude Code's hooks also installs Codex's, where Codex is present, and
-prints the sentence about trust: Codex will not run a hook it has not been told
-to trust, and says nothing when it declines.
+Installing reaches every agent on this machine through `HookSetup`, and prints
+the sentence about trust where Codex is present: Codex will not run a hook it has
+not been told to trust, and says nothing when it declines.
+
+Three exit codes rather than two. `0` when everything that could be installed
+was, `1` when nothing worked, and **`2` when one agent was set up and another
+failed** — which used to be `0`, telling a script that had half-installed the
+hooks that it was finished.
 
 ### `CommandLineInterface.swift` · 753
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
@@ -679,7 +740,11 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 688 | `@MainActor`, `@Published`, periodic realignment |
+| `StateStore.swift` | 785 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStoreAdoption.swift` | 143 | the rows nobody announced: Codex from an open rollout, Claude Desktop from its index and transcript. Both obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
+| `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
+| `SweepCost.swift` | 46 | where one realignment pass spent its time, phase by phase. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
@@ -763,9 +828,24 @@ The names a Remote-SSH window may carry for a host — the configured one, what 
 
 ## `Setup/`
 
+### `HookSetup.swift` · 128
+Both agents' hooks, asked and answered together, because the answer used to
+depend on how you asked. The command line installed Claude Code and then Codex;
+the first-run offer, the context menu and the state that menu showed each
+consulted a single installer and it was always Claude's. Somebody who accepted
+the offer at first launch was left with Codex unregistered, and told the hooks
+were installed.
+
+Per agent, and `notPresent` is one of the answers: an agent that is not on this
+machine has failed at nothing, which is what keeps the exit code and the first-run
+offer honest.
+
 ### `HookInstaller.swift` · 296
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
-installations in the same second used to fail.
+installations in the same second used to fail. The backup is named after the file
+it copies, which it was not: both agents share this code and only one of them
+writes a `settings.json`, so Codex's backups were called after a file that was
+never there.
 
 ### `RemoteHookInstaller.swift` · 181
 The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers.
@@ -775,7 +855,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 700 | holds everything together; row and panel actions |
-| `PanelActivation.swift` | 122 | where a click goes, which is a different question for every surface |
+| `PanelActivation.swift` | 149 | where a click goes, which is a different question for every surface |
 | `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
@@ -813,7 +893,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 645 cases
+## `LampBoardTests/` — 663 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -870,7 +950,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 89 cases
+## `LampBoardE2E/` — 94 cases
 
 | Suite | Covers |
 |---|---|

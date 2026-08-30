@@ -692,17 +692,120 @@ of work I shipped without watching it work.
    the dated backup in `~/.claude/` for the configuration, and the per-phase
    archives I left in the session's temporary folder.
 
+## 30 August — the app that could not be entered, entered
+
+The panel could see Claude Code in an editor, in a terminal and over a tunnel,
+and Codex in three places. The one surface it declared closed was the desktop
+app, and the README said so as a limit rather than a gap.
+
+That line was **half wrong**, and the half that was wrong is the half that
+matters. Claude Desktop runs a session in one of two places. A **cloud** session
+runs on Anthropic's servers: nothing of it is on this Mac, its hooks are a
+documented open bug (anthropics/claude-code#40495, three root causes, open since
+March), and no probe tried — descriptor, socket, network route, session file —
+found anything at all. A **local** session runs *here*, as a child of the
+application, and writes exactly the files every terminal session writes, in a
+directory nobody had thought to look in.
+
+So the surface was not entered through a hook. It was entered the way the
+terminal sessions already were, by reading what a running session leaves behind.
+
+### The bug that made it look finished when it was not
+
+The first version asked the question every other row asks: which session file
+names a process that is still alive? It found the conversation, painted it
+yellow while the model worked, and then the row **disappeared** at the end of the
+turn instead of going green.
+
+A Claude Desktop agent process lives exactly one turn. The application starts it
+to answer and removes its session file when it exits: measured here, a
+conversation whose last word landed at 22:44:38 left an empty `.claude/sessions`
+directory stamped 22:44. Built on that file, the row vanished at the one moment
+this panel exists for.
+
+Presence comes from the pair the application keeps for itself — the index beside
+each conversation, and the transcript. The session file is still read and still
+means something, but only what it can honestly mean: a turn running right now.
+
+A second defect was hiding underneath, and it was silent. This colour is not
+reported by a hook; it is re-read every five seconds. Adoption was the wrong verb
+for that — `.adopt` refuses to overwrite a row that exists, by contract — so every
+update after the first was a no-op, and the log printed a transition the state
+never made, twelve times a minute. The action that replaced it carries the moment
+its evidence is dated, and the two kinds are dated differently: a colour read off
+the transcript is dated by the transcript, so a click is never undone by the next
+sweep; a colour read off a live process is dated **now**, because it is not a
+record of anything.
+
+The end-to-end suite caught the second half of that rule by failing. Dated by the
+transcript, a new turn could not take the row back: a model that has just been
+asked a question has written nothing yet.
+
+### What the second Codex audit was right about
+
+Three findings marked P1, and all three were real.
+
+**A hook could move a row out of the folder it was proved to be in.** My own
+comment claimed the folder stays the one the row was admitted with; the code only
+did that when the resolver found nothing. `POST /signal` carries no token, so
+"only we send those" was an assumption rather than a limit. A row that was
+**found** now keeps the folder it was found in, and a row that was announced still
+follows the resolution, which is D25 rather than a defect.
+
+**The same path on two machines was one row.** `Workspace` kept `host` in its
+identity and every caller that needed a key threw it away and used the path. So a
+folder here and a folder on a node became one row, in whichever state the more
+urgent member happened to be, and hiding one hid both. A value being distinct is
+worth nothing until something asks it for its name.
+
+**A subagent's rollout became its parent's row.** Of 26 rollouts on this machine,
+3 are a subagent's: they carry the **parent's** `session_id` and their own `id`,
+and two of the three name the same parent. Read as sessions they were second
+evidence for a row that already existed, and arriving first they became its
+transcript — the wrong thread back to the window, the wrong clock, the wrong
+context.
+
+**And the sweep really was too slow.** The audit called it a worst case; the
+steady state was already the problem. Instrumented: **150 milliseconds every five
+seconds** on the actor that draws, of which 80 was the Codex probe spawning `lsof`
+over eighteen live pids. It runs on an actor of its own now — which also means a
+slow probe can no longer have a second started on top of it — and the same
+instrument says the pass is **53 to 81 milliseconds** after the move. What is left
+is dominated by reading the live session files, and that is the next one to take.
+
+### Two traps worth writing down
+
+**A test fixture with a fixed date expires.** Four end-to-end cases went red at
+23:00 on code that had not changed: every Codex fixture said
+`2026-08-30T09:00:00Z`, and the clock had passed `sessionStaleAfter` after it. The
+row was adopted and pruned as stale inside the same sweep. A test whose result
+depends on when it is run is not measuring the code.
+
+**A key that goes through a normaliser comes back changed.** The first spelling of
+the remote workspace key was `//host` and the path. `PathNormalizer` collapses
+every run of slashes, so the key that went into the name table was never the key
+that came back out, and a renamed remote row lost its name. The colon form
+survives being normalised.
+
+### What is not verified
+
+The live click on a Claude Desktop row. The screen was locked when the work
+finished, so the application could not be driven; what is proved is the whole
+chain from the files to the row, end to end against the real binary, plus the row
+standing green on the real conversation for 130 consecutive samples.
+
 ## How the project stands now
 
 | | |
 |---|---|
-| Domain tests | **645**, instantaneous |
-| End-to-end tests | **89**, about a minute |
+| Domain tests | **663**, instantaneous |
+| End-to-end tests | **94**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **22**, all caught |
 | Longest file | 791 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
+| Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
 

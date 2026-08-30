@@ -277,6 +277,38 @@ and lost notifications go unnoticed.
 
 ---
 
+### `Library/Application Support/Claude/local-agent-mode-sessions/…` — the desktop app
+
+A **local** session in Claude Desktop is a Claude Code session, and the
+application gives it a whole Claude Code home of its own:
+
+```
+local-agent-mode-sessions/<org>/<account>/
+  local_<uuid>.json          the index: folder, title, model, transcript id
+  local_<uuid>/
+    .claude/sessions/<pid>.json         while a turn is running, and only then
+    .claude/projects/<encoded>/<cli session>.jsonl    the transcript
+    outputs/                            the session's own cwd
+```
+
+Three things to know before reading any of it.
+
+- **The session file is not liveness here.** It is written when the application
+  starts a turn and removed when that process exits, so it exists for one turn.
+  Read as presence it makes a row that vanishes at the end of every answer.
+- **`cwd` is the session's own `outputs` folder**, inside the application's data.
+  As a row label it reads as a folder called `outputs` that you cannot go to. The
+  folder somebody actually connected is in the index, under `userSelectedFolders`,
+  and which of them is on this machine is in `resolvedFolderKinds`.
+- **The transcript is found by `cliSessionId`**, which the index names. Rebuilding
+  the encoded folder name would be guessing at the application's business, and
+  that encoding has changed before.
+
+The directory name is historical — it predates the app calling these "local
+sessions" — and is matched as written rather than guessed at.
+
+A **cloud** session leaves none of this. Nothing of it is on this Mac.
+
 ## 3. The VS Code extension
 
 ### The URI handler
@@ -377,3 +409,4 @@ window of `lampboard-old`.
 | **The extension's MCP server** (WebSocket, 12 tools) | it would give control over the editor, far beyond what a traffic light needs |
 | **`windowId` in the deep links** | routing between windows turned out to be non-deterministic |
 | **`transcript_path`** | **not** for the state — the hooks decide the colour — but read for what the hooks cannot say: the chat window's content, the conversation title, the preview line and the row clock (D14, D17, D19) |
+| **Hooks inside Claude Desktop** | there is nowhere to put them. A session there runs with a `CLAUDE_CONFIG_DIR` of its own, created when the session is, so the hooks registered on this machine are not its hooks. For cloud sessions it is worse and not ours to fix: [anthropics/claude-code#40495](https://github.com/anthropics/claude-code/issues/40495) documents three separate reasons the sandbox never loads them. The colour there is derived from the transcript instead, and the row says so (D35) |

@@ -118,11 +118,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-645 cases, instantaneous. They verify Core.
+663 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
-89 cases. They launch **the production binary** against a fake home and talk to
+94 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -288,6 +288,38 @@ written to the session's tty (`TerminalTitle`); WezTerm by tty through its CLI,
 kitty by pid over its socket (`TerminalListings`). Editor seats go the way editor rows go. See
 [D25](04-decisions.md#d25--a-folder-nobody-claims-is-a-place-too).
 
+## Sessions inside the desktop app
+
+Claude Desktop runs a session in one of two places, and only one of them is on
+this machine. A **cloud** session runs on Anthropic's servers and leaves nothing
+here; a **local** session runs here, as a child of the application, and writes
+exactly the files every terminal session writes — a session home with its own
+`.claude` inside it, holding `sessions/<pid>.json` and
+`projects/<encoded cwd>/<session>.jsonl`. The application says which is which
+itself, in `resolvedFolderKinds`, and that answer is taken rather than guessed at.
+
+Two things there are unlike every other row, and both are declared rather than
+worked around.
+
+**The colour is derived.** Those sessions run with a `CLAUDE_CONFIG_DIR` of their
+own and never read the hooks on this machine, so nothing announces what they are
+doing. `TranscriptTurn` reads the end of the transcript and answers *running* or
+*answered*; it cannot see a session waiting for a permission, so such a row never
+goes amber and never red. See
+[D35](04-decisions.md#d35--a-colour-may-be-derived-and-it-says-so).
+
+**The row's life is not the process's.** That process lives one turn: the
+application starts it to answer and removes its session file when it exits, so a
+row built on it vanished at the moment there was an answer to read. Presence comes
+from the index beside each conversation and its transcript, bounded by three gates
+that are the application's own answers — a folder resolved as local, not archived,
+active within `sessionStaleAfter`. The session file still means one thing, and
+only that: a turn running right now. See
+[D36](04-decisions.md#d36--presence-is-what-a-conversation-leaves-not-what-a-process-is).
+
+A click raises the application. There is no window per conversation to select and
+no deep link into one, so the row promises exactly what it can do.
+
 ## Concurrency
 
 Two contexts, and two boundaries to cross:
@@ -296,10 +328,23 @@ Two contexts, and two boundaries to cross:
 |---|---|
 | **main actor** | state, views, everything that touches windows |
 | **server queue** (concurrent) | socket, HTTP parsing |
+| **`CodexProbe`** (actor) | the Codex scan: `lsof` over every live `codex` pid |
 
 **Server → state, reading**: goes through `SnapshotBox`, a lock-protected box the
 store fills on every change. There is no waiting in either direction, so no
 deadlock is possible.
+
+**The sweep → the Codex probe**: started, never waited for. The probe spawns a
+subprocess, and instrumented on a machine with eighteen live `codex` processes it
+was **80 milliseconds of a 150-millisecond pass**, four times a minute, on the
+actor that draws. It runs on an actor of its own; what comes back to the main
+actor is arithmetic on its answer. Being an actor also serialises it, so a probe
+that runs long — `lsof` is documented to pause on a descriptor sitting on an
+unreachable mount — cannot have a second started on top of it.
+
+`SweepCost` records where each pass went, under `LAMPBOARD_DEBUG`, because that
+is what settled the question in the first place and what would show it moving
+again.
 
 **Server → main, writing** (`POST /next`, which has to raise windows): goes
 through `AppDelegate.onMain(timeout:)`, which enqueues a `DispatchWorkItem` and

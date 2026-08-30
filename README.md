@@ -105,41 +105,87 @@ programs, and they do not all speak to us the same way, so the honest unit is th
 surface rather than the vendor. Measured on 30 August 2026, and a line moves only
 when a test of that surface moves it.
 
-| Surface | Discovered | Liveness | State | Focus | Tested |
+| Surface | Discovered | Liveness | State | Focus | Evidence |
 |---|---|---|---|---|---|
-| Claude Code, VS Code extension | yes | window lock | full | window | yes |
-| Claude Code, terminal | yes | session file and pid | full | terminal seat | yes |
-| Claude Code, over the tunnel | yes | probe on the far side | full | Remote-SSH window | yes |
-| Claude Code, desktop app | **no** | | | | no |
-| Codex, CLI | open rollout | open descriptor | hooks, never red | **declared unavailable** | yes |
-| Codex, VS Code extension | open rollout | open descriptor | hooks, never red | window | yes |
-| Codex, ChatGPT app | open rollout | open descriptor | **presence only** | raises the app | yes |
+| Claude Code, VS Code extension | yes | window lock | full | window | unit · end-to-end · live |
+| Claude Code, terminal | yes | session file and pid | full | terminal seat | unit · end-to-end · live |
+| Claude Code, over the tunnel | yes | probe on the far side | full | Remote-SSH window | unit · end-to-end · live |
+| Claude Code, desktop app — local session | index and transcript | the app is running | **derived from the transcript**, never red, never amber | raises the app | unit · end-to-end |
+| Claude Code, desktop app — cloud session | **no** | | | | — |
+| Codex, CLI | open rollout | open descriptor | hooks, never red | terminal seat | unit · end-to-end · live |
+| Codex, VS Code extension | open rollout | open descriptor | hooks, never red | window | unit · live discovery |
+| Codex, ChatGPT app | open rollout | open descriptor | **presence only** | raises the app | unit · live discovery |
 
-Four of those lines are worth the words.
+The last column says what kind of proof stands behind the line, because one word
+for all of them was doing too much work:
+
+- **unit** — the decision is covered in the domain suite, and a mutation of it
+  turns that suite red.
+- **end-to-end** — the shipping binary, against a fixture home: files are written
+  where the real thing writes them, and the row has to appear on its own.
+- **live** — a real session of that surface on this machine, clicked, with the
+  window watched.
+- **live discovery** — the sessions were found and classified on this machine,
+  from real processes. The click was not exercised on that surface.
+
+The end-to-end suite proves the command line surface with a copy of `/usr/bin/tail`
+named `codex`, which is honest about discovery and says nothing about raising a
+ChatGPT window. That is why the last two lines say what they say.
+
+Six of those lines are worth the words.
+
+**Claude Desktop has two kinds of session, and only one of them is here.** A
+cloud session runs on Anthropic's servers: its transcript never touches this disk,
+its hooks are a documented open gap ([anthropics/claude-code#40495](https://github.com/anthropics/claude-code/issues/40495),
+three root causes, open since March), and no probe tried — descriptor, socket,
+network route, session file — found anything at all. A **local** session runs
+here, as a child of the application, and writes exactly the files every terminal
+session writes. The application says which is which itself, in
+`resolvedFolderKinds`, and that answer is taken rather than guessed at.
+
+**A Claude Desktop colour is derived, not reported.** Those sessions run with a
+`CLAUDE_CONFIG_DIR` of their own and never read the hooks on this machine, so
+nothing announces what they are doing. What is left is the transcript, and what a
+transcript can say is whether a turn is running or has ended. It cannot say a
+session is waiting for a permission — no record marks that pause — so those rows
+never go amber, and never red. A limit you are told is a limit.
+
+**Presence there is not the agent process.** That process lives one turn: the
+application starts it to answer and removes its session file when it exits.
+Measured here, a conversation whose last word landed at 22:44:38 left an empty
+sessions directory stamped 22:44 — so a row built on it appeared while the model
+worked and vanished at the moment there was an answer to read. The row lives on
+the index and the transcript, and goes when the conversation is archived, when
+the app is quit, or when it has been silent for twelve hours.
 
 **A Codex session is found, not announced.** Codex inside the ChatGPT app
 registers our hooks, marks them trusted, runs a whole session and sends nothing at
 all: measured here, with eight events configured and not one line in the log. So
 the evidence runs the other way. A live `codex` process holds its rollout open;
 that file says which session and which folder; the binary behind the pid says which
-surface. Nothing is sent to us and nothing unauthenticated is believed, which is
-the property the old admission gate had and the reason it could not simply be
-widened.
+surface. Nothing has to be sent to us, and the folder of a row found this way is
+never taken from anything that was: a hook arriving on the unauthenticated route
+may move such a row's colour and nothing else. That is the property the old
+admission gate had and the reason it could not simply be widened.
 
 **An open rollout is a conversation loaded, not a model working.** The editor
 extension was seen holding one open whose last record was a year old. A session
 found this way and never heard from carries presence and focus and no colour it
 cannot prove; the states come from hooks, where hooks arrive.
 
-**Claude Code inside the desktop app is not a Claude Code we can see.** That app
-runs its sessions inside an isolated Linux VM with an address of its own. A hook
-fired in there would look for this panel on the VM's own loopback, and nothing we
-can install reaches inside. It is a declared limit rather than a missing feature.
+**A cloud session in the desktop app is still not something we can see.** It runs
+inside an isolated Linux VM with an address of its own. A hook fired in there
+would look for this panel on the VM's own loopback, and nothing we can install
+reaches inside. That remains a declared limit rather than a missing feature.
 
-**A terminal Codex is deliberately not raised.** The same binary runs in Terminal,
-Ghostty, tmux and VS Code's own terminal, so the executable proves which program
-it is and not where it is being typed. The row says so instead of opening the
-folder's editor window, which would be the convincing wrong answer.
+**A terminal Codex is raised by its ancestry, not by its folder.** The same binary
+runs in Terminal, Ghostty, tmux and VS Code's own terminal, so the executable
+proves which program it is and not where it is being typed. Opening the folder's
+editor window would be the convincing wrong answer, so the click asks the question
+a terminal row already answers — whose ancestry is this, and what tab does that
+application select — starting from the process holding the rollout open, because
+Codex writes no session file. It used to stop there and say the row could not be
+raised, which was honest and useless.
 
 Two of those rows are worth the words.
 
@@ -589,16 +635,21 @@ below 128 px are not the large one shrunk: they get flat discs, drawn larger,
 because at that scale the gradient and the halo land between pixels and only mute
 the colour.
 
-On first launch the app offers to register the hooks in
-`~/.claude/settings.json`. You can also do it from a terminal:
+On first launch the app offers to register the hooks with **every agent on this
+machine**: `~/.claude/settings.json` for Claude Code, and `~/.codex/hooks.json`
+where Codex is present. You can also do it from a terminal:
 
 ```bash
 dist/LampBoard.app/Contents/MacOS/lampboard install-hooks
 ```
 
-Existing hooks are preserved and a dated backup copy of the file is created.
-Claude Code sessions that are **already open** pick up the new configuration only
-when they restart.
+Existing hooks are preserved and a dated backup copy of each file is created,
+named after the file it copies. Sessions that are **already open** pick up the
+new configuration only when they restart.
+
+The command answers `0` when everything that could be installed was, `1` when
+nothing worked, and `2` when one agent was set up and another failed — because a
+script that has half-installed the hooks should not be told it is finished.
 
 ### What it asks for, and why
 
@@ -609,7 +660,7 @@ what the app does is a permission you have no reason to grant.
 
 | What | What it is used for | If you refuse |
 |---|---|---|
-| **Nine lines in `~/.claude/settings.json`** | Claude Code tells the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks from Claude Code* in the menu, or `lampboard uninstall-hooks`. |
+| **Nine lines in each agent's own configuration** | `~/.claude/settings.json`, and `~/.codex/hooks.json` where Codex is present: they tell the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks* in the menu, or `lampboard uninstall-hooks`. |
 | **Accessibility** | macOS calls it "controlling your computer". It is used for one thing: bringing the editor window of the row you clicked to the front. | The click still activates the editor, but cannot choose which window — you land wherever you were last. |
 | **Automation** | Reading window titles, to tell your projects apart. One entry per application it has to ask: System Events for editors, plus a terminal application for its own tabs. | Same as above: the application comes forward, the right window does not. |
 | **Notifications** *(optional)* | Alerting you when a session blocks while you are elsewhere. | The panel still shows it; nothing pops up. |
@@ -765,9 +816,10 @@ tccutil reset Accessibility com.lampboard.app
 tccutil reset AppleEvents com.lampboard.app
 ```
 
-Then drag the app to the Trash. `uninstall-hooks` removes only the registrations
-it added and leaves the rest of `~/.claude/settings.json` alone; the `tccutil`
-lines take the authorizations back, which the Trash does not do on its own — a
+Then drag the app to the Trash. `uninstall-hooks` reaches both configurations —
+`~/.claude/settings.json` and `~/.codex/hooks.json` — and removes only the
+registrations it added, leaving the rest of each file alone; the `tccutil` lines
+take the authorizations back, which the Trash does not do on its own, and a
 record left behind is what makes a later reinstall behave strangely.
 
 ## How it works
@@ -1100,8 +1152,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 645 domain tests, instantaneous
-swift run LampBoardE2E                # 89 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 663 domain tests, instantaneous
+swift run LampBoardE2E                # 94 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

@@ -1647,3 +1647,57 @@ teaches people to re-run until it passes, which is the habit that eventually
 hides a real failure. When a suite dies with a signal, `~/Library/Logs/
 DiagnosticReports` names the process that died: read that before reading your
 own code.
+
+## The process that lives one turn
+
+**Symptom.** A Claude Desktop conversation appears in the column, goes yellow
+while the model works, and then **vanishes** instead of going green.
+
+**Cause.** The rule everywhere else here is that a live process proves a live
+session: a file names a pid, `kill(pid, 0)` answers, a start-time comparison
+catches a reused number. Claude Desktop writes exactly that file — it is a Claude
+Code session — and its agent process lives exactly **one turn**. The application
+starts it to answer and removes the file when it exits. Measured: a conversation
+whose last word landed at 22:44:38 left an empty `.claude/sessions` directory
+stamped 22:44.
+
+So the row disappeared at the precise moment there was something to read, which
+is the moment the panel exists for.
+
+**The lesson.** "A live process proves a live session" is a property of a
+*surface*, not a law. Before carrying a liveness rule to a new surface, watch it
+across a whole turn — start to finish — rather than during one.
+
+## The fixture with a date in it
+
+**Symptom.** Four end-to-end cases go red at eleven at night, on code that has not
+changed. Green again in the morning, if the fixture's date is moved.
+
+**Cause.** Every Codex fixture wrote `"timestamp":"2026-08-30T09:00:00.000Z"`,
+and `AppConfig.sessionStaleAfter` is twelve hours. Once the clock passed 21:00Z
+the row was adopted and pruned as stale **inside the same sweep** — the log even
+said `codex adopted:` three times in fifteen seconds while `/sessions` stayed
+empty.
+
+**The lesson.** A test whose result depends on when it is run is not measuring the
+code. Fixtures that are compared against `now` are written relative to `now`.
+
+**Bonus.** Diagnosing it needed the app's own log, and a fake home is deleted when
+the E2E run stops. Reproducing it by hand — a fake home, a fake `codex` holding a
+rollout, the real binary with `LAMPBOARD_HOME` and `LAMPBOARD_DEBUG` — took two
+minutes and answered it immediately.
+
+## The key that went through a normaliser
+
+**Symptom.** A remote row is renamed. The name does not appear, and no error does
+either.
+
+**Cause.** The new key for a workspace on another machine was `//host` and the
+path. `RowNames` puts every key through `PathNormalizer.normalize` on the way in,
+which collapses every run of slashes: the key stored was `/host/path` and the key
+looked up was `//host/path`. Neither side was wrong on its own.
+
+**The lesson.** A key is not a string you choose; it is a string that survives
+every function it passes through. When you invent one, follow it into the table
+and out again. The colon form — `host:/path` — cannot collide with a path, because
+a path begins with a slash.

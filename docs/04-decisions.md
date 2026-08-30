@@ -1500,6 +1500,104 @@ and prunes only what it can see. No unit test would have found that; the
 end-to-end injection did, on the first try.
 ---
 
+## D35 · A colour may be derived, and it says so
+
+**Decided.** Every other row in this panel is **told** what it is: a hook fires,
+says `Stop` or `UserPromptSubmit`, and the panel repeats what it was told. A
+Claude Desktop conversation cannot be told about. It runs with a
+`CLAUDE_CONFIG_DIR` of its own, inside the application's data, so the hooks
+registered on this machine are not its hooks, and there is nowhere to put ours
+that exists before the session does.
+
+The alternative was to leave the surface out, which is what the README said for
+months. What changed is a measurement, not an opinion: a **local** session writes
+exactly the files every terminal session writes, and its transcript is the same
+format this project already reads for timestamps and for context.
+
+So the colour is **derived**, from the record the session writes about itself, and
+three things follow.
+
+**Two phases, because two are all the file can carry honestly.** The assistant
+speaking in words is the end of a turn; a tool call, a result handed back or a
+fresh prompt is the middle of one. A message that holds a sentence *and* a tool
+call is running: a model routinely says what it is about to do and then does it,
+and the tool call is the last thing it did.
+
+**What it cannot see is said out loud.** A session stopped waiting for a
+permission has not ended and no record marks the pause, so it reads as running.
+That is the state this panel exists for, and this surface cannot give it. The row
+never goes amber, `Harness.cannotReport` already exists for exactly this, and the
+README says it in the table rather than in a footnote.
+
+**A derived colour is dated, and only ever moves a row forward.** It is re-read
+every five seconds, so without a date it would undo the click: clear a green row,
+and the next sweep finds the same answer still at the end of the file and lights
+it up again for something you have read. A hook satisfies this by existing, which
+is why hooks never needed it.
+
+**Rejected: inferring from the file's modification time.** Already tried on
+another surface and already wrong — a transcript moves for plenty of reasons that
+are not a turn, resuming among them, and after a reboot the whole column went
+yellow at once.
+
+## D36 · Presence is what a conversation leaves, not what a process is
+
+**Decided.** A Claude Desktop row exists while its **conversation** does, and the
+agent process has no say in it.
+
+This overturns the first implementation, and the way it was wrong is the reason
+the entry is here. The rule everywhere else in this panel is that a live process
+proves a live session: a session file names a pid, `kill(pid, 0)` answers, and a
+reused pid is caught by comparing start times. Applied here it produced a row that
+appeared while the model worked and **disappeared at the end of the turn** — the
+one moment the panel exists for.
+
+The measurement: a Claude Desktop agent process lives exactly one turn. The
+application starts it to answer and removes its session file when it exits. A
+conversation whose last word landed at 22:44:38 left an empty `.claude/sessions`
+directory stamped 22:44.
+
+So presence comes from the pair the application keeps for itself — the index
+beside each conversation, and the transcript — bounded by three gates that are all
+the application's own answers rather than inferences of ours: a folder it resolved
+as **local**, not archived, and active within `sessionStaleAfter`. Fifty-one
+conversations sit on this machine going back to April; without the horizon every
+one of them is a row.
+
+The session file is still read. It just means what it honestly means: **a turn
+running right now**, dated by the looking rather than by the transcript, because
+it is not a record of anything.
+
+**Rejected: a window of its own for this surface.** Twelve hours is what every
+other row already obeys when it stops hearing news, and two numbers that must
+agree are the drift a gate exists to catch.
+
+## D37 · A workspace is a machine and a path, everywhere or nowhere
+
+**Decided.** The key a row is grouped, ordered, named, hidden and muted by is the
+**host and the path**, not the path.
+
+`Workspace` had said this for months — `host` is part of its `Equatable` and its
+`Hashable`, and its own comment explained that two machines can hold the same
+path — and every caller that needed a key threw the host away and used
+`workspace.path`. So a folder here and a folder on a node collapsed into one row,
+in whichever state the more urgent member happened to be, and hiding one hid both.
+A comment claiming an identity the code does not enforce is worse than no comment.
+
+Two details are the whole design.
+
+**A local key is the path and nothing else.** Every name, slot and hidden flag
+anybody has saved is stored under that string, so keeping it byte-identical is
+what makes this cost nobody their layout. There is no migration because there is
+nothing to migrate.
+
+**A remote key is the host, a colon, then the path.** The first spelling was
+`//host` and the path, and it was quietly wrong: these keys pass through
+`PathNormalizer.normalize`, which collapses every run of slashes, so the key that
+went in was never the key that came back out and a renamed remote row lost its
+name. A leading character that is not a slash cannot be a path, so the colon form
+collides with nothing and survives being normalised.
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,
