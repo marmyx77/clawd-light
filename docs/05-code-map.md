@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,019 lines · 74 files   pure logic, zero AppKit
-  LampBoardApp/    13,399 lines · 69 files   shell: AppKit, network, windows
-  LampBoardTests/  8,322 lines · 45 files   638 cases, instantaneous
+  LampBoardCore/   9,086 lines · 75 files   pure logic, zero AppKit
+  LampBoardApp/    13,420 lines · 69 files   shell: AppKit, network, windows
+  LampBoardTests/  8,443 lines · 46 files   645 cases, instantaneous
   LampBoardE2E/    2,189 lines · 10 files   89 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -258,6 +258,25 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
+
+### `PanelPlacement.swift`
+Where the panel hangs, and why it hangs from the **top**.
+
+A column grows downward as sessions appear, so one of its horizontal edges has to
+be the fixed one, and it is the top: the eye goes to a known place to see whether
+anything needs it, and a place that moves whenever somebody opens a project is
+not a known place. `visibleFrame.maxY` already sits below the menu bar, so
+hanging from it is the same thing as hanging from the menu bar.
+
+The defect it closes was a ratchet. The position kept across launches was the
+**bottom** left while every resize held the top still: the panel came back 65
+points tall at the remembered bottom, grew nearly seven hundred points downward
+from there, and saved that. A few launches walked it off the edge of the display,
+where the rows that mattered were the ones underneath it.
+
+The frame is clamped whole into the visible area rather than merely checked for
+overlap — the old rule asked whether the frame touched a screen at all, which a
+panel hanging one pixel over the edge passes.
 
 ### `Seat/TerminalTitle.swift`
 Setting a terminal's title by writing to the tty a session runs on, which is how
@@ -794,7 +813,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 638 cases
+## `LampBoardTests/` — 645 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

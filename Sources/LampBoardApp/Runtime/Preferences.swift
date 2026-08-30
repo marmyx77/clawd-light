@@ -10,8 +10,11 @@ import Foundation
 struct Preferences {
     private enum Key {
         static let compact = "panel.compact"
-        static let originX = "panel.origin.x"
-        static let originY = "panel.origin.y"
+        /// The panel's left edge and its **top**. Deliberately new keys: the
+        /// ones before them held the bottom, and reading that as a top would
+        /// move every existing panel by its own height, once.
+        static let anchorX = "panel.anchor.x"
+        static let anchorTop = "panel.anchor.top"
         static let setupPromptShown = "setup.promptShown"
         static let opensSessionTab = "click.opensSessionTab"
         static let onlyWaiting = "panel.onlyWaiting"
@@ -322,43 +325,51 @@ struct Preferences {
         defaults.set(value.sorted(), forKey: key)
     }
 
-    /// Saved panel position, if a valid one exists.
-    var savedOrigin: NSPoint? {
-        guard defaults.object(forKey: Key.originX) != nil,
-              defaults.object(forKey: Key.originY) != nil else {
+    /// The remembered edge of the panel: its left, and its **top**.
+    ///
+    /// The top, because that is the edge every resize holds still, and an
+    /// anchor that disagrees with the resize is what walked the panel off the
+    /// bottom of the screen a launch at a time. See `PanelPlacement`.
+    ///
+    /// The old keys held the bottom left. They are not read any more and not
+    /// converted either: converting would need the height the panel had when it
+    /// was saved, which was never written down. An install that had one comes
+    /// back hung off the menu bar, which is where it was trying to get to.
+    var savedAnchor: NSPoint? {
+        guard defaults.object(forKey: Key.anchorX) != nil,
+              defaults.object(forKey: Key.anchorTop) != nil else {
             return nil
         }
         return NSPoint(
-            x: defaults.double(forKey: Key.originX),
-            y: defaults.double(forKey: Key.originY)
+            x: defaults.double(forKey: Key.anchorX),
+            y: defaults.double(forKey: Key.anchorTop)
         )
     }
 
-    func saveOrigin(_ origin: NSPoint) {
-        defaults.set(origin.x, forKey: Key.originX)
-        defaults.set(origin.y, forKey: Key.originY)
+    func saveAnchor(_ anchor: NSPoint) {
+        defaults.set(anchor.x, forKey: Key.anchorX)
+        defaults.set(anchor.y, forKey: Key.anchorTop)
     }
 
-    /// Starting position: top right of the main screen, with enough margin not to
-    /// end up under the menu bar.
-    static func defaultOrigin(panelSize: NSSize) -> NSPoint {
-        guard let screen = NSScreen.main else { return NSPoint(x: 100, y: 100) }
-        let visible = screen.visibleFrame
-        return NSPoint(
-            x: visible.maxX - panelSize.width - 16,
-            y: visible.maxY - panelSize.height - 16
+    /// What a screen actually shows, which already excludes the menu bar.
+    static func visibleArea(of screen: NSScreen?) -> NSRect {
+        (screen ?? NSScreen.main)?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+    }
+
+    /// The frame for a panel of this size, hung where it was left and kept whole
+    /// on the screen it is on.
+    static func placed(size: NSSize, anchor: NSPoint?, on screen: NSScreen?) -> NSRect {
+        let visible = visibleArea(of: screen)
+        let hung = anchor.flatMap { candidate -> NSPoint? in
+            // A remembered point on a monitor that has been unplugged is not a
+            // place. Anything that still lands on a screen is honoured, and the
+            // clamp does the rest.
+            NSScreen.screens.contains { $0.visibleFrame.contains(candidate) } ? candidate : nil
+        } ?? PanelPlacement.defaultAnchor(size: size, in: visible)
+        let onScreen = NSScreen.screens.first { $0.visibleFrame.contains(hung) }
+        return PanelPlacement.frame(
+            hangingFrom: hung, size: size, in: visibleArea(of: onScreen ?? screen)
         )
-    }
-
-    /// Brings the panel back on screen when the saved position has ended up
-    /// outside — which happens when an external monitor is disconnected.
-    static func clamped(_ origin: NSPoint, panelSize: NSSize) -> NSPoint {
-        let screens = NSScreen.screens
-        let frame = NSRect(origin: origin, size: panelSize)
-
-        if screens.contains(where: { $0.visibleFrame.intersects(frame) }) {
-            return origin
-        }
-        return defaultOrigin(panelSize: panelSize)
     }
 }

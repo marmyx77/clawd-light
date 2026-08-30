@@ -47,11 +47,11 @@ final class PanelController {
             width: Layout.width(compact: compact),
             height: Layout.height(ofBlocks: [], extras: 0, showsIssue: false)
         )
-        let origin = Preferences.clamped(
-            preferences.savedOrigin ?? Preferences.defaultOrigin(panelSize: size),
-            panelSize: size
+        self.panel = FloatingPanel(
+            contentRect: Preferences.placed(
+                size: size, anchor: preferences.savedAnchor, on: NSScreen.main
+            )
         )
-        self.panel = FloatingPanel(contentRect: NSRect(origin: origin, size: size))
     }
 
     // MARK: - Lifecycle
@@ -150,7 +150,7 @@ final class PanelController {
             .publisher(for: NSWindow.didMoveNotification, object: panel)
             .sink { [weak self] _ in
                 guard let self else { return }
-                self.preferences.saveOrigin(self.panel.frame.origin)
+                self.preferences.saveAnchor(PanelPlacement.anchor(of: self.panel.frame))
             }
             .store(in: &cancellables)
     }
@@ -249,9 +249,19 @@ final class PanelController {
 
         guard size != panel.frame.size else { return }
 
-        let top = panel.frame.maxY
-        let origin = NSPoint(x: panel.frame.origin.x, y: top - size.height)
-        panel.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
+        // Hung from the top it already has, and kept whole on the screen. The
+        // second half is the one that was missing: the height was bounded and
+        // the position was not, so an opened project pushed the bottom of the
+        // panel under the edge of the display — and the move that did it was
+        // saved, so the next launch started lower still.
+        panel.setFrame(
+            Preferences.placed(
+                size: size,
+                anchor: PanelPlacement.anchor(of: panel.frame),
+                on: panel.screen
+            ),
+            display: true, animate: false
+        )
     }
 
 
