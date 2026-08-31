@@ -65,6 +65,19 @@ public enum ReducerAction: Sendable, Equatable {
     /// already known: what the hooks know is always more precise than a deduction.
     case adopt(SessionState)
 
+    /// Takes one row off the column because the user said it is not there any more.
+    ///
+    /// Different from hiding, which is a lasting choice about a **project** and
+    /// puts it in the summary. This is about one conversation, and it is what a
+    /// person does with a row whose tab they closed while the process stayed
+    /// loaded — a state the machine cannot tell from a live one, because the
+    /// existence of a tab is published nowhere.
+    ///
+    /// It is not permanent and it is not a mute: the row comes back the moment
+    /// the session says anything, and a discovered one comes back as soon as its
+    /// evidence is newer than the dismissal. See `TrafficLightState.dismissed`.
+    case dismiss(sessionId: String)
+
     /// Moves a row a **derived** colour, and only ever forward in time.
     ///
     /// Every other colour in this state machine was reported: a hook fired, said
@@ -99,6 +112,7 @@ extension ReducerAction {
             return "reconcile \(harness.rawValue) keeping \(alive.count)"
         case .observed: return "observed"
         case .adopt: return "adopt"
+        case .dismiss: return "dismiss"
         case .derive: return "derive"
         case .reset: return "reset"
         case .forget: return "forget"
@@ -116,6 +130,15 @@ public enum StateReducer {
         action: ReducerAction,
         now: Date
     ) -> TrafficLightState {
+        // A session that speaks is a session that is there, whatever anybody
+        // clicked. A hook fires because a turn moved, so it outranks a dismissal
+        // without needing to compare dates: the click said "this is not here any
+        // more", and the signal is the row saying otherwise.
+        var state = state
+        if case .signal(let signal, _, _) = action {
+            state = state.undismissing(sessionId: signal.sessionId)
+        }
+
         switch action {
         case .reset:
             return .empty
@@ -139,7 +162,13 @@ public enum StateReducer {
             return TrafficLightState(
                 sessions: state.sessions.filter {
                     $0.value.harness != harness || alive.contains($0.key)
-                }
+                },
+                // Carried through, and the reason is a defect: this branch runs on
+                // every sweep, so dropping it here emptied the register of
+                // dismissed rows five seconds after the click and the row came
+                // straight back. Every state this file builds by hand has to carry
+                // it — see the test that walks it through all four.
+                dismissed: state.dismissed
             )
 
         case .observed(let sessionId, let context):
@@ -148,7 +177,17 @@ public enum StateReducer {
 
         case .adopt(let session):
             guard state.sessions[session.id] == nil else { return state }
-            return state.upserting(session)
+            // A row the user took off comes back only on something newer than the
+            // click. Without this the next sweep puts it straight back — the
+            // process is still alive and the rollout still open, which is exactly
+            // what made the row outlive its tab in the first place.
+            guard state.admits(sessionId: session.id, evidenceAt: session.updatedAt) else {
+                return state
+            }
+            return state.upserting(session).undismissing(sessionId: session.id)
+
+        case .dismiss(let sessionId):
+            return state.dismissing(sessionId: sessionId, at: now)
 
         case .derive(let sessionId, let status, let moment):
             guard let session = state.sessions[sessionId],
@@ -176,7 +215,10 @@ public enum StateReducer {
             return state.upserting(session.with(title: title))
 
         case .forget(let origin):
-            return TrafficLightState(sessions: state.sessions.filter { $0.value.origin != origin })
+            return TrafficLightState(
+                sessions: state.sessions.filter { $0.value.origin != origin },
+                dismissed: state.dismissed
+            )
         }
     }
 

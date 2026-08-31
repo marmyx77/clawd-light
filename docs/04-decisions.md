@@ -1642,6 +1642,80 @@ and the 31-second case passes any threshold anybody would accept. And
 before** the request rather than after it — measured, after it had already been
 registered for that purpose.
 
+## D39 · Una riga si può togliere, e torna solo se dice qualcosa
+
+**Decided.** The row menu has *Remove this row*. It takes one conversation off
+the column immediately, without a dialog, and the row comes back the moment that
+session shows a sign of life that is newer than the click.
+
+**Why it is needed.** A row can outlive what it describes, and the machine cannot
+tell. Measured here: a `claude` process still loaded nine hours after its chat tab
+was closed — the extension keeps it so the tab can be reopened — and a Codex
+daemon holding thirty-nine rollouts open, including conversations closed long
+before. In both cases the panel is right that the conversation exists, and the
+person is right that it is gone. **The existence of a tab is published nowhere**,
+so no probe can settle it and no threshold can guess it.
+
+**Not hiding, and not a mute.** Hiding is a lasting choice about a *project* and
+collects it into the summary; muting silences notifications. This is one
+conversation, and it is not a preference: it is a correction of what the column
+says right now.
+
+**The date is the mechanism, not the id.** A dismissal records *when*. A
+discovered row is admitted again only on evidence newer than that moment —
+because the sweep a second later offers the very same evidence, and letting it
+through would undo the click on the next tick. This is the same shape as the
+prune-restore oscillation that made the panel flicker in August, and it is
+avoided the same way: by comparing against the moment rather than the identity.
+
+**A signal outranks everything.** A hook fires because a turn moved, so it clears
+the dismissal without any comparison of dates. The click said "this is not here
+any more"; the session saying something is the row disagreeing, and the row wins.
+
+**No confirmation.** It costs nothing to undo, and a dialog for something this
+cheap teaches people to click through dialogs.
+
+**And a second entry, which does end it.** *End this session…* asks first, and
+the asking is the difference between the two: removing a row is undone by the
+session saying anything, ending a process is undone by nothing. The question
+names the process id, when it started and the folder, because "are you sure"
+without a subject is a question nobody can answer.
+
+It is offered **only where the process is provable**. Claude Code writes
+`~/.claude/sessions/<pid>.json` with the session id beside the process id — the
+only place on this machine where the two are stated together, since the process
+holds no descriptor on its transcript and names nothing in its environment. Codex
+has no equivalent, and that is a fact about Codex: its conversations are served
+by one shared daemon, so ending it would end all of them. There the entry says so
+rather than doing nothing quietly.
+
+Two guards, and the second was nearly the end of the feature. Process ids are
+reused and those files outlive what they describe — fifteen of them here, several
+naming processes that had ended — so the start time on record must match what the
+system reports, checked again **after** the confirmation because a process can go
+in those seconds. And the file records that instant in **UTC** while `ps` answers
+in local time: measured, every pair differed by exactly the offset of the zone, so
+comparing the two strings never matched and the entry would have been invisible
+for ever. A guard that can only fail is not a guard, it is a feature that does not
+exist. `ps` is now asked with `TZ=UTC`.
+
+`SIGTERM`, never `SIGKILL`: the session is asked to end and gets to save what it
+was holding.
+
+**The register is kept on disk**, because the reason a row was removed does not
+end when the panel does: a tab closed this morning is still closed tomorrow.
+Entries past `sessionStaleAfter` are dropped on the way in — beyond that the row
+would have gone by itself, so keeping them could only hide a session somebody
+wanted back. It is written when the register **changes**, in either direction, so
+a session that came back does not find its dismissal waiting at the next restart.
+
+**What it cost to get right.** The first version kept the register only in the
+state, and the row came back three seconds after the click: `reconcile` runs on
+every sweep and rebuilt the state without carrying it. The test written alongside
+covered `upserting` and `removing` — the copies that were in mind — and not the
+two that mattered. Every state built by hand in the reducer now carries the
+register, and a test walks it through all four.
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

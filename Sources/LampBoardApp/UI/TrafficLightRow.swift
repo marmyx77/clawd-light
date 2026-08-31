@@ -29,6 +29,8 @@ struct RowActions {
     let openSession: (RowSession) -> Void
     /// Names one conversation, touching nothing else.
     let renameSession: (RowSession) -> Void
+    let dismissSession: (RowSession) -> Void
+    let terminateSession: (RowSession) -> Void
     /// Names this agent's lane in this project, which every conversation of that
     /// agent falls back to.
     /// Moves one conversation up (`-1`) or down (`+1`) inside its project.

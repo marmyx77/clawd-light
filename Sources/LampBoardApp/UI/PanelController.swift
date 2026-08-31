@@ -351,6 +351,8 @@ final class PanelController {
             toggleExpansion: { [weak self] row in self?.toggleExpansion(row) },
             openSession: { [weak self] member in self?.activate(session: member) },
             renameSession: { [weak self] member in self?.rename(session: member) },
+            dismissSession: { [weak self] member in self?.dismiss(session: member) },
+            terminateSession: { [weak self] member in self?.terminate(session: member) },
             moveSession: { [weak self] row, member, offset in
                 self?.move(member, in: row, by: offset)
             },

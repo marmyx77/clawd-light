@@ -72,6 +72,14 @@ final class StateStore: ObservableObject {
         self.clock = clock
         self.snapshots = snapshots
         self.preferences = preferences
+
+        // The rows the user took off, from the last time the panel ran. Without
+        // this a restart brings back every discovered row that was cleared away,
+        // and the reason it was cleared has not changed in the meantime: a chat
+        // tab closed while its process stayed loaded is still closed. Entries
+        // past `sessionStaleAfter` are dropped by the reader, so this cannot grow
+        // into a list that quietly hides a session somebody wants back.
+        state = TrafficLightState(dismissed: preferences.dismissedSessions)
     }
 
     // MARK: - Other machines
@@ -481,6 +489,16 @@ final class StateStore: ObservableObject {
         apply(.markSeen(sessionId: sessionId), now: clock())
     }
 
+    /// Takes one row off the column, at the user's request.
+    ///
+    /// The sweep that follows would put a discovered row straight back — the
+    /// process is alive and the rollout open, which is what made the row outlive
+    /// its tab — so the reducer keeps the moment and admits it again only on
+    /// something newer. See `TrafficLightState.dismissed`.
+    func dismiss(sessionId: String) {
+        apply(.dismiss(sessionId: sessionId), now: clock())
+    }
+
     /// Remedy for one click too many: the row goes back to "there is something to read".
     func markUnread(sessionId: String) {
         apply(.markUnread(sessionId: sessionId), now: clock())
@@ -728,6 +746,13 @@ final class StateStore: ObservableObject {
             Diagnostics.log("lost \(gone.count) to \(action.label): \(gone.joined(separator: ", "))")
         }
         givePlaces(to: next)
+        // Written here rather than in `dismiss`, because the register changes in
+        // both directions: a row is taken off, and a row that speaks takes itself
+        // back. Saving only the first would resurrect a dismissal at the next
+        // restart for a session that had already returned.
+        if next.dismissed != state.dismissed {
+            preferences.dismissedSessions = next.dismissed
+        }
         state = next
         publishSnapshot()
     }

@@ -24,6 +24,7 @@ struct Preferences {
         static let rowOrder = "panel.rowOrder"
         static let remoteHosts = "remote.hosts"
         static let hiddenWorkspaces = "panel.hiddenWorkspaces"
+        static let dismissedSessions = "panel.dismissedSessions"
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
         static let mutedUntil = "notify.mutedUntil"
@@ -198,6 +199,29 @@ struct Preferences {
     var rowNames: [String: String] {
         get { (defaults.dictionary(forKey: Key.rowNames) as? [String: String]) ?? [:] }
         nonmutating set { defaults.set(newValue, forKey: Key.rowNames) }
+    }
+
+    /// Rows the user took off the column, by session id, with the moment.
+    ///
+    /// Kept across restarts because the reason they were removed does not end
+    /// when the panel does: a chat tab closed while its process stayed loaded is
+    /// still closed tomorrow. Entries older than `sessionStaleAfter` are dropped
+    /// on the way in — past that the row would have gone by itself, so the record
+    /// is only a way to hide a session somebody may want back.
+    var dismissedSessions: [String: Date] {
+        get {
+            let stored = (defaults.dictionary(forKey: Key.dismissedSessions) as? [String: Double]) ?? [:]
+            let horizon = Date().addingTimeInterval(-AppConfig.sessionStaleAfter)
+            return stored.compactMapValues { seconds in
+                let moment = Date(timeIntervalSince1970: seconds)
+                return moment > horizon ? moment : nil
+            }
+        }
+        nonmutating set {
+            defaults.set(
+                newValue.mapValues(\.timeIntervalSince1970), forKey: Key.dismissedSessions
+            )
+        }
     }
 
     /// Projects collected into the summary row, by path.

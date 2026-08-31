@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **683**, instantaneous |
+| Domain tests | **696**, instantaneous |
 | End-to-end tests | **98**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **22**, all caught |
-| Longest file | 770 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
+| Longest file | 795 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal

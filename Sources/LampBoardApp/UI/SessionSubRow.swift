@@ -21,6 +21,8 @@ struct SessionSubRow: View {
     let now: Date
     let open: (RowSession) -> Void
     let rename: (RowSession) -> Void
+    let dismiss: (RowSession) -> Void
+    let terminate: (RowSession) -> Void
     let move: (RowSession, Int) -> Void
     /// What the block tells this line about the drag in progress. `nil` in the
     /// narrow panel, where there is no handle and nothing to drag.
@@ -113,6 +115,9 @@ struct SessionSubRow: View {
             Button("Move down") { move(member, 1) }
             Divider()
             Button("Rename this conversation\u{2026}") { rename(member) }
+            Divider()
+            Button("Remove this row") { dismiss(member) }
+            Button("End this session\u{2026}") { terminate(member) }
         }
     }
 

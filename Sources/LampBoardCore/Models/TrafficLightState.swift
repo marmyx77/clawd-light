@@ -8,8 +8,24 @@ public struct TrafficLightState: Sendable, Equatable {
     /// Sessions indexed by session id.
     public let sessions: [String: SessionState]
 
-    public init(sessions: [String: SessionState] = [:]) {
+    /// Rows the user took off the column, and when.
+    ///
+    /// A row can outlive what it describes: a chat tab closed while its process
+    /// stays loaded, a rollout a shared daemon keeps open. The panel is right
+    /// that the conversation exists, and the person is right that it is gone —
+    /// the tab is not a fact this machine publishes anywhere, so neither can
+    /// prove the other wrong. This is where the person decides.
+    ///
+    /// The date is the whole mechanism. It is not a list of rows never to show
+    /// again: it is the moment after which a row has to say something new to
+    /// come back. Evidence older than the dismissal is the evidence that was
+    /// already there, and bringing the row back on it would undo the click.
+    /// Anything newer is a session that spoke, and that outranks the dismissal.
+    public let dismissed: [String: Date]
+
+    public init(sessions: [String: SessionState] = [:], dismissed: [String: Date] = [:]) {
         self.sessions = sessions
+        self.dismissed = dismissed
     }
 
     public static let empty = TrafficLightState()
@@ -50,14 +66,44 @@ public struct TrafficLightState: Sendable, Equatable {
     public func upserting(_ session: SessionState) -> TrafficLightState {
         var next = sessions
         next[session.id] = session
-        return TrafficLightState(sessions: next)
+        return TrafficLightState(sessions: next, dismissed: dismissed)
     }
 
     /// Copy without the given session.
     public func removing(sessionId: String) -> TrafficLightState {
         var next = sessions
         next.removeValue(forKey: sessionId)
-        return TrafficLightState(sessions: next)
+        return TrafficLightState(sessions: next, dismissed: dismissed)
+    }
+
+    /// Copy with a row taken off at the user's request, and the moment recorded.
+    ///
+    /// The session is removed and the date kept: see `dismissed` for why the date
+    /// is the whole point rather than the id.
+    public func dismissing(sessionId: String, at moment: Date) -> TrafficLightState {
+        var rows = sessions
+        rows.removeValue(forKey: sessionId)
+        var marks = dismissed
+        marks[sessionId] = moment
+        return TrafficLightState(sessions: rows, dismissed: marks)
+    }
+
+    /// Whether evidence dated `moment` is enough to bring a dismissed row back.
+    ///
+    /// True when the row was never dismissed, or when what is being offered is
+    /// newer than the dismissal. Equal dates count as older: the sweep that runs
+    /// in the same instant is showing what was already on screen.
+    public func admits(sessionId: String, evidenceAt moment: Date) -> Bool {
+        guard let dismissedAt = dismissed[sessionId] else { return true }
+        return moment > dismissedAt
+    }
+
+    /// Copy that has forgotten a dismissal, because the session spoke.
+    public func undismissing(sessionId: String) -> TrafficLightState {
+        guard dismissed[sessionId] != nil else { return self }
+        var marks = dismissed
+        marks.removeValue(forKey: sessionId)
+        return TrafficLightState(sessions: sessions, dismissed: marks)
     }
 
     /// Copy without the sessions that have shown no sign of life for longer than `maxAge`.
@@ -86,6 +132,6 @@ public struct TrafficLightState: Sendable, Equatable {
         let survivors = sessions.filter { id, session in
             alive.contains(id) || now.timeIntervalSince(session.updatedAt) <= maxAge
         }
-        return TrafficLightState(sessions: survivors)
+        return TrafficLightState(sessions: survivors, dismissed: dismissed)
     }
 }

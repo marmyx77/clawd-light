@@ -89,6 +89,68 @@ extension PanelController {
         rebuildContent()
     }
 
+    /// Takes one row off the column.
+    ///
+    /// Not hiding, which is a lasting choice about a project and puts it in the
+    /// summary: this is one conversation, and it is what to do with a row whose
+    /// tab was closed while the process stayed loaded. Measured on this machine:
+    /// a `claude` process alive nine hours after its tab went, and a Codex daemon
+    /// holding thirty-nine rollouts open. The panel is right that those
+    /// conversations exist; the person is right that they are gone. Nothing on
+    /// the machine can settle it, so the person does.
+    ///
+    /// No confirmation is asked. It costs nothing to undo — the row comes back
+    /// the moment the session says anything — and a dialog for something this
+    /// cheap teaches people to click through dialogs.
+    func dismiss(session member: RowSession) {
+        store.dismiss(sessionId: member.id)
+        rebuildContent()
+    }
+
+    /// Ends the process a conversation is running in, then takes the row off.
+    ///
+    /// Only offered where the session names its process — Claude Code, through
+    /// `~/.claude/sessions` — and only when that process is alive and started
+    /// when the record says. Codex is served by one shared daemon, so there is
+    /// nothing to end that belongs to a single conversation.
+    ///
+    /// This one asks, where *Remove this row* does not, and the difference is
+    /// the point: removing a row is undone by the session saying anything,
+    /// ending a process is not undone by anything. The question names the folder
+    /// and the process id, because "are you sure" without a subject is a question
+    /// nobody can answer.
+    func terminate(session member: RowSession) {
+        guard let process = SessionTerminator.process(of: member.id) else {
+            Alerts.tell(
+                title: "Nothing to end here",
+                message: "This conversation does not name a process this panel can "
+                    + "reach. Codex conversations are served by one shared process, "
+                    + "and ending it would end all of them."
+            )
+            return
+        }
+        let folder = (process.cwd as NSString).lastPathComponent
+        guard Alerts.confirm(
+            title: "End \u{201C}\(member.name)\u{201D}?",
+            message: "Process \(process.pid), started \(process.startedAt), in "
+                + "\(folder.isEmpty ? member.session.workspace.name : folder).\n\n"
+                + "The session is asked to stop and gets to save what it is holding. "
+                + "This cannot be undone from here: what it was doing ends with it.",
+            confirmTitle: "End session"
+        ) else { return }
+
+        if SessionTerminator.terminate(process) {
+            store.dismiss(sessionId: member.id)
+            rebuildContent()
+        } else {
+            Alerts.tell(
+                title: "It did not end",
+                message: "The process would not take the signal, or had already gone. "
+                    + "Nothing was changed."
+            )
+        }
+    }
+
     /// Names one conversation, and nothing else.
     func rename(session member: RowSession) {
         guard let answer = Alerts.ask(

@@ -16,6 +16,11 @@ enum Alerts {
         present(title: title, message: message, style: .warning, buttons: ["OK"])
     }
 
+    /// Something the user has to know, with nothing to decide.
+    static func tell(title: String, message: String) {
+        _ = present(title: title, message: message, style: .informational, buttons: ["OK"])
+    }
+
     /// - Returns: `true` when the user confirmed.
     @discardableResult
     static func confirm(title: String, message: String, confirmTitle: String) -> Bool {

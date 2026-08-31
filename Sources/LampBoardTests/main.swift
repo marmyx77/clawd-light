@@ -17,6 +17,8 @@ let suites: [TestSuite] = [
     CodexContextSuite.suite,
     CodexAdmissionSuite.suite,
     CodexAmberSuite.suite,
+    DismissSuite.suite,
+    SessionProcessSuite.suite,
     CodexApprovalSuite.suite,
     CodexTrustSuite.suite,
     IDELockParserSuite.suite,

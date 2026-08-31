@@ -1,18 +1,18 @@
 # Code map
 
-~36,876 lines of Swift across five targets. For each file: what it contains, why
+~37,396 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  10,000 lines · 83 files   pure logic, zero AppKit
-  LampBoardApp/    14,331 lines · 76 files   shell: AppKit, network, windows
-  LampBoardTests/  9,396 lines · 51 files   683 cases, instantaneous
+  LampBoardCore/  10,156 lines · 84 files   pure logic, zero AppKit
+  LampBoardApp/    14,548 lines · 77 files   shell: AppKit, network, windows
+  LampBoardTests/  9,616 lines · 53 files   696 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 770 lines. The limit the project sets itself is 800.
+No file exceeds 795 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -137,6 +137,22 @@ producing an unavailable probe in a test would have meant making `lsof` genuinel
 hang. Now it is a value handed to a function, and the case that covers it simply
 says `.unavailable`. `nil` means "we did not get to look"; `.observed([])` means
 the conversations are over, and the two must never be spelled the same.
+
+### `SessionProcess.swift`
+The process a Claude Code session runs in.
+
+Claude Code writes one file per running session in `~/.claude/sessions`, named
+after the process id and carrying the session id beside it. That is the only
+place on this machine where the two are stated together: the process holds no
+descriptor on its transcript and names nothing in its environment.
+
+It carries the start time because process ids are reused and those files outlive
+what they describe — fifteen of them here, several naming processes that had
+ended. Ending a pid because a file says so, without checking the pid is still the
+same process, is how a panel comes to kill something nobody asked about.
+
+Codex has no equivalent, and that is a fact about Codex: one shared daemon serves
+every conversation, so no process belongs to a single one.
 
 ### `Codex/CodexApproval.swift`
 Who answers when Codex asks for permission.
@@ -824,13 +840,14 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 770 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStore.swift` | 780 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 143 | the rows nobody announced: Codex from an open rollout, Claude Desktop from its index and transcript. Both obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
+| `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 399 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -945,7 +962,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
-| `PanelNaming.swift` | 109 | opening a project, and the three levels of name |
+| `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
 | `PanelRootView.swift` | 393 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
@@ -978,7 +995,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 683 cases
+## `LampBoardTests/` — 696 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
