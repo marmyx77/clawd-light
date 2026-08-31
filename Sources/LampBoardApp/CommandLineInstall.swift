@@ -37,7 +37,24 @@ extension CommandLineInterface {
         }
 
         if reports.contains(where: { $0.harness == .codex && $0.outcome == .installed }) {
-            print("\n\(HookInstaller.codexTrustNotice)")
+            // Named, not just mentioned. The notice tells you to go and trust
+            // them; this says which ones are actually waiting, so you can tell
+            // afterwards whether it worked.
+            switch HookSetup.codexTrustVerdict() {
+            case .allApproved:
+                print("\nCodex already trusts every hook registered here.")
+            case .waiting(let events):
+                print("\n\(HookInstaller.codexTrustNotice)")
+                print("Waiting for approval: \(events.joined(separator: ", "))")
+            case .unreadable:
+                // Never the reassurance. The list of events awaiting approval is
+                // empty here too, and printing "already trusts everything" on a
+                // machine whose configuration could not be read is the one thing
+                // this must not do.
+                print("\n\(HookInstaller.codexTrustNotice)")
+                print("Whether that has already been done could not be read from "
+                    + AppConfig.codexConfigURL.path)
+            }
         }
 
         guard !HookSetup.hasFailure(in: reports) else {

@@ -15,6 +15,8 @@ let suites: [TestSuite] = [
     ClaudeDesktopSuite.suite,
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,
+    CodexAdmissionSuite.suite,
+    CodexTrustSuite.suite,
     IDELockParserSuite.suite,
     WorkspaceResolverSuite.suite,
     IDELockLivenessSuite.suite,

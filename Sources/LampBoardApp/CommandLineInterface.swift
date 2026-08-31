@@ -160,91 +160,13 @@ enum CommandLineInterface {
 
     // MARK: - Commands
 
-    private static func runStatus() -> Int32 {
-        let installer = HookInstaller()
-        let events = installer.installedEvents()
-
-        print("Claude Code")
-        print("  Hook script:  \(installer.scriptPath)")
-        print("  Registered:   \(events.isEmpty ? "no" : events.joined(separator: ", "))")
-
-        // Reported separately, because the two are separately installable and one
-        // of them can be missing while the other is fine. A single line saying
-        // "hooks installed" was true and useless on a machine where Codex was not.
-        print()
-        print("Codex")
-        if FileManager.default.fileExists(atPath: AppConfig.codexDirectory.path) {
-            let codex = HookInstaller.codex()
-            let codexEvents = codex.installedEvents()
-            print("  Hook script:  \(codex.scriptPath)")
-            print("  Registered:   \(codexEvents.isEmpty ? "no" : codexEvents.joined(separator: ", "))")
-            if !codexEvents.isEmpty {
-                print("  Trust:        cannot be read from here; run /hooks inside Codex")
-            }
-            switch CodexProcessScanner().scan() {
-            case .unavailable(let reason):
-                // Told apart from "none", because they are different facts and the
-                // second one is a reason to go looking.
-                print("  Live sessions: could not be read (\(reason))")
-            case .observed(let evidence) where evidence.isEmpty:
-                print("  Live sessions: none holding a rollout open")
-            case .observed(let evidence):
-                print("  Live sessions: \(evidence.count)")
-                for item in evidence {
-                    print("    · \(item.meta.cwd)  [\(item.surface.label)]")
-                }
-            }
-        } else {
-            print("  Not installed on this machine (\(AppConfig.codexDirectory.path) is not there)")
-        }
-        print()
-
-        let now = Date()
-        let windows = IDEWindowReader().readWindows()
-        let fresh = windows.filter { $0.isSupported }
-        print("VS Code windows with Claude Code active: \(fresh.count)")
-        for window in fresh {
-            for folder in window.workspaceFolders {
-                print("  · \(folder)")
-            }
-        }
-
-        let live = LiveSessionReader().readLiveSessions()
-        let hosted = live.filter(\.deservesTrafficLight)
-        let resolved = hosted.filter {
-            WorkspaceResolver.resolve(cwd: $0.cwd, in: windows, at: now) != nil
-        }
-        print()
-        print("Claude Code sessions with a live process: \(live.count)")
-        print("  of which inside VS Code:                \(hosted.count)")
-        print("  of which with a recognized workspace:   \(resolved.count)  ← rows in the column")
-        if hosted.count > resolved.count {
-            print("  The others have a cwd that no lock in ~/.claude/ide/ contains.")
-        }
-
-        reportRemoteHosts()
-        print("Accessibility permission: \(VSCodeFocuser.hasAccessibilityPermission ? "granted" : "MISSING")")
-
-        let automation = VSCodeFocuser.checkAutomationPermission()
-        print("Automation permission:    \(automation == nil ? "granted" : "MISSING")")
-        if let automation {
-            print("  \(automation.shortDescription)")
-        }
-
-        // Read the permissions above with a grain of salt: run from a terminal,
-        // this command answers for the **responsible process** — the shell — and
-        // not for the app. Treat it as a hint, not as proof; the proof is in the
-        // log of the app started with LAMPBOARD_DEBUG=1.
-        printOptionalFeatures()
-        return 0
-    }
 
     /// The state of the features that start out switched off.
     ///
     /// They exist, but until somebody turns them on they never run — and that is
     /// the condition which, in this project, has produced more defects than any
     /// other. Making them visible is the first step towards testing them.
-    private static func printOptionalFeatures() {
+    static func printOptionalFeatures() {
         let preferences = Preferences()
         print()
         print("OPTIONAL FEATURES (off by default)")
@@ -767,7 +689,7 @@ enum CommandLineInterface {
     ///
     /// Printed because there is otherwise no way to tell "no remote sessions" from
     /// "the node never answered" — and those need opposite reactions.
-    private static func reportRemoteHosts() {
+    static func reportRemoteHosts() {
         let hosts = Preferences().remoteHosts
         guard !hosts.isEmpty else {
             print("\nRemote hosts: none configured (panel menu → Settings…)")

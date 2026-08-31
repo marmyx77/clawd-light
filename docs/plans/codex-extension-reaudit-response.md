@@ -81,8 +81,13 @@ Il test rende local più due host remoti con lo stesso path e verifica tre righe
 tre stati indipendenti, il nascondimento di una sola e il nome che appartiene a
 una sola. Due mutazioni mordono.
 
-**Non coperto**, e lo dichiaro invece di lasciartelo trovare: slot, mute, drag e
-click su un blocco che contiene entrambi gli harness. Il tuo gate li chiedeva.
+**Aggiornamento del 31 agosto: coperto.** Slot, riordino e mute su tre workspace
+con lo stesso percorso e host diversi, con le due mutazioni che già mordevano
+sulla chiave che ora fanno diventare rosso anche questo. Il click resta fuori
+perché **non passa dalla chiave**: una riga remota si apre leggendo
+`workspace.host`, quindi un errore di chiave non può mandarti sulla macchina
+sbagliata cliccando. Può mandartici premendo un numero, e quello è lo slot, che
+ora è provato.
 
 ### AUD2-006 — chiuso, con i numeri di questa macchina
 
@@ -111,9 +116,26 @@ non c'è non ha fallito niente. Primo avvio, menu e CLI passano tutti di lì, e
 `install-hooks` esce **2** quando un agente è a posto e un altro fallisce, dove
 prima usciva 0 e diceva a uno script mezzo installato che aveva finito.
 
-**Non fatto:** `trust unknown` non è fra gli esiti, e `panelFlags.hooksInstalled`
-è ancora un booleano solo, derivato da "manca qualcosa a qualcuno". Lo stato UI
-per harness resta da fare.
+**Aggiornamento del 31 agosto: la fiducia è leggibile, e ora la leggiamo.** Lo
+stato diceva onestamente che non si poteva sapere da qui. Non era vero: Codex la
+registra in `~/.codex/config.toml`, una voce per evento, con dentro il percorso
+del nostro file e il nome dell'evento in snake_case. Tre esiti — approvato, **mai
+approvato** (quell'hook non partirà, con certezza), e illeggibile — e il secondo
+è la causa più probabile di una riga Codex muta dopo un'installazione. L'hash
+accanto non è ricalcolabile e non lo fingiamo: una voce dice che l'approvazione
+c'è stata, non che vale ancora. Misurato: due installazioni di fila producono un
+file identico byte per byte, quindi reinstallare non costa fiducia; cambiare
+l'insieme degli eventi o il percorso dello script sì — ed è esattamente quello che
+ha fatto la rinomina di questo progetto.
+
+`status` e il messaggio di installazione lo dicono. Il menu resta **una voce
+sola** e ora nomina l'agente che manca — *Install the hooks (Codex)…* — perché
+una seconda voce in un menu già lungo costa più di quanto spieghi: è una scelta,
+non un residuo.
+
+**Non fatto, e resta tale:** `panelFlags.hooksInstalled` è ancora un booleano.
+La fiducia **non** entra nel pannello, per decisione: una riga muta è rara, e un
+quarto stato nel menu peggiora il caso comune.
 
 ### AUD2-004 — il probe è fuori dal thread che disegna, il test iniettabile no
 
@@ -134,9 +156,16 @@ dopo, quattro volte al minuto: il pannello lampeggiava. Il rimedio è quello che
 regola già voleva dire — un rollout aperto è una conversazione caricata, non un
 modello che lavora, e quel descrittore è una conferma.
 
-**Non fatto:** uno scanner iniettabile che resti bloccato o risponda
-`.unavailable` conservando le righe. Il comportamento c'è ed è documentato, la
-prova automatica no.
+**Aggiornamento del 31 agosto: provato.** `CodexEvidence` e `CodexScanResult` si
+sono spostati in `LampBoardCore`, e la decisione con loro:
+`CodexAdmission.verdict(on:holding:)` risponde `nil` a un probe che non ha
+risposto, e un `Verdict` vuoto a uno che ha risposto e non ha visto niente. Le due
+cose non si scrivono più uguali. Il caso unitario le distingue e due mutazioni lo
+dimostrano.
+
+Resta fuori una cosa e la dichiaro: **"non blocca l'interfaccia" non è provato da
+un test**, è provato dalla struttura — il probe sta su un actor suo — e dalla
+misura che `SweepLog` stampa. Un test sul tempo sarebbe un test sull'hardware.
 
 ### AUD2-005 — il danno concreto è tolto, il modello di capability no
 
@@ -191,17 +220,18 @@ firmato.
 | con `~/.claude` assente, un rollout top-level aperto crea la riga corretta | **non provato** |
 | un hook della stessa sessione non può cambiare workspace, transcript, harness o superficie | **chiuso**, unit + E2E, 4 mutazioni |
 | padre e subagente aperti non duplicano né sostituiscono la riga del padre | **chiuso**, E2E che morde |
-| local e due host remoti con lo stesso path producono tre identità indipendenti | **chiuso** per righe, nomi e hide; **aperto** per slot e click |
-| installazione, rimozione e stato UI dichiarano l'esito per entrambi gli harness | **metà**: installazione e rimozione sì, stato UI no |
+| local e due host remoti con lo stesso path producono tre identità indipendenti | **chiuso**: righe, nomi, hide, slot, riordino, mute; il click non passa dalla chiave |
+| installazione, rimozione e stato UI dichiarano l'esito per entrambi gli harness | **chiuso in `status` e all'installazione**, fiducia compresa; il menu resta una voce sola per scelta |
 | CLI, ChatGPT ed editor espongono soltanto azioni supportate | **metà**: l'azione che sbagliava è tolta, il modello no |
-| un probe lento o indisponibile non blocca l'interfaccia e non cancella righe | **comportamento sì, prova automatica no** |
+| un probe lento o indisponibile non blocca l'interfaccia e non cancella righe | **chiuso per "non cancella righe"**; "non blocca" resta strutturale e misurato, non testato |
 | la E2E scanner-driven continua a non chiamare `/signal` | **vero**, i casi di scoperta non la toccano |
 | fixture versionate e smoke su rollout reale passano entrambe | **aperto**: solo lo smoke |
 | ogni riga "Tested" del README indica quale livello di prova la sostiene | **chiuso** |
 | `./Scripts/test.sh` passa da un checkout pulito, gate compresi | **chiuso qui**: 664 / 95 / 10 / 11 / 22 |
 
-Quattro voci aperte su undici. **L'estensione non è chiusa**, e non la dichiaro
-tale.
+Al 31 agosto restano aperte **due** voci su undici: la fixture versionata in CI e
+lo smoke firmato, entrambe legate a come questo progetto verrà distribuito. Le
+altre nove sono chiuse, o chiuse con un limite dichiarato accanto.
 
 ## Cosa non avevi trovato, e che le tue correzioni hanno fatto emergere
 
@@ -231,15 +261,13 @@ leggere invece di riscoprire. Stanno tutte in `docs/07-traps.md`.
 
 Nell'ordine, e con la ragione accanto.
 
-1. **Lo stato UI per harness** (AUD2-002). È l'unica voce aperta che una persona
-   incontra senza cercarla: il menu dice ancora una cosa sola su due agenti.
-2. **Slot, mute, drag e click sul blocco misto** (AUD2-003). La chiave è giusta,
-   la copertura no, e sono esattamente i posti dove un errore di chiave si vede.
-3. **Lo scanner iniettabile** (AUD2-004). Il comportamento c'è; senza la prova,
-   la prossima persona che tocca il probe non ha modo di sapere che regge.
-4. **Le capability esplicite** (AUD2-005). Il lavoro più grande dei quattro e il
-   meno urgente, ora che l'azione che sbagliava è tolta.
+I primi tre sono stati fatti il 31 agosto, nell'ordine inverso a quanto si vedono:
+prima il probe e la chiave, piccoli e a rischio zero, poi la fiducia, che tocca il
+menu e il primo avvio.
 
-Le fixture versionate in CI e l'artefatto smoke firmato li lascio per ultimi: sono
-i due che dipendono da come questo progetto verrà distribuito, e quella decisione
-non è ancora presa.
+Resta:
+
+1. **Le capability esplicite** (AUD2-005). Il lavoro più grande e il meno urgente,
+   ora che l'azione che sbagliava è tolta. Rimandato per decisione.
+2. **Le fixture versionate in CI** e **l'artefatto smoke firmato**. Dipendono da
+   come questo progetto verrà distribuito, e quella decisione non è ancora presa.

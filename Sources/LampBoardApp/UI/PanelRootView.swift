@@ -44,6 +44,13 @@ struct PanelFlags {
     let mutedUntil: Date?
     let hasHidden: Bool
     let hooksInstalled: Bool
+
+    /// The agents on this machine with no hooks registered, by name.
+    ///
+    /// One menu line for two agents, and it says which one is missing rather
+    /// than sending you to look: a second entry in an already long menu costs
+    /// more than it explains.
+    let hooksMissingFrom: [String]
     let launchesAtLogin: Bool
     let canLaunchAtLogin: Bool
 }
@@ -306,7 +313,12 @@ struct PanelRootView: View {
 
             Button("Remove the hooks", action: actions.uninstallHooks)
         } else {
-            Button("Install the hooks…", action: actions.installHooks)
+            Button(
+                flags.hooksMissingFrom.isEmpty
+                    ? "Install the hooks…"
+                    : "Install the hooks (\(flags.hooksMissingFrom.joined(separator: " and ")))…",
+                action: actions.installHooks
+            )
         }
 
         if flags.canLaunchAtLogin {

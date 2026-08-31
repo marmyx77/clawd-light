@@ -281,6 +281,16 @@ public enum AppConfig {
         codexDirectory.appendingPathComponent("hooks.json")
     }
 
+    /// Codex's own configuration, which is also where it records **which hooks
+    /// it has been told to trust**.
+    ///
+    /// Read only, and only for that. Codex refuses to run a hook it has not been
+    /// approved for and says nothing when it declines, so a row can be silent
+    /// with everything correctly registered — see `CodexTrust`.
+    public static var codexConfigURL: URL {
+        codexDirectory.appendingPathComponent("config.toml")
+    }
+
     public static var claudeSettingsURL: URL {
         homeDirectory
             .appendingPathComponent(".claude", isDirectory: true)

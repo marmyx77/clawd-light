@@ -839,17 +839,57 @@ because it slept 200 milliseconds between looks — the same mistake as the two
 samplers, in the place that is supposed to catch it. It looks as often as the
 question can be asked now, and it fails when the exemption is removed.
 
+## 31 August — three of the four, and a reassurance that was a lie
+
+The three open findings, done in the order they cost least: the probe, the key,
+then trust. It is the inverse of how visible they are, and deliberate — the first
+two are small and closed and put last night's changes under guard, and the third
+touches the menu and the first run.
+
+**A rule nothing was watching.** "A probe that could not answer is not a session
+that ended" lived as one line inside the store, and deleting it left the suite
+green: producing an unavailable probe in a test would have meant making `lsof`
+genuinely hang. `CodexEvidence` and `CodexScanResult` moved to the core with the
+decision — `nil` for a probe that did not answer, an empty verdict for one that
+answered and saw nothing — and those two are no longer spelled the same.
+
+**A key proved by half.** Three rows, three names and hiding were covered; slot,
+reordering and mute were not, and the slot is the sharp one. The click turned out
+not to pass through the key at all: a remote row opens by reading its host, so a
+key mistake cannot send you to the wrong machine by clicking. It can by pressing
+a number, and that is now proved.
+
+**And the thing this project said could not be known.** `lampboard status` used
+to say the trust of Codex's hooks *cannot be read from here*. It can. Codex
+records it in its own configuration, one entry per event, and the key carries our
+file's path and the event name in snake_case. So a hook registered and never
+approved — which will not run, silently, because Codex says nothing when it
+declines — has a name now.
+
+What cannot be read is the hash beside it. Eight plausible inputs were tried
+against a real entry and none reproduces it, so a record means the approval
+happened and not that it still holds. Two installs in a row were measured to
+produce a byte-identical file, so reinstalling costs no trust; changing the events
+or the script's path does, and renaming this project did exactly that.
+
+The defect worth recording is the one the fixture found. With the states read but
+the three branches written separately at two call sites, the installer told a
+person with **no Codex configuration at all** that everything was already
+trusted — because the list of events awaiting approval is empty in that case too.
+A reassurance nobody can check is worse than a question. The verdict is one
+function now, and the case that covers it bites.
+
 ## How the project stands now
 
 | | |
 |---|---|
-| Domain tests | **664**, instantaneous |
+| Domain tests | **674**, instantaneous |
 | End-to-end tests | **95**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **22**, all caught |
-| Longest file | 791 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
+| Longest file | 770 lines, `CommandLineInterface.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal

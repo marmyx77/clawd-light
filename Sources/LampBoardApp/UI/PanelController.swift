@@ -206,6 +206,7 @@ final class PanelController {
             mutedUntil: preferences.mutedUntil,
             hasHidden: !preferences.hiddenWorkspaces.isEmpty,
             hooksInstalled: !HookSetup.needsInstalling(),
+            hooksMissingFrom: HookSetup.missingNames(),
             launchesAtLogin: LaunchAtLogin.isEnabled,
             canLaunchAtLogin: LaunchAtLogin.availability != .needsBundle
         )

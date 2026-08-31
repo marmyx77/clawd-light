@@ -1,18 +1,18 @@
 # Code map
 
-~35,736 lines of Swift across five targets. For each file: what it contains, why
+~36,280 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,645 lines · 78 files   pure logic, zero AppKit
-  LampBoardApp/    14,191 lines · 74 files   shell: AppKit, network, windows
-  LampBoardTests/  8,975 lines · 47 files   664 cases, instantaneous
+  LampBoardCore/   9,876 lines · 81 files   pure logic, zero AppKit
+  LampBoardApp/    14,262 lines · 75 files   shell: AppKit, network, windows
+  LampBoardTests/  9,217 lines · 49 files   674 cases, instantaneous
   LampBoardE2E/    2,556 lines · 11 files   95 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 791 lines. The limit the project sets itself is 800.
+No file exceeds 770 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -118,6 +118,49 @@ to the terminal tab it is typed in.
 Two processes on one rollout give the **same** answer every time: the order `lsof`
 prints in is not a promise, and a click that raised a different tab each time
 would be worse than one that raised none.
+
+### `Codex/CodexScanResult.swift`
+`CodexEvidence` and `CodexScanResult`: what a probe found, and whether it found
+anything. Values, and here rather than beside the scanner that produces them,
+because what the panel **decides** about them has to be testable without a disk.
+
+### `Codex/CodexAdmission.swift`
+The decision that used to be one line inside the store:
+
+```swift
+guard case .observed(let evidence) = result else { return }
+```
+
+The right rule — a probe that could not answer is not a session that ended — and
+nothing was watching it. Deleting the line left the suite green, because
+producing an unavailable probe in a test would have meant making `lsof` genuinely
+hang. Now it is a value handed to a function, and the case that covers it simply
+says `.unavailable`. `nil` means "we did not get to look"; `.observed([])` means
+the conversations are over, and the two must never be spelled the same.
+
+### `Codex/CodexTrust.swift`
+Whether Codex will actually run the hooks it has registered.
+
+The state this exists for is one a person meets and cannot diagnose: the hooks are
+in `hooks.json`, `status` says registered, and the row stays silent. Codex will
+not run a hook it has not been approved for, and **when it declines it says
+nothing**.
+
+It does record the approval, one entry per event, in `~/.codex/config.toml`. The
+key carries the path of our hooks file and the event name in snake_case, so "is
+there any record of approval for this event?" can be answered exactly. The hash
+beside it cannot: eight plausible inputs were tried against a real entry and none
+reproduces it, so a record means the approval **happened**, not that it still
+holds. Running the installer twice was measured to produce a byte-identical file,
+so a reinstall costs no trust; changing the events, or the hook script's path —
+which is what renaming this project did — does.
+
+Three answers, and the third is the one that was missing: **approved**,
+**never approved** (this hook will not run, and that is certain), and
+**unreadable**, which is never reported as either of the other two. That last
+distinction is not theoretical: the installer told a person with no Codex
+configuration that everything was already trusted, because the list of events
+awaiting approval is empty in both cases.
 
 ### `Codex/CodexSessionMeta.swift`
 What a Codex rollout says about itself in its first line, and the **only** place a
@@ -711,7 +754,15 @@ the file says which session and folder, the binary says which surface. Returns
 `.unavailable` rather than an empty list when the probe could not answer, because
 a probe that timed out is not a session that ended.
 
-### `CommandLineInstall.swift` · 141
+### `CommandLineStatus.swift` · 105
+`lampboard status`: what this machine can see, and what it cannot. Split out of
+`CommandLineInterface` at the 800-line ceiling, along a seam that was already
+there — everything else in that file **does** something, and this one only looks
+and reports. It is the longest single command because reporting honestly means
+naming the difference between "none" and "could not be read" every time it comes
+up.
+
+### `CommandLineInstall.swift` · 158
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
 reached the 800-line ceiling, along the seam that was already there — everything
@@ -828,7 +879,7 @@ The names a Remote-SSH window may carry for a host — the configured one, what 
 
 ## `Setup/`
 
-### `HookSetup.swift` · 128
+### `HookSetup.swift` · 165
 Both agents' hooks, asked and answered together, because the answer used to
 depend on how you asked. The command line installed Claude Code and then Codex;
 the first-run offer, the context menu and the state that menu showed each
@@ -893,7 +944,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 664 cases
+## `LampBoardTests/` — 674 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

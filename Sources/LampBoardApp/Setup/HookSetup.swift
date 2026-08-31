@@ -16,6 +16,32 @@ import Foundation
 /// version of.
 enum HookSetup {
 
+    /// Whether Codex will actually run the hooks it has registered, read from
+    /// its own configuration.
+    ///
+    /// Only Codex has this question. Claude Code runs what is in its settings
+    /// file; Codex refuses a hook it has not been approved for and **says nothing
+    /// when it declines**, so "registered" and "will run" are two different
+    /// facts there. See `CodexTrust`.
+    static func codexTrust() -> [String: CodexTrust.State] {
+        let installer = HookInstaller.codex()
+        let events = installer.installedEvents()
+        guard !events.isEmpty else { return [:] }
+        return CodexTrust.states(
+            registered: events,
+            hooksFilePath: AppConfig.codexHooksURL.path,
+            configuration: try? String(contentsOf: AppConfig.codexConfigURL, encoding: .utf8)
+        )
+    }
+
+    /// One answer about Codex's trust, for everyone who has to say something
+    /// about it. Two callers deciding this separately is how one of them came to
+    /// promise that everything was approved on a machine where the file could
+    /// not be read.
+    static func codexTrustVerdict() -> CodexTrust.Verdict {
+        CodexTrust.verdict(of: codexTrust())
+    }
+
     /// What is true of one agent on this machine.
     enum Outcome: Equatable {
         /// The agent is not on this machine, so there is nothing to register.
@@ -53,6 +79,17 @@ enum HookSetup {
             reports.append(Report(harness: .codex, outcome: .notPresent))
         }
         return reports
+    }
+
+    /// The agents that are here and have no hooks registered, by name.
+    ///
+    /// What the menu puts in brackets. One line for two agents was the choice —
+    /// a second entry in an already long menu costs more than it explains — so
+    /// the line says which one is missing instead of making you go and look.
+    static func missingNames(fileManager: FileManager = .default) -> [String] {
+        state(fileManager: fileManager)
+            .filter { $0.outcome == .notInstalled }
+            .map(\.harness.displayName)
     }
 
     /// `true` when at least one agent that is here has no hooks registered.
