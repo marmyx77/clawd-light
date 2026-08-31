@@ -9,7 +9,7 @@
     "Every entry here has a matching record in assumptions.md that says where we",
     "depend on it and what breaks if it goes away."
   ],
-  "verifiedAgainst": "2.1.247",
+  "verifiedAgainst": "2.1.251",
   "verifiedOn": "2026-08-27",
   "events": {
     "SessionStart": [
