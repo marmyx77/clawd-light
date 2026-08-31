@@ -749,6 +749,92 @@ verdict "$STATUS" \
     "something in the tree is written about nowhere" \
     "the tree could not be walked"
 
+head_ "The mutation count in the documents is the one bite.sh runs"
+
+# The register of the gates became readable when its case counts were checked
+# like every other figure. This number walked out through the one door left
+# open: it is written in words. Three documents said `bite.sh` commits
+# twenty-two violations while it was committing twenty-five, and the figure
+# check went past them every time, because it looks for digits.
+#
+# The count is derived from the file rather than declared anywhere. A constant
+# here would be one more number to keep, and the thing being guarded is exactly
+# the failure of keeping numbers in step by hand.
+#
+# The WORKLOG is deliberately not read. Its entries are dated and say what was
+# true when they were written; a chronicle rewritten to match today has stopped
+# being a chronicle.
+STATUS=0
+python3 - <<'MUTPY' || STATUS=$?
+import os, re, sys
+
+ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+        "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+        "sixteen", "seventeen", "eighteen", "nineteen"]
+TENS = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty",
+        6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety"}
+
+def spell(n):
+    if n < 20:
+        return ONES[n]
+    tens, ones = divmod(n, 10)
+    return TENS[tens] if ones == 0 else f"{TENS[tens]}-{ONES[ones]}"
+
+VALUE = {spell(n): n for n in range(1, 100)}
+
+if not os.path.exists("Scripts/bite.sh"):
+    print("    Scripts/bite.sh is gone — there is no count to compare against", file=sys.stderr)
+    sys.exit(3)
+
+bite = open("Scripts/bite.sh").read()
+count = len(re.findall(r"^attack ", bite, re.M)) + len(re.findall(r"^attack_swift ", bite, re.M))
+
+problems = []
+# Zero means the calls were renamed and this check would otherwise compare every
+# document against nothing, and pass.
+if count == 0:
+    problems.append(
+        "no `attack` calls found in bite.sh — the shape this reads has changed "
+        "and the check went blind rather than green"
+    )
+
+FILES = ["docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"]
+STATEMENT = re.compile(r"commits ([a-z]+(?:-[a-z]+)?) violations", re.I)
+CATCHES = re.compile(r"demands ([a-z]+(?:-[a-z]+)?) catches", re.I)
+
+stating = 0
+for f in FILES:
+    if not os.path.exists(f):
+        problems.append(f"{f} states the mutation count and no longer exists")
+        continue
+    text = open(f).read()
+    said = STATEMENT.findall(text) + CATCHES.findall(text)
+    if not said:
+        continue
+    stating += 1
+    for spelled in said:
+        value = VALUE.get(spelled.lower())
+        if value is None:
+            problems.append(f"{f} says “{spelled}”, which is not a number this can read")
+        elif value != count:
+            problems.append(f"{f} says {spelled} mutations, bite.sh commits {count}")
+
+if stating == 0 and count:
+    problems.append(
+        "no document states how many mutations bite.sh commits — the sentence "
+        "this reads was reworded, and the check went blind rather than green"
+    )
+
+print(f"    {count} mutations, stated in {stating} of {len(FILES)} documents", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+MUTPY
+verdict "$STATUS" \
+    "the documents state the number of mutations bite.sh runs" \
+    "a document states a mutation count that bite.sh no longer runs" \
+    "the mutation count could not be read"
+
 head_ "Every gate here can be shown to bite"
 
 # The rule that keeps the rest of this file honest: each section above claims to

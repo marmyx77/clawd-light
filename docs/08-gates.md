@@ -79,6 +79,7 @@ Measured on an M-series Mac, 29 August 2026.
 | The registered events | the contract and `HookConfigMerger` agree; prose states the right count | filesystem | `bite.sh` removes an event, ages the prose, rewords it away | CI, `test.sh` | ” |
 | Test suites are registered | no suite exists that the runner never calls | filesystem | `bite.sh` unregisters one | CI, `test.sh` | ” |
 | Every file is on the map | nothing shipped, and no script, is written about nowhere | filesystem | `bite.sh` erases a file's row, then a script's | CI, `test.sh` | ” |
+| The stated mutation count | the number of mutations the documents claim is the number `bite.sh` runs | filesystem | `bite.sh` drifts the count, then rewords every sentence stating it away | CI, `test.sh` | ” |
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
@@ -86,7 +87,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits twenty-two violations and demands twenty-two catches. It takes 26
+`bite.sh` commits twenty-seven violations and demands twenty-seven catches. It takes 26
 seconds.
 
 ## The rule

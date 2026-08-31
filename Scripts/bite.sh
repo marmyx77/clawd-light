@@ -62,7 +62,12 @@ gate()    { printf '\n\033[1m%s\033[0m\n' "$1"; }
 chapter() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 protect() {
-    PROTECTED=("$@")
+    # Adds to the list rather than replacing it. Written the other way, two
+    # `protect` lines before one `attack` left only the last file restored, and
+    # the mutation walked out of the run with the tree still damaged — found
+    # exactly that way. `restore` empties the list after every attack, so
+    # nothing accumulates between them.
+    PROTECTED+=("$@")
     local file
     for file in "$@"; do
         mkdir -p "$WORK/$(dirname "$file")"
@@ -370,6 +375,33 @@ attack "a script nobody wrote a line about" "is not in the map's script table" <
 p = "docs/05-code-map.md"
 s = open(p).read().replace("`Scripts/measure-compaction.py`", "`Scripts/measure-compaction-py`")
 open(p, "w").write(s)
+PY
+
+gate "The mutation count in the documents is the one bite.sh runs"
+
+protect docs/08-gates.md
+attack "a mutation count that drifted out of step" "mutations, bite.sh commits" <<'PY'
+import re
+# The number is read and replaced with a different one, never named. A bite that
+# spelled out today's count would have to be edited the next time a gate is
+# added, and a bite that needs maintaining is a bite that gets deleted.
+p = "docs/08-gates.md"
+s = open(p).read()
+said = re.search(r"commits ([a-z]+(?:-[a-z]+)?) violations", s).group(1)
+other = "ninety-nine" if said != "ninety-nine" else "ninety-eight"
+open(p, "w").write(s.replace(f"commits {said} violations", f"commits {other} violations", 1))
+PY
+
+protect docs/08-gates.md docs/06-working-here.md docs/05-code-map.md
+attack "every sentence stating the count reworded away" "no document states how many mutations" <<'PY'
+import re
+# Blinding the check costs nothing and shows nowhere. This repository has already
+# had one guard that was green because it could not run.
+for p in ("docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"):
+    s = open(p).read()
+    s = re.sub(r"commits ([a-z]+(?:-[a-z]+)?) violations", r"commits violations", s)
+    s = re.sub(r"demands ([a-z]+(?:-[a-z]+)?) catches", r"demands catches", s)
+    open(p, "w").write(s)
 PY
 
 gate "Every gate here can be shown to bite"
