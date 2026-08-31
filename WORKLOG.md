@@ -1590,7 +1590,7 @@ commit.
 ## 29 August — the strip under the rows becomes part of the grid
 
 The three glyphs down there were nine points at 0.32 opacity. Reported from use
-in five words: *troppo piccole e veramente poco visibili*. That is what a control
+in five words: *too small, and really hard to see*. That is what a control
 looks like when it is drawn as a watermark — and two of the three had been added
 only hours earlier, so nobody had ever had to find them before.
 

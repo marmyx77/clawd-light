@@ -186,6 +186,35 @@ s = open(p).read().replace(" lines · ", " lines, ")
 open(p, "w").write(s)
 PY
 
+gate "Nothing in the repository is written in Italian"
+
+protect docs/07-traps.md
+attack "a sentence in the language the project is thought in" "reads as Italian" <<'PY'
+# The rule is inflexible, so it gets a gate; and a gate nobody has watched turn
+# red is a rule nobody is keeping.
+#
+# The sentence is assembled from the gate's own list rather than written out.
+# Twice for the price of once: this file stays English, so it does not trip the
+# very check it is proving, and an attack built from the list cannot drift out of
+# step with what the list actually holds.
+words = [
+    line.strip() for line in open("Scripts/italian-words.txt", encoding="utf-8")
+    if line.strip() and not line.startswith("#")
+]
+p = "docs/07-traps.md"
+s = open(p).read()
+open(p, "w").write(s + "\n\n" + " ".join(words[:6]) + ".\n")
+PY
+
+protect Scripts/italian-words.txt
+attack "the word list emptied, so the check would pass on anything" "would pass on anything" <<'PY'
+# The list is the one file the gate skips, which makes it the one place where
+# blinding the gate costs nothing and shows nowhere. An empty list is not a
+# repository free of Italian; it is a check that has stopped asking.
+p = "Scripts/italian-words.txt"
+open(p, "w").write("# emptied\n")
+PY
+
 gate "Links between documents"
 
 protect README.md

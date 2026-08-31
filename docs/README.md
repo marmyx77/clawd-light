@@ -91,6 +91,29 @@ the chronicle is in `WORKLOG.md`, not in a folder of drafts.
 **where it arrived**. If the two contradict each other, the code is right: report
 it and fix the documentation.
 
+## The language of this repository
+
+**English, everywhere, without exceptions.** Every tracked file: documents,
+comments, commit messages, script output, test names.
+
+The project is thought about and argued over in Italian, and that is where it
+should stay — in the conversation, in the plans that never enter here, in
+whatever anybody writes to themselves. What ships is English, because a
+repository that mixes the two makes a reader guess which parts were meant for
+them.
+
+It is a gate, not a paragraph. `check-docs.sh` reads every tracked file against
+`Scripts/italian-words.txt`, a list of function words that carry no meaning in
+English and appear in no identifier, and `bite.sh` proves it twice: once by
+planting a sentence, once by emptying the list — because a check that has quietly
+stopped asking looks exactly like a repository with nothing to find.
+
+When it was written, it found three occurrences, all of them the same quoted
+sentence kept as evidence for a decision. They were translated rather than
+exempted. A rule that ships with an exception has stopped being inflexible on its
+first day, and what mattered about that quotation was what it said, which
+survives translation.
+
 ## A note on tone
 
 The comments in the code and these documents explain **why**, not **what** — the

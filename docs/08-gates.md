@@ -75,6 +75,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Figures outside the code map | README and docs state the same numbers | filesystem | `bite.sh` drifts one, then rewords the sentence away | CI, `test.sh` | ” |
 | The status table | WORKLOG's "how the project stands now" is now | filesystem | `bite.sh` drifts a figure, then renames the table | CI, `test.sh` | ” |
 | No personal paths | no real home, VPN address or `user@host` in tracked files | filesystem | `bite.sh` plants a leak, plants an address, **and blinds the guard** | CI, `test.sh` | ” |
+| Nothing is written in Italian | every tracked file is English: documents, comments, test names, script output | filesystem | `bite.sh` plants a sentence, **and empties the word list** | CI, `test.sh` | ” |
 | The registered events | the contract and `HookConfigMerger` agree; prose states the right count | filesystem | `bite.sh` removes an event, ages the prose, rewords it away | CI, `test.sh` | ” |
 | Test suites are registered | no suite exists that the runner never calls | filesystem | `bite.sh` unregisters one | CI, `test.sh` | ” |
 | Every file is on the map | nothing shipped, and no script, is written about nowhere | filesystem | `bite.sh` erases a file's row, then a script's | CI, `test.sh` | ” |

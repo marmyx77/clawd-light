@@ -364,7 +364,7 @@ struct PanelRootView: View {
 ///
 /// It carries the timestamp's colour rather than a fainter one of its own. The
 /// first version was nine points at 0.32 opacity, which read as a watermark:
-/// reported from use, in the words "troppo piccole e veramente poco visibili".
+/// reported from use, in five words: too small, and really hard to see.
 /// These are controls, and the panel's own text is the right weight for them.
 private struct FooterButton: View {
     let symbol: String

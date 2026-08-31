@@ -489,6 +489,71 @@ verdict "$STATUS" \
     "a tracked file carries what looks like a real path or address" \
     "the tracked files could not be listed — nothing was examined"
 
+head_ "Nothing in the repository is written in Italian"
+
+# The project is written and thought about in Italian, and shipped in English.
+# For a long time that held because somebody remembered; the rule is inflexible
+# now, so it gets a gate rather than a paragraph.
+#
+# Detected by function words rather than by a language model, because the answer
+# has to be the same on every machine and explainable in one line: these are
+# words that carry no meaning in English and appear in no identifier. A comment,
+# a document, a commit-message file — anything tracked.
+#
+# It found three occurrences when it was written, all the same quoted sentence
+# kept as evidence for a decision. They were translated rather than exempted: a
+# rule that ships with an exception has stopped being inflexible on its first
+# day.
+ITALIAN=0
+python3 - <<'ITAPY' || ITALIAN=$?
+import os, re, subprocess, sys
+
+# The list lives in a file of its own, and that file is the only thing skipped
+# here. A gate cannot hold the words it forbids and still check itself, so the
+# exemption is made as small as it can be: everything in `italian-words.txt` is
+# the list, and there is nowhere in it for a sentence to hide.
+LIST = "Scripts/italian-words.txt"
+try:
+    words = [
+        line.strip() for line in open(LIST, encoding="utf-8")
+        if line.strip() and not line.startswith("#")
+    ]
+except OSError:
+    print(f"    {LIST} could not be read - nothing was examined", file=sys.stderr)
+    sys.exit(2)
+if not words:
+    print(f"    {LIST} is empty, so this check would pass on anything", file=sys.stderr)
+    sys.exit(2)
+
+pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in words) + r")\b", re.IGNORECASE)
+
+listing = subprocess.run(["git", "ls-files", "-z"], capture_output=True, text=True)
+if listing.returncode != 0:
+    print("    git could not list the tracked files - nothing was examined", file=sys.stderr)
+    sys.exit(2)
+files = [f for f in listing.stdout.split("\0") if f and f != LIST]
+
+hits = []
+for path in files:
+    try:
+        text = open(path, errors="replace").read()
+    except OSError:
+        continue
+    for number, line in enumerate(text.splitlines(), 1):
+        for word in pattern.findall(line):
+            hits.append(f"{path}:{number} reads as Italian ({word.lower()}): {line.strip()[:70]}")
+
+print(f"    {len(files)} tracked files read against {len(words)} words, {len(hits)} lines",
+      file=sys.stderr)
+for hit in hits[:10]:
+    print(f"    {hit}", file=sys.stderr)
+sys.exit(1 if hits else 0)
+ITAPY
+verdict "$ITALIAN" \
+    "every tracked file is written in English" \
+    "a tracked file is written in Italian" \
+    "the tracked files could not be listed - nothing was examined"
+
 head_ "The contract knows which events we register"
 
 # The one that got away. Everything was committed, 416 tests and 11 checks were

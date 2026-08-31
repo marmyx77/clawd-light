@@ -1,0 +1,61 @@
+# Function words that carry no meaning in English and appear in no identifier.
+# Read by the "Nothing in the repository is written in Italian" gate in
+# check-docs.sh, and kept here rather than inside that script for one reason:
+# a gate cannot hold the words it forbids and still check itself.
+#
+# This file is the only thing that gate skips, and everything in it is this
+# list, so there is nowhere here for a sentence to hide.
+#
+# Both spellings where an accent is involved: a word typed without its accent is
+# the same word.
+perche
+perché
+però
+piu
+più
+gia
+già
+qualsiasi
+soltanto
+quindi
+anche
+della
+delle
+degli
+dello
+nella
+nelle
+nello
+questo
+questa
+questi
+queste
+essere
+hanno
+sono
+viene
+vengono
+senza
+mentre
+oppure
+invece
+ancora
+sempre
+niente
+nulla
+tutti
+tutte
+quando
+allora
+ogni
+molto
+stesso
+stessa
+troppo
+abbiamo
+possiamo
+bisogna
+adesso
+davvero
+soprattutto
+purtroppo

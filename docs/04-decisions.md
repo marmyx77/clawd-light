@@ -1331,8 +1331,8 @@ lights' own column; the legend and the menu are on the right, in the drag
 handles'. Neither is a toolbar arrangement — each one lands in the column of the
 thing it acts on, so the strip reads as the bottom of the grid rather than as a
 bar bolted under it. At twelve points and in the timestamp's colour, because the
-first version — nine points at 0.32 opacity — was reported as *"troppo piccole e
-veramente poco visibili"*, which is what a control looks like when it is drawn as
+first version — nine points at 0.32 opacity — was reported as *"too small, and
+really hard to see"*, which is what a control looks like when it is drawn as
 a watermark. And the band is exactly as tall as a row, so the footer belongs to
 the column's rhythm instead of interrupting it: measured on screen, the glyphs
 have eight points of clear space above their ink and eight below.
