@@ -54,15 +54,22 @@ A gate that reddens because somebody else shipped a release, or because a build
 machine has no Claude Code installed, teaches people that red is noise. Once
 that lesson is learned it applies to every red, including the true ones.
 
+`smoke-clicks.sh` is external for a sharper version of the same reason: it needs
+a screen, an unlocked session, and other people's applications actually running.
+On a locked Mac it can prove nothing at all — measured, the night the window
+server refused to bring anything forward — and a check whose answer depends on
+whether somebody walked away from the keyboard cannot be a condition for
+merging.
+
 ## The registry
 
 Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (630 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (675 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
-| End-to-end suite (88 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
+| End-to-end suite (98 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
 | Links between documents | every relative link and anchor resolves | filesystem | `bite.sh` breaks a link, then deletes a guarded document | CI, `test.sh` | ” |
 | Figures outside the code map | README and docs state the same numbers | filesystem | `bite.sh` drifts one, then rewords the sentence away | CI, `test.sh` | ” |
@@ -76,6 +83,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
 | Model context windows | every window in the table is the one the binary carries | **external** | a window edited in the contract is reported against the binary | with the contract | in the above |
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
+| A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
 `bite.sh` commits twenty-two violations and demands twenty-two catches. It takes 26
 seconds.

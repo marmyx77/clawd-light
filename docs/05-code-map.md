@@ -1,14 +1,14 @@
 # Code map
 
-~36,280 lines of Swift across five targets. For each file: what it contains, why
+~36,520 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,876 lines · 81 files   pure logic, zero AppKit
-  LampBoardApp/    14,262 lines · 75 files   shell: AppKit, network, windows
-  LampBoardTests/  9,217 lines · 49 files   674 cases, instantaneous
-  LampBoardE2E/    2,556 lines · 11 files   95 cases, the real binary
+  LampBoardCore/   9,953 lines · 82 files   pure logic, zero AppKit
+  LampBoardApp/    14,241 lines · 75 files   shell: AppKit, network, windows
+  LampBoardTests/  9,250 lines · 49 files   675 cases, instantaneous
+  LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -221,6 +221,25 @@ Ordered by **when it was first seen**, never by urgency: the column does not
 reorder itself (D23) and neither may the list inside a row, where the lines sit
 closer together and a misclick opens the wrong conversation. Ties go to the id,
 because sessions adopted in one pass share a timestamp.
+
+### `UpdateSwap.swift`
+The script that finishes an update after the application has quit, as text.
+
+Here, and not beside the installer that runs it, for two reasons. It has to be
+**testable**: the swap is the one part of updating that cannot be exercised from
+inside the running application, because it starts by waiting for that
+application to die. And it must **not be a file**. The first version wrote
+`swap.sh` into the same temporary directory as the staged application, and
+`install()` deleted that directory the moment it returned — while the script was
+still in its wait loop. By the time it reached the move, what it was moving had
+been erased: the application quit, the swap rolled back, and nothing changed.
+Deterministic, and shipped in `v0.1.0`.
+
+Passing the body through `bash -c` removes the class of problem rather than the
+instance: there is no script on disk to delete, and no question about whether
+bash had finished reading it, so the script can clean the workspace itself as its
+last act. `LampBoardE2E` runs this exact text against two fake bundles and checks
+all three endings.
 
 ### `ReleaseVersion.swift` · `ReleaseFeed.swift`
 The update check as a parser that says no. Versions compare as three integers,
@@ -944,7 +963,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 674 cases
+## `LampBoardTests/` — 675 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1001,7 +1020,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 95 cases
+## `LampBoardE2E/` — 98 cases
 
 | Suite | Covers |
 |---|---|
@@ -1030,6 +1049,7 @@ the realignment is asynchronous.
 | `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
+| `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
 | `Scripts/bite.sh` | commits twenty-two violations and demands twenty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

@@ -340,6 +340,39 @@ enum ClaudeDesktopSuite {
             t.expectEqual(row.status, .working, "what the hook is for")
         },
 
+        TestCase("Not even the branch that keeps Codex out of red may move a found row") { t in
+            // The exception a third audit found, three lines under the comment
+            // that said there was none. `Harness.cannotReport` stops a Codex row
+            // ever turning red, and that branch returned early — before the
+            // protected folder was worked out — applying the signal's own.
+            //
+            // The running app never reached it, because the store substitutes
+            // the known folder before calling in. That is precisely the
+            // dependence on one caller that moving the rule in here was supposed
+            // to remove: a second caller, one day, and the protection is gone
+            // with nothing to say so.
+            let moment = Date(timeIntervalSince1970: 1_760_000_000)
+            let found = SessionState(
+                id: "s", status: .idle, workspace: Workspace(path: "/dev/project"),
+                updatedAt: moment, statusSince: moment, harness: .codex,
+                transcriptPath: "/dev/rollout.jsonl", entrypoint: "codex-commandLine"
+            )
+            let state = TrafficLightState(sessions: ["s": found])
+
+            let claim = HookSignal(
+                sessionId: "s", event: .stopFailure, cwd: "/dev/elsewhere",
+                failureReason: .unknown, harness: .codex
+            )
+            let after = StateReducer.reduce(
+                state, action: .signal(claim, workspace: Workspace(path: "/dev/elsewhere")),
+                now: moment.addingTimeInterval(60)
+            )
+            t.expectEqual(after.sessions["s"]?.workspace.path, "/dev/project",
+                          "the folder it was found in, whatever the payload said")
+            t.expect(after.sessions["s"]?.status != .failed,
+                     "and Codex still never turns red, which is why the branch exists")
+        },
+
         TestCase("A turn that is running is told from one that has ended") { t in
             // The two records at the end of a real transcript, measured while a
             // session was working: the assistant asks for a tool, the user hands

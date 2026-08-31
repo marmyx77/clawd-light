@@ -879,12 +879,59 @@ trusted — because the list of events awaiting approval is empty in that case t
 A reassurance nobody can check is worse than a question. The verdict is one
 function now, and the case that covers it bites.
 
+## 31 August — the manual proof stops being manual
+
+The last open item was a written record of the tests only a person can run: click
+a row, watch the right window come forward. The plan was a script that walks
+somebody through it. The right answer was better and the question that got there
+was blunt — *can't you do it with computer use?*
+
+Largely, yes, and without a mouse. Two commands already do what a click does
+through the route the click takes: `open <n>` raises the project bound to a slot,
+and `focus` reproduces the whole decision and reports which strategy answered. The
+window server says who came forward. So the fragile part — clicking at a
+coordinate and reading pixels — is not in it at all.
+
+`Scripts/smoke-clicks.sh` has two modes. Recognition moves nothing and can run
+whenever; `--live` raises windows for real, so it needs the Mac free, and it puts
+back whatever was in front. It writes the build's version and signature beside
+every result, so a stale record names a build that is no longer the one.
+
+What it says it **could not** do is the part that makes it worth keeping. Surfaces
+with no session running are named. So are the rows past the ninth, which the
+panel's own click reaches and the command line cannot, because `open` addresses
+slots. A record that only lists successes is a record that cannot go stale
+visibly.
+
+Two limits stay, and they are stated rather than worked around. On a locked Mac
+it proves nothing — measured, the night the window server refused to bring
+anything forward. And a terminal seat is checked more weakly than the others: the
+application coming forward can be verified, the tab inside it only where the
+terminal writes the project into its title.
+
+### And a fact about Claude Desktop, plus a deduction that had to be withdrawn
+
+The three conversations this panel showed green in the morning were **gone from
+disk** by the afternoon, homes and indexes together. I wrote that the application
+cleans up after itself on a schedule of its own, and it took one sentence from
+the person at the keyboard to correct it: he had deleted them by hand.
+
+The evidence for that was already in front of me. The three that went were the
+three **most recent**; housekeeping by age would have taken the ones from April.
+I had the number and read past it, which is the same mistake as reading past a
+`find` that prints its usage instead of filtering.
+
+The fact that survives is worth keeping and is smaller than the one I claimed:
+**deleting a conversation in the application deletes its folder**, and the row
+goes with it. That is the panel being right rather than forgetful, and knowing
+which of the two is happening is what stops the next person hunting for a bug.
+
 ## How the project stands now
 
 | | |
 |---|---|
-| Domain tests | **674**, instantaneous |
-| End-to-end tests | **95**, about a minute |
+| Domain tests | **675**, instantaneous |
+| End-to-end tests | **98**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |

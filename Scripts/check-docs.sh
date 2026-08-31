@@ -287,6 +287,12 @@ EXPECTED = {
     "docs/01-architecture.md": {CASES: 2, E2E: 0, LONG: 0, SWIFT: 0},
     "docs/06-working-here.md": {CASES: 2, E2E: 0, LONG: 1, SWIFT: 0},
     "docs/05-code-map.md":     {CASES: 4, E2E: 0, LONG: 0, SWIFT: 1},
+    # The register of the gates, which this gate did not read. A third audit
+    # found it stating 630 domain cases and 88 end-to-end while the suites ran
+    # 674 and 95 — and this check passing, and printing that the counts agreed
+    # everywhere they are stated. The document describing what is guarded was
+    # the one thing not guarded.
+    "docs/08-gates.md":        {CASES: 2, E2E: 0, LONG: 0, SWIFT: 0},
 }
 
 problems = []

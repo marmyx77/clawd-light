@@ -69,7 +69,12 @@ enum UpdateInstaller {
         else { throw Failure.notInstalled }
 
         let workspace = try makeWorkspace()
-        defer { try? FileManager.default.removeItem(at: workspace) }
+        // Cleared once the swap script owns it. Deleting the workspace on the
+        // way out of this function is what made every update fail: the script
+        // is still waiting for this process to die, and what it is about to
+        // move lives in there. See `UpdateSwap`.
+        var handedOff = false
+        defer { if !handedOff { try? FileManager.default.removeItem(at: workspace) } }
 
         let image = try await download(url, into: workspace)
         try assertGatekeeperAccepts(image)
@@ -87,7 +92,8 @@ enum UpdateInstaller {
         try run("/usr/bin/ditto", [candidate.path, staged.path])
         detach(mount)
 
-        try handOff(staged: staged, replacing: bundle)
+        try handOff(staged: staged, replacing: bundle, cleaning: workspace)
+        handedOff = true
     }
 
     // MARK: - Steps
@@ -213,43 +219,16 @@ enum UpdateInstaller {
     /// disappear, moves the new bundle into place and opens it. The paths reach
     /// it as arguments rather than being written into the script, so nothing
     /// about them is ever interpreted.
-    private static func handOff(staged: URL, replacing bundle: URL) throws {
-        let script = staged.deletingLastPathComponent().appendingPathComponent("swap.sh")
-        let body = """
-            #!/bin/bash
-            # Written by lampboard to finish an update. Safe to delete.
-            set -u
-            NEW="$1"; OLD="$2"; PID="$3"
-
-            for _ in $(seq 1 100); do
-                kill -0 "$PID" 2>/dev/null || break
-                sleep 0.1
-            done
-
-            # Keep the old one until the new one is in place: if the move fails,
-            # the machine must not be left with no application at all.
-            BACKUP="$OLD.replaced"
-            rm -rf "$BACKUP"
-            mv "$OLD" "$BACKUP" || exit 1
-            if mv "$NEW" "$OLD"; then
-                rm -rf "$BACKUP"
-            else
-                mv "$BACKUP" "$OLD"
-                exit 1
-            fi
-
-            /usr/bin/open "$OLD"
-
-            """
-        try body.write(to: script, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: 0o700], ofItemAtPath: script.path
-        )
-
+    private static func handOff(staged: URL, replacing bundle: URL, cleaning workspace: URL) throws {
+        // Handed to bash as an argument, not written to disk. There is then no
+        // file for anybody to delete underneath a running script, and the script
+        // can clean the workspace itself once it no longer needs it.
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [
-            script.path, staged.path, bundle.path, String(ProcessInfo.processInfo.processIdentifier),
+            "-c", UpdateSwap.body, "swap",
+            staged.path, bundle.path,
+            String(ProcessInfo.processInfo.processIdentifier), workspace.path,
         ]
         try process.run()
 

@@ -309,6 +309,16 @@ sessions" — and is matched as written rather than guessed at.
 
 A **cloud** session leaves none of this. Nothing of it is on this Mac.
 
+And a local one does not leave it for ever. **Deleting a conversation in the
+application deletes its home from disk**, index and transcript together, so the
+row goes with it. Watched here: three conversations held that morning were gone
+by the afternoon, and they were the three most recent — an age-based cleanup
+would have taken the ones from April instead.
+
+A row that disappears because its evidence was deleted is the panel being right
+rather than forgetful, and it is worth knowing which of the two is happening
+before going looking for a bug.
+
 ## 3. The VS Code extension
 
 ### The URI handler

@@ -156,7 +156,8 @@ Measured here, a conversation whose last word landed at 22:44:38 left an empty
 sessions directory stamped 22:44 — so a row built on it appeared while the model
 worked and vanished at the moment there was an answer to read. The row lives on
 the index and the transcript, and goes when the conversation is archived, when
-the app is quit, or when it has been silent for twelve hours.
+the app is quit, when it has been silent for twelve hours, or when you delete the
+conversation — which takes its folder off the disk, and the row with it.
 
 **A Codex session is found, not announced.** Codex inside the ChatGPT app
 registers our hooks, marks them trusted, runs a whole session and sends nothing at
@@ -1152,8 +1153,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 674 domain tests, instantaneous
-swift run LampBoardE2E                # 95 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 675 domain tests, instantaneous
+swift run LampBoardE2E                # 98 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

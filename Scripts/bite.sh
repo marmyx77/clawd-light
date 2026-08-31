@@ -203,6 +203,18 @@ PY
 
 gate "Figures stated outside the code map"
 
+protect docs/08-gates.md
+attack "the register of the gates, stating a suite nobody runs" "says 999 cases" <<'PY'
+# The blind spot a third audit found: this file said 630 domain cases and 88
+# end-to-end while the suites ran 674 and 95, and the check that compares
+# figures passed and printed that they agreed everywhere they are stated. The
+# document describing what is guarded was the one thing not guarded.
+import re
+p = "docs/08-gates.md"
+s = re.sub(r"\(\d+ cases\)", "(999 cases)", open(p).read(), count=1)
+open(p, "w").write(s)
+PY
+
 protect README.md
 attack "a test count that drifted outside the code map" "says 999 cases" <<'PY'
 import re

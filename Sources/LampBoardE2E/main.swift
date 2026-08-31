@@ -80,6 +80,7 @@ let suites: [TestSuite] = [
     InstallationSuite.suite(app),
     CodexScannerSuite.suite(app: app),
     ClaudeDesktopE2ESuite.suite(app: app),
+    UpdateSwapSuite.suite(),
     // Deliberately last: it starts other instances against the same home and
     // changes their token, so everything before it must already be finished.
     TokenLifecycleSuite.suite(binaryURL: binaryURL, home: app.home, port: testPort &+ 1),

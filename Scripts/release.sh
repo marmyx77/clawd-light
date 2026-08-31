@@ -38,13 +38,57 @@ APP_NAME="LampBoard"
 BUILT="$ROOT/dist/$APP_NAME.app"
 APP_DIR="$ROOT/.build/release-app/$APP_NAME.app"
 
-# The number travels from the git tag, so a disk image cannot claim a version
-# that no commit carries. An explicit argument wins, for a dry run.
-VERSION="${1:-}"
-if [ -z "$VERSION" ]; then
-    VERSION="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+# Two modes, and the difference is what may be published.
+#
+#   ./Scripts/release.sh                 the real thing, and it is fail-closed
+#   ./Scripts/release.sh --dry-run 0.2.0 a rehearsal, and it says so on the tin
+#
+# The number used to come from `git describe --tags --abbrev=0`, which answers
+# with the **nearest** tag rather than a tag on HEAD. Measured on this
+# repository: HEAD was 62 commits past `v0.1.0`, so the documented command would
+# have built new code as `LampBoard-0.1.0.dmg` — a name already published, and
+# published under the project's previous name at that. A third audit found it
+# before anybody ran it.
+#
+# So in the real mode the version is not derived, guessed or defaulted. It comes
+# from a tag that points at HEAD, or the script stops.
+DRY_RUN=0
+if [ "${1:-}" = "--dry-run" ]; then
+    DRY_RUN=1
+    shift
 fi
-VERSION="${VERSION:-0.1.0}"
+VERSION="${1:-}"
+
+if [ "$DRY_RUN" = "0" ]; then
+    if [ -n "$VERSION" ]; then
+        echo "A version cannot be handed to a real release: it comes from the tag." >&2
+        echo "  rehearse:  ./Scripts/release.sh --dry-run $VERSION" >&2
+        exit 1
+    fi
+    if [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+        echo "The checkout is not clean, so what would be published is not what is" >&2
+        echo "committed. Commit or stash first:" >&2
+        git -C "$ROOT" status --short >&2
+        exit 1
+    fi
+    VERSION="$(git -C "$ROOT" tag --points-at HEAD | sed -n 's/^v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$/\1/p' | head -1)"
+    if [ -z "$VERSION" ]; then
+        echo "HEAD carries no SemVer tag, so this release would have no identity." >&2
+        echo "  tag it first:  git tag -a v0.2.0 -m 'lampboard 0.2.0' && git push origin v0.2.0" >&2
+        echo "  or rehearse:   ./Scripts/release.sh --dry-run 0.2.0" >&2
+        exit 1
+    fi
+    if git -C "$ROOT" ls-remote --exit-code --tags origin "v$VERSION" >/dev/null 2>&1; then
+        if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION is already published. A second artefact under a name that" >&2
+            echo "is already taken is how two different builds come to share a version." >&2
+            exit 1
+        fi
+    fi
+else
+    VERSION="${VERSION:-0.0.0-dry}"
+    echo "▸ DRY RUN: version $VERSION is invented, and nothing here may be published."
+fi
 
 DMG="$ROOT/dist/$APP_NAME-$VERSION.dmg"
 IDENTITY="${LAMPBOARD_SIGNING_IDENTITY:-}"
@@ -175,9 +219,24 @@ fi
 # decide on somebody else's Mac, asked here before the file leaves.
 echo
 echo "▸ Gatekeeper, asked here:"
-spctl -a -vvv -t exec "$APP_DIR" 2>&1 | sed 's/^/    app: /' || true
+GATE=0
+spctl -a -vvv -t exec "$APP_DIR" 2>&1 | sed 's/^/    app: /' || GATE=1
 spctl -a -vvv -t open --context context:primary-signature "$DMG" 2>&1 \
-    | sed 's/^/    dmg: /' || true
+    | sed 's/^/    dmg: /' || GATE=1
+
+# It used to end `|| true`, so the one service whose opinion decides whether
+# anybody can open this could say no and the script would still print a tick.
+# A real release stops here; a rehearsal is allowed to be honest about it and
+# carry on, because there is nothing to publish either way.
+if [ "$GATE" != "0" ]; then
+    if [ "$DRY_RUN" = "0" ]; then
+        echo
+        echo "✗ Gatekeeper refused. This artefact would be refused on every other" >&2
+        echo "  Mac too, so it is not a release." >&2
+        exit 1
+    fi
+    echo "    (dry run: refused, and that would stop a real release)"
+fi
 
 echo
 echo "✓ $DMG"

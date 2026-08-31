@@ -261,16 +261,6 @@ public enum StateReducer {
         //
         // A `StopFailure` carrying `X-LampBoard-Harness: codex` is all it would
         // have taken, and that header is on an unauthenticated route.
-        guard !signal.harness.cannotReport.contains(newStatus) else {
-            return state.upserting(
-                (state.sessions[signal.sessionId] ?? SessionState(
-                    id: signal.sessionId, status: .idle, workspace: workspace,
-                    updatedAt: now, statusSince: now, harness: signal.harness
-                ))
-                .with(workspace: workspace)
-            )
-        }
-
         let existing = state.sessions[signal.sessionId]
 
         // The folder of a row this machine found is not a thing a signal gets to
@@ -278,7 +268,25 @@ public enum StateReducer {
         // assembles the workspace. It was enforced in one caller, correctly, and
         // a pure state machine that will happily move a found row anywhere it is
         // told is a guarantee resting on nobody forgetting.
+        //
+        // Computed **before** the guard below and not after it, which is where a
+        // third audit found it. That branch returned early and applied the
+        // signal's own workspace, so the rule this comment describes had an
+        // exception three lines under it. The running app never reached it —
+        // `StateStore` substitutes the known folder before calling in — which is
+        // exactly the dependence on a caller that putting the rule here was
+        // meant to remove.
         let place = existing?.wasFound == true ? existing!.workspace : workspace
+
+        guard !signal.harness.cannotReport.contains(newStatus) else {
+            return state.upserting(
+                (existing ?? SessionState(
+                    id: signal.sessionId, status: .idle, workspace: place,
+                    updatedAt: now, statusSince: now, harness: signal.harness
+                ))
+                .with(workspace: place)
+            )
+        }
 
         // An answer that is already waiting is not downgraded to "working" by a
         // trailing signal that arrived out of order.
