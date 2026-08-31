@@ -133,17 +133,17 @@ enum ClaudeDesktopSuite {
                 )
             }
 
-            t.expect(session(harness: .codex, entrypoint: "codex-commandLine").folderIsEvidence,
+            t.expect(session(harness: .codex, entrypoint: "codex-commandLine").wasFound,
                      "a Codex row was found, not announced")
-            t.expect(session(harness: .claudeCode, entrypoint: ClaudeDesktop.entrypoint).folderIsEvidence,
+            t.expect(session(harness: .claudeCode, entrypoint: ClaudeDesktop.entrypoint).wasFound,
                      "and so was a Claude Desktop one")
 
             // The other side of the rule, which must keep working: a Claude Code
             // session that announces itself really does move when its folder is
             // opened in an editor, and that is D25 rather than a defect.
-            t.expect(!session(harness: .claudeCode, entrypoint: "claude-vscode").folderIsEvidence,
+            t.expect(!session(harness: .claudeCode, entrypoint: "claude-vscode").wasFound,
                      "an announced row still follows the latest resolution")
-            t.expect(!session(harness: .claudeCode, entrypoint: "cli").folderIsEvidence,
+            t.expect(!session(harness: .claudeCode, entrypoint: "cli").wasFound,
                      "including one in a terminal")
         },
 
@@ -294,6 +294,50 @@ enum ClaudeDesktopSuite {
                 .empty, action: .derive(sessionId: "s", status: .ready, at: answered), now: answered
             )
             t.expect(ghost.sessions.isEmpty, "and nothing is conjured for a row that is not there")
+        },
+
+        TestCase("A found row keeps its transcript, its surface and its agent too") { t in
+            // The other half of the same hole, which the first fix did not
+            // cover. `POST /signal` carries no token, so a hook naming a session
+            // id this machine discovered is a claim about it, and the claim
+            // loses against what was read from a live process.
+            //
+            // Each of these three is a different promise the row makes. The
+            // transcript path is the thread back to the conversation. The
+            // entrypoint decides whether a click raises a terminal, an editor or
+            // an application — a Codex row relabelled `claude-vscode` gets an
+            // editor window opened for a conversation that is not in one. And
+            // the harness is what `wasFound` itself is read from, so a claim
+            // that moved it would unlock the other two.
+            let moment = Date(timeIntervalSince1970: 1_760_000_000)
+            let found = SessionState(
+                id: "s", status: .idle, workspace: Workspace(path: "/dev/project"),
+                updatedAt: moment, statusSince: moment, harness: .codex,
+                transcriptPath: "/dev/rollout.jsonl", entrypoint: "codex-commandLine"
+            )
+            let state = TrafficLightState(sessions: ["s": found])
+
+            let claim = HookSignal(
+                sessionId: "s", event: .userPromptSubmit, cwd: "/dev/elsewhere",
+                entrypoint: "claude-vscode",
+                transcriptPath: "/dev/somebody-elses.jsonl", harness: .claudeCode
+            )
+            let after = StateReducer.reduce(
+                state, action: .signal(claim, workspace: Workspace(path: "/dev/elsewhere")),
+                now: moment.addingTimeInterval(60)
+            )
+            guard let row = after.sessions["s"] else {
+                t.expect(false, "the row disappeared entirely")
+                return
+            }
+            t.expectEqual(row.workspace.path, "/dev/project", "the folder it was found in")
+            t.expectEqual(row.transcriptPath, "/dev/rollout.jsonl", "the file it was found through")
+            t.expectEqual(row.entrypoint, "codex-commandLine", "the surface its binary proved")
+            t.expectEqual(row.harness, .codex, "and the agent it actually belongs to")
+
+            // The colour is the one thing a hook may still move, because that is
+            // the one thing it is better placed to know.
+            t.expectEqual(row.status, .working, "what the hook is for")
         },
 
         TestCase("A turn that is running is told from one that has ended") { t in

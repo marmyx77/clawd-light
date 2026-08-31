@@ -197,6 +197,20 @@ public enum StateReducer {
         in state: TrafficLightState
     ) -> TrafficLightState {
         guard let session = state.sessions[signal.sessionId] else { return state }
+        // A row this machine **found** keeps what it was found with. The folder
+        // was already protected; these three were not, and they are the same
+        // kind of fact. The transcript path is the thread back to the
+        // conversation, the entrypoint decides whether a click raises a
+        // terminal, an editor or an application, and the origin decides which
+        // of those the row even offers. All three were read off a live process
+        // or an index; a hook on an unauthenticated route is a claim about
+        // them, and the claim loses.
+        //
+        // The surface is the sharpest case, and the audit that asked for it had
+        // already established the principle elsewhere: it comes from the
+        // executable holding the rollout open, which is a fact about this
+        // machine, and not from what a payload calls itself.
+        guard !session.wasFound else { return state }
         return state.upserting(
             session
                 .with(transcriptPath: signal.transcriptPath)
@@ -259,6 +273,13 @@ public enum StateReducer {
 
         let existing = state.sessions[signal.sessionId]
 
+        // The folder of a row this machine found is not a thing a signal gets to
+        // set, and the rule belongs here rather than only at the call site that
+        // assembles the workspace. It was enforced in one caller, correctly, and
+        // a pure state machine that will happily move a found row anywhere it is
+        // told is a guarantee resting on nobody forgetting.
+        let place = existing?.wasFound == true ? existing!.workspace : workspace
+
         // An answer that is already waiting is not downgraded to "working" by a
         // trailing signal that arrived out of order.
         //
@@ -271,13 +292,13 @@ public enum StateReducer {
            shouldKeep(current: existing.baseStatus, over: newStatus, event: signal.event) {
             return state.upserting(
                 existing
-                    .with(workspace: workspace)
+                    .with(workspace: place)
                     .with(lastMessage: preview(of: signal.lastAssistantMessage))
             )
         }
 
         let base = existing?
-            .with(workspace: workspace)
+            .with(workspace: place)
             ?? SessionState(
                 id: signal.sessionId,
                 status: newStatus,
@@ -288,7 +309,12 @@ public enum StateReducer {
             )
 
         let updated = base
-            .with(harness: signal.harness)
+            // The agent a row belongs to is not a thing a payload gets to say
+            // about a row that was found. It came from the file a live process
+            // holds open, and letting a claim change it would unlock everything
+            // the rest of this rule protects: `wasFound` is itself read from the
+            // harness.
+            .with(harness: base.wasFound ? base.harness : signal.harness)
             .with(status: newStatus, at: now)
             .with(lastMessage: preview(of: signal.lastAssistantMessage))
             .with(failureReason: newStatus == .failed ? (signal.failureReason ?? .unknown) : nil)

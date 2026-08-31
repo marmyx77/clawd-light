@@ -301,10 +301,22 @@ enum CodexScannerSuite {
 
                 // The shape Codex really sends: no `transcript_path`, and the
                 // harness named in a header, which is the only place it is said.
+                //
+                // And a **foreign** `cwd`, with a foreign surface and a foreign
+                // agent beside it, because that is the shape that matters here.
+                // `POST /signal` carries no token: anything that can reach the
+                // loopback can name a session this machine discovered and claim
+                // it is somewhere else, running under something else. The colour
+                // is the one thing such a claim may move.
                 a.expectEqual(
                     app.sendHook(
-                        ["session_id": "e2e-codex-4", "hook_event_name": "UserPromptSubmit", "cwd": cwd],
-                        entrypoint: nil, harness: "codex"
+                        [
+                            "session_id": "e2e-codex-4",
+                            "hook_event_name": "UserPromptSubmit",
+                            "cwd": "/tmp/lampboard-e2e-somebody-elses-folder",
+                            "transcript_path": "/tmp/lampboard-e2e-somebody-elses.jsonl",
+                        ],
+                        entrypoint: "claude-vscode", harness: "codex"
                     ),
                     204, "the signal is accepted"
                 )
@@ -317,6 +329,10 @@ enum CodexScannerSuite {
                 // not the one the hook happened to be standing in, and the file
                 // the click follows back to a terminal tab.
                 a.expectEqual(app.session(id: "e2e-codex-4")?.harness, "codex", "still Codex")
+                a.expectEqual(
+                    app.session(id: "e2e-codex-4")?.entrypoint, CodexSurface.commandLine.entrypoint,
+                    "still the surface its binary proved, not the one the payload claimed"
+                )
                 a.expectEqual(
                     app.session(id: "e2e-codex-4")?.workspace, "lampboard-e2e-codex-live",
                     "still the folder the rollout named"

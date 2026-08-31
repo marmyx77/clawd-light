@@ -172,13 +172,21 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// index beside its session home, and in both the folder was established
     /// before any signal existed.
     ///
-    /// So for these two a later hook may move the **colour** and nothing else. It
-    /// was not so, and the hole was real: a hook naming a known session id, with
-    /// a `cwd` that happened to match some other window, moved the row into that
-    /// other project — transcript, click and all. `POST /signal` is not
-    /// authenticated, so "only our hooks send that" is an assumption and not a
-    /// bound.
-    public var folderIsEvidence: Bool {
+    /// So for these two a later hook may move the **colour** and nothing else.
+    /// Not the folder, not the transcript, not the surface, not the agent: every
+    /// one of those was established by looking at this machine, and a hook is a
+    /// claim. `POST /signal` is not authenticated, so "only our hooks send that"
+    /// is an assumption and not a bound.
+    ///
+    /// The hole was real twice over. First the folder: a hook naming a known
+    /// session id, with a `cwd` that happened to match some other window, moved
+    /// the row into that other project. Then the rest of it, which the same
+    /// audit had asked about and the first fix had not covered — the transcript
+    /// path is the thread back to the conversation, and the entrypoint is what
+    /// decides whether a click raises a terminal, an editor or an application.
+    /// A row that names a Codex session and calls itself `claude-vscode` gets an
+    /// editor window opened for a conversation that is not in one.
+    public var wasFound: Bool {
         harness == .codex || entrypoint == ClaudeDesktop.entrypoint
     }
 

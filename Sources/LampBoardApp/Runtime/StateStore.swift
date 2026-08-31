@@ -410,12 +410,12 @@ final class StateStore: ObservableObject {
         // describes a guarantee the code does not give is worse than no comment,
         // because the next person stops looking.
         //
-        // The distinction is `folderIsEvidence`. A Claude Code session that
+        // The distinction is `wasFound`. A Claude Code session that
         // announces itself may move — opening its directory in an editor really
         // does move it there (D25). A Codex or Claude Desktop row may not: its
         // folder came from a rollout or an index before any hook existed, and a
         // hook can only move its colour.
-        if let known = state.sessions[signal.sessionId], known.folderIsEvidence || workspace == nil {
+        if let known = state.sessions[signal.sessionId], known.wasFound || workspace == nil {
             workspace = known.workspace
             origin = known.origin
         }
