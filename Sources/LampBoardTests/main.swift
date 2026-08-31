@@ -16,6 +16,8 @@ let suites: [TestSuite] = [
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,
     CodexAdmissionSuite.suite,
+    CodexAmberSuite.suite,
+    CodexApprovalSuite.suite,
     CodexTrustSuite.suite,
     IDELockParserSuite.suite,
     WorkspaceResolverSuite.suite,

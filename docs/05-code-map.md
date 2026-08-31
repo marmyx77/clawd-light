@@ -1,18 +1,18 @@
 # Code map
 
-~36,520 lines of Swift across five targets. For each file: what it contains, why
+~36,876 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,953 lines · 82 files   pure logic, zero AppKit
-  LampBoardApp/    14,241 lines · 75 files   shell: AppKit, network, windows
-  LampBoardTests/  9,250 lines · 49 files   675 cases, instantaneous
+  LampBoardCore/  10,051 lines · 83 files   pure logic, zero AppKit
+  LampBoardApp/    14,320 lines · 76 files   shell: AppKit, network, windows
+  LampBoardTests/  9,429 lines · 51 files   686 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 770 lines. The limit the project sets itself is 800.
+No file exceeds 771 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -137,6 +137,20 @@ producing an unavailable probe in a test would have meant making `lsof` genuinel
 hang. Now it is a value handed to a function, and the case that covers it simply
 says `.unavailable`. `nil` means "we did not get to look"; `.observed([])` means
 the conversations are over, and the two must never be spelled the same.
+
+### `Codex/CodexApproval.swift`
+Who answers when Codex asks for permission.
+
+Codex publishes `PermissionRequest` for a tool call that needs approving, and the
+event never says **who** approves it. With a reviewer of `auto_review` the answer
+arrives by itself in a few hundred milliseconds and nobody was waiting, while the
+row blinked amber for as long as the *command* ran — amber only lifts at
+`PostToolUse`. Measured in one audit: 6.0 s, 6.4 s and 31.0 s.
+
+The reviewer is not on the wire but it is in the rollout, whose path the event
+carries. It changes during a session, so it is read per request. An unknown value
+or a rollout that does not say produce `nil`, which shows the request: a false
+amber costs a glance, a swallowed one costs a stopped turn nobody knows about.
 
 ### `Codex/CodexTrust.swift`
 Whether Codex will actually run the hooks it has registered.
@@ -292,7 +306,7 @@ The session dictionary plus the operations: `upserting`, `removing`, `pruning`,
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 224
+### `HookSignal.swift` · 253
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -813,6 +827,7 @@ there, the hooks are registered — and it names the link that broke.
 | `StateStore.swift` | 770 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 143 | the rows nobody announced: Codex from an open rollout, Claude Desktop from its index and transcript. Both obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
+| `CodexApprovalReader.swift` | 51 | reads the tail of the rollout an event names, to learn who will answer its permission request. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
@@ -963,7 +978,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 675 cases
+## `LampBoardTests/` — 686 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

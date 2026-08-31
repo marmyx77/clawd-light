@@ -1598,6 +1598,50 @@ went in was never the key that came back out and a renamed remote row lost its
 name. A leading character that is not a slash cannot be a path, so the colon form
 collides with nothing and survives being normalised.
 
+## D38 · Amber means somebody is waiting, and Codex has to be asked who
+
+**Decided.** A Codex permission request turns a row amber only when a **person**
+answers it. When Codex routes approvals to its own reviewer, the row stays as it
+was — yellow, working — because nobody is blocked and nothing should blink.
+
+This qualifies D34 rather than contradicting it. D34 says a Codex row carries the
+same six meanings as a Claude Code one; that was true of the drawing and false of
+amber, which on Codex also lit up for requests nobody had to answer.
+
+**What it cost before.** Codex publishes `PermissionRequest` for a tool call
+whether a person or `auto_review` will approve it, and the event says nothing
+about which. Amber lifts at `PostToolUse`, which arrives when the **command**
+ends rather than when the approval lands, so an automatic approval left the row
+blinking for the whole execution. Measured in one audit: **6.0 s, 6.4 s and
+31.0 s**, plus 5.9 s and 3.4 s reproduced deliberately afterwards. The four
+seconds of `awaitingNotificationDelay` were dimensioned against a comment saying
+such a request is amber "for a few hundred milliseconds" — true only of an
+instant command — so three of those also fired the notification the delay exists
+to suppress.
+
+**Where the answer comes from.** Not from the event: from the session's rollout,
+whose path the event carries in `transcript_path`. The `turn_context` records
+name `approvals_reviewer`, and it **changes during a session** — measured
+switching from `user` to `auto_review` halfway through an audit — so it is read
+per request rather than once. The reading is the shell's job: the reducer
+receives a resolved fact and never a file path.
+
+**Not knowing shows the request.** An unreadable rollout, a record not written
+yet, a value nobody has seen before: all produce "cannot tell", and cannot tell
+shows amber. A false amber costs a glance; a swallowed one costs a turn stopped
+without anybody knowing, which is the failure this whole panel exists to prevent.
+The format is undocumented and Codex calls it unstable, so `check-contract.sh`
+now fails if a `turn_context` stops carrying the field — the correction goes red
+instead of going quiet.
+
+**What was rejected.** Waiting before showing amber, in either form. A fixed
+delay does not work because the amber lasts as long as the command, not as long
+as the approval: every threshold is passed by a command that runs longer than it,
+and the 31-second case passes any threshold anybody would accept. And
+`PreToolUse`, which looked like the natural signal to close on, arrives **88 ms
+before** the request rather than after it — measured, after it had already been
+registered for that purpose.
+
 ## How to add a decision here
 
 When you make a non-obvious choice, write it down **before** implementing it,

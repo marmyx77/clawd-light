@@ -129,6 +129,16 @@ public struct HookSignal: Sendable, Equatable {
     /// does today, and only on `PermissionRequest` — see `PendingAsk`.
     public let pendingAsk: PendingAsk?
 
+    /// Who will answer this permission request, when it can be known.
+    ///
+    /// Not in the payload: Codex's event says a permission was asked for and
+    /// nothing about who approves it. It is resolved from the session's rollout
+    /// before the signal reaches the reducer, so the pure state machine still
+    /// receives a fact rather than a file path. `nil` means the rollout did not
+    /// say — see `CodexApproval.reviewer(inRollout:)` for why that is treated as
+    /// a request worth showing.
+    public let approvalReviewer: ApprovalReviewer?
+
     public init(
         sessionId: String,
         event: HookEventKind,
@@ -143,7 +153,8 @@ public struct HookSignal: Sendable, Equatable {
         transcriptPath: String? = nil,
         host: String? = nil,
         harness: Harness = .claudeCode,
-        pendingAsk: PendingAsk? = nil
+        pendingAsk: PendingAsk? = nil,
+        approvalReviewer: ApprovalReviewer? = nil
     ) {
         self.sessionId = sessionId
         self.event = event
@@ -159,12 +170,30 @@ public struct HookSignal: Sendable, Equatable {
         self.host = host
         self.harness = harness
         self.pendingAsk = pendingAsk
+        self.approvalReviewer = approvalReviewer
     }
 
     /// `true` when the event is a context compaction: not the start of a session,
     /// but a technical interruption inside a turn already in progress.
     public var isContextCompaction: Bool {
         event == .sessionStart && sessionSource == "compact"
+    }
+
+    /// The same signal, with the reviewer resolved.
+    ///
+    /// A copy rather than a mutation: the decoder produces the signal from what
+    /// arrived on the wire, and the shell adds what it had to read a file to
+    /// learn. Nothing that already exists changes underneath a caller.
+    public func withApprovalReviewer(_ reviewer: ApprovalReviewer?) -> HookSignal {
+        HookSignal(
+            sessionId: sessionId, event: event, cwd: cwd,
+            notificationKind: notificationKind, agentId: agentId, entrypoint: entrypoint,
+            lastAssistantMessage: lastAssistantMessage, sessionSource: sessionSource,
+            failureReason: failureReason,
+            inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes,
+            transcriptPath: transcriptPath, host: host, harness: harness,
+            pendingAsk: pendingAsk, approvalReviewer: reviewer
+        )
     }
 
     /// A signal emitted by a subagent does not represent the user session's state.

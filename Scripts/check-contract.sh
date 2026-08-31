@@ -738,6 +738,21 @@ if counts:
 if not any(r.get("timestamp") for r in records):
     missing.append("`timestamp` on every record — the row could not say when")
 
+# What tells a request somebody has to answer from one Codex answers itself.
+# Without it every Codex permission request turns the row amber, including the
+# ones nobody is waiting for: measured at 6.0 s, 6.4 s and 31.0 s in one audit.
+# A rollout with no `turn_context` at all is not a failure — the record is
+# written when the settings of a turn are established, and a session may not have
+# reached one — but a `turn_context` that no longer carries the field is.
+contexts = [r for r in records if r.get("type") == "turn_context"]
+if contexts:
+    payload = contexts[-1].get("payload") or {}
+    if "approvals_reviewer" not in payload:
+        missing.append(
+            "`turn_context.payload.approvals_reviewer` — every Codex permission "
+            "request would blink amber, including the automatic ones"
+        )
+
 version = ((records[0].get("payload") or {}).get("cli_version")) or "unknown"
 if missing:
     print("recorded by Codex %s" % version)

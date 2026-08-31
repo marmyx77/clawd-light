@@ -1787,3 +1787,59 @@ path that was never the artefact. Neither failed. Both answered.
 and that nothing works until it is answered. The trap itself cannot be closed
 from here: it is how macOS treats a downloaded application, and the alternative
 — an app that launches silently on install — is worse.
+
+## The amber nobody was waiting for
+
+**Symptom.** A Codex row blinks amber — the one state that means "this turn is
+stopped until you answer" — while nothing is waiting for anybody. Reported from
+use: three of them in a single audit message.
+
+**Cause.** Codex publishes `PermissionRequest` for a tool call that needs
+approving, and the event does not say **who** approves it. Routed to
+`approvals_reviewer: auto_review`, the answer arrives by itself in a few hundred
+milliseconds. But amber lifts at `PostToolUse`, which arrives when the command
+**ends**, so the row keeps blinking for the whole execution: measured at 6.0 s,
+6.4 s and 31.0 s on the three that were reported, and reproduced afterwards at
+5.9 s and 3.4 s.
+
+The code carried a comment saying such a request is amber "for a few hundred
+milliseconds", and a four-second delay dimensioned on it. Both were true only of
+an instantaneous command. Three of the five measured cases passed the threshold,
+so they also fired the notification the threshold exists to suppress.
+
+**What made it hard to find, and it was not the code.** Reproducing it took six
+attempts, and five of them measured something that could not possibly ask for
+permission:
+
+- `git rev-parse` and `spctl` and `codesign -dv` are **reads**, and the sandbox
+  grants `root: read`. No read has ever needed approval;
+- `/tmp` is in the writable set;
+- the user's home is a **trusted project** in `config.toml`, so writing there
+  needs no approval either;
+- the network is denied outright rather than escalated, so `curl` fails without
+  ever asking;
+- and the sessions opened to get `PreToolUse` registered had
+  `approval_policy: never`, which forbids escalation altogether — while the
+  session that *had* produced the ambers was started before that hook existed
+  and never reloaded it.
+
+Every one of those facts was in a file already read before the first attempt. The
+sandbox policy, the trusted projects and the approval policy were all sitting in
+`config.toml` and in the rollout's own `turn_context`. The failure was not
+missing data; it was measuring before finishing the reading.
+
+`codex exec --approve-for-me` puts the two conditions in one session — a fresh
+one, which loads the current hooks, and an automatic reviewer, which produces
+requests nobody answers — and the sequence came out on the first run.
+
+**The measurement that changed the design.** `PreToolUse` had been registered on
+purpose, on the assumption that it would arrive between the request and the
+execution and could close the amber exactly. It arrives **88 ms before the
+request**. Had it been implemented on the assumption, the amber would have been
+closed by an event that fires before it opens — a fix that tests would have
+passed and use would have exposed.
+
+**What holds now.** The reviewer is read from the rollout the event names, per
+request because it changes mid-session (D38). Not knowing shows the request.
+`check-contract.sh` fails if a `turn_context` stops carrying the field, so a
+format change turns a check red rather than turning a feature off.

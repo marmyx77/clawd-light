@@ -307,7 +307,10 @@ final class SignalServer {
                 ),
                 harness: Harness.named(request.header(AppConfig.harnessHeader))
             )
-            onSignal(signal)
+            // Who will answer a Codex permission request is not on the wire: it
+            // is in the session's rollout, which this event names. Resolved here,
+            // at the edge, so the reducer keeps receiving facts and never a path.
+            onSignal(signal.withApprovalReviewer(CodexApprovalReader.reviewer(for: signal)))
             return HTTPRequestParser.response(status: 204, reason: "No Content")
         } catch let error as HookPayloadError {
             // An irrelevant event is business as usual, not a fault: the hook

@@ -131,6 +131,31 @@ final class PanelController {
             }
             .store(in: &cancellables)
 
+        // Renaming does not touch `store.state`, so the observer above never runs
+        // and the row keeps the name it was drawn with until an unrelated event
+        // arrives. Reported from use: the new name is saved — reopening the dialog
+        // shows it — and the column disagrees with the dialog for as long as the
+        // session stays quiet.
+        //
+        // The panel's own menu got away with it by calling `rebuildContent()`
+        // itself; the chat window did not, and neither would the next caller. So
+        // the trigger belongs here, on the preferences, rather than on every
+        // place that writes one: any change to a name, an order, a slot or a
+        // hidden project rebuilds, and `columnOptions != renderedOptions` throws
+        // away the changes that do not concern the column.
+        //
+        // `UserDefaults` posts this inside the process that wrote it, so `lampboard
+        // rename` from another process is still picked up at the next state
+        // change, as it was before.
+        NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification, object: Preferences.sharedDefaults)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, self.columnOptions != self.renderedOptions else { return }
+                self.rebuildContent()
+            }
+            .store(in: &cancellables)
+
         // The strip appears and disappears under the rows, so the panel has to
         // find room for it. Without this the strip shows up inside the footer's
         // space and the gear is pushed off the bottom edge — which is how the

@@ -413,7 +413,18 @@ public enum StateReducer {
             // The same fact `Notification/permission_prompt` carries on the other
             // side: the turn has stopped and is waiting for a person. It arrives
             // here as its own event because Codex publishes no `Notification`.
-            return .awaiting
+            //
+            // Unless nobody is waiting. Codex asks for approval of a tool call
+            // whether a person or its own reviewer will answer, and the event does
+            // not say which. With `auto_review` the answer arrives by itself and
+            // the row was blinking amber — the one state that means "you are
+            // blocking this" — for as long as the **command** ran, because amber
+            // only lifts at `PostToolUse`. Measured: 6.0 s, 6.4 s and 31.0 s in one
+            // audit, none of them waiting for anybody.
+            //
+            // `nil` keeps whatever the row already said, which is yellow: the
+            // session is working, and asking itself for permission is work.
+            return signal.approvalReviewer == .automatic ? nil : .awaiting
 
         case .sessionStart:
             // Context compaction fires mid-turn: treating it as the start of a
