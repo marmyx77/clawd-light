@@ -81,6 +81,12 @@ review it went through; it leaves when its decision has landed in
 [04](04-decisions.md) and its chronicle in `WORKLOG.md` — the terminal-sessions
 plan of 27 August 2026 was the first to.
 
+That folder is **not in the repository**. It never emptied itself the way this
+paragraph describes, so it is ignored instead: a plan is scaffolding, and what
+survives it is the decision it produced. If you are reading a decision here and
+want to know what it was weighed against, the argument is in `04` beside it and
+the chronicle is in `WORKLOG.md`, not in a folder of drafts.
+
 `PLAN.md` and `WORKLOG.md` describe **how we got here**; this folder describes
 **where it arrived**. If the two contradict each other, the code is right: report
 it and fix the documentation.

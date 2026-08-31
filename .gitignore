@@ -17,3 +17,10 @@ dist/
 # every run of make-icon.py and adds noise to every diff.
 __pycache__/
 *.pyc
+
+# Working plans and the audits they answer. `docs/README.md` has always said a
+# plan lives here until its decision has landed in 04-decisions.md and its story
+# in WORKLOG.md, and then leaves. They never left, so they are kept out of the
+# repository instead: what survives a plan is the decision it produced, and that
+# has a home of its own.
+docs/plans/
