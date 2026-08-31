@@ -102,11 +102,28 @@ PLIST
 # rebuilds, because the requirement hooks onto the identity and not onto the
 # binary's hash. Otherwise fall back to the ad-hoc signature, which invalidates
 # the permissions on every build (see Scripts/create-signing-identity.sh).
-SIGNING_IDENTITY="lampboard Local Signing"
+#
+# Asked of the keychain rather than spelled here, and that is not tidiness. The
+# name was written in once, the project was renamed, and this line went on
+# looking for a certificate that no longer existed: every build after the rename
+# fell back to ad-hoc while saying so in one line nobody was reading, and the
+# installed copy stayed on the last signature that had been real.
+#
+# The Developer ID comes first when it is there, because it is the identity the
+# authorizations already belong to.
+SIGNING_IDENTITY=""
+for candidate in \
+    "$(security find-identity -v -p codesigning 2>/dev/null \
+        | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)" \
+    "$(security find-identity -v -p codesigning 2>/dev/null \
+        | sed -n 's/.*"\([^"]*Local Signing\)".*/\1/p' | head -1)"
+do
+    if [ -n "$candidate" ]; then SIGNING_IDENTITY="$candidate"; break; fi
+done
 
 SIGNED_STABLY=0
 
-if security find-certificate -c "$SIGNING_IDENTITY" >/dev/null 2>&1; then
+if [ -n "$SIGNING_IDENTITY" ]; then
     echo "▸ Signing with the stable identity “${SIGNING_IDENTITY}”…"
 
     # The signing has to be attempted with a deadline. If the private key isn't
@@ -164,5 +181,28 @@ echo
 echo "  Remember to restart the app: a new bundle does not replace the process"
 echo "  that is already running."
 echo "    pkill -x lampboard; sleep 1; open '$APP_DIR'"
+
+# The trap this exists for cost a whole night's work. There are two copies of
+# this app on a machine that has ever installed one — the build in dist/ and the
+# one in /Applications — and only the second is what a login item starts in the
+# morning. A fix built, tested and verified in dist/ was reported as "nothing has
+# changed", because the app answering on the port was the older copy.
+#
+# So the script says it, every time, rather than leaving it to be remembered.
+INSTALLED="/Applications/LampBoard.app"
+if [ -d "$INSTALLED" ]; then
+    echo
+    if [ "$MACOS_DIR/lampboard" -nt "$INSTALLED/Contents/MacOS/lampboard" ]; then
+        echo "  ⚠ THE INSTALLED COPY IS OLDER THAN THIS BUILD."
+        echo "    $INSTALLED is what starts at login, so testing dist/ proves"
+        echo "    nothing about what you will be running tomorrow. To update it:"
+        echo
+        echo "      pkill -x lampboard; sleep 1"
+        echo "      rm -rf '$INSTALLED' && cp -R '$APP_DIR' /Applications/"
+        echo "      open '$INSTALLED'"
+    else
+        echo "  The copy in /Applications is not older than this build."
+    fi
+fi
 echo
 echo "  Check:  '$MACOS_DIR/lampboard' status"
