@@ -354,13 +354,21 @@ final class AppUnderTest {
     ///
     /// Without this an absence is asserted the instant the fixture is written,
     /// which every wrong implementation also passes.
+    ///
+    /// It looks as often as the question can be asked, and that is deliberate.
+    /// The first version slept 200 milliseconds between looks and passed against
+    /// a defect that took rows away for **eighty**: the row was pruned at the end
+    /// of one sweep and re-adopted when a probe on another actor answered, and a
+    /// sampler that blinks slower than the thing it is watching sees a panel that
+    /// never changed. Each look is an HTTP round trip of its own, roughly 25
+    /// milliseconds, so the gap is already smaller than any flicker a person
+    /// could see.
     @discardableResult
     func holdsThroughTwoSweeps(_ condition: () -> Bool) -> Bool {
         let deadline = Date()
             .addingTimeInterval(AppConfig.liveSessionPollInterval * 2 + 1)
         while Date() < deadline {
             if !condition() { return false }
-            usleep(200_000)
         }
         return condition()
     }

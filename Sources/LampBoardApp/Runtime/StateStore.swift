@@ -37,6 +37,24 @@ final class StateStore: ObservableObject {
     private let codexProbe = CodexProbe()
     private var codexScanInFlight = false
 
+    /// The Codex sessions a process was last seen holding open.
+    ///
+    /// Kept because the twelve-hour prune at the end of a sweep asks "who is
+    /// confirmed?", and the answer for Codex arrives from another actor a moment
+    /// later. Without it, six rows for conversations that had been open since
+    /// yesterday were pruned for being old and re-adopted when the probe
+    /// answered — every five seconds, which is what a panel flickering looks
+    /// like from the outside.
+    ///
+    /// It is also the right answer and not only the convenient one: a Codex row
+    /// exists because a live process holds its rollout open, and that is a
+    /// confirmation. The age rule is the bound for rows nobody can confirm.
+    private var liveCodexIds: Set<String> = []
+
+    /// Records what the last Codex probe confirmed. Internal, because the
+    /// adoption that learns it lives in `StateStoreAdoption`.
+    func rememberLiveCodex(_ ids: Set<String>) { liveCodexIds = ids }
+
     let desktopScanner = ClaudeDesktopScanner()
 
     private var pollTimer: Timer?
@@ -549,7 +567,7 @@ final class StateStore: ObservableObject {
     func poll() {
         let started = Date()
         var cost = SweepCost()
-        defer { Self.recordSweepCost(from: started, cost) }
+        defer { SweepLog.record(from: started, cost) }
         let now = clock()
         let live = cost.spending(\.live) {
             liveSessionReader.readLiveSessions().filter(\.deservesTrafficLight)
@@ -657,7 +675,10 @@ final class StateStore: ObservableObject {
         // row nobody can confirm — its host silent, its probe broken — must still
         // be bounded by the twelve-hour prune like every other mistake, or a
         // session killed without a `SessionEnd` stays in the column forever.
-        apply(.prune(alive: confirmed), now: now)
+        // The Codex rows a descriptor confirms are exempt too. An open rollout
+        // is a conversation loaded rather than a model working, so its last word
+        // can be days old while the process holding it is very much alive.
+        apply(.prune(alive: confirmed.union(liveCodexIds)), now: now)
 
         // The context readings, last: they change no colour and no order, so
         // they ride the tick that is already walking every session rather than
@@ -673,48 +694,6 @@ final class StateStore: ObservableObject {
     }
 
     // MARK: - Internal
-
-    /// How long the whole sweep took, and how long the worst one took.
-    ///
-    /// Here because a second audit called this out and neither of us could
-    /// settle it by reading: this method runs on the actor that draws, on a
-    /// five-second timer, and two of the things it does — enumerating processes
-    /// and asking `lsof`, walking every Claude Desktop conversation on the disk
-    /// — are unbounded in principle. `lsof` is documented to pause on a
-    /// descriptor sitting on an unreachable mount, and the probe's own deadline
-    /// plus the grace after it is close to nine seconds.
-    ///
-    /// So the sweep now says what it costs, in the log, with its worst case kept
-    /// beside it. A number is what decides whether the work belongs on another
-    /// thread, and it is also what would show it having moved.
-    private static var worstSweep: TimeInterval = 0
-    private static var sweepCount = 0
-    private static var sweepTotal: TimeInterval = 0
-
-    /// Sweeps slower than this are named individually. Roughly three frames:
-    /// below it nobody could see the pause, above it somebody could.
-    private static let notableSweep: TimeInterval = 0.05
-
-    private static func recordSweepCost(from started: Date, _ cost: SweepCost) {
-        guard Diagnostics.isEnabled else { return }
-        let total = Date().timeIntervalSince(started)
-        sweepCount += 1
-        sweepTotal += total
-        if total > worstSweep {
-            worstSweep = total
-            Diagnostics.log("sweep: \(cost.describing(total)), the longest so far")
-        } else if total > notableSweep {
-            Diagnostics.log("sweep: \(cost.describing(total))")
-        }
-        // A periodic average, because a worst case alone cannot say whether a
-        // pause is the cold start or the shape of every pass.
-        if sweepCount % 60 == 0 {
-            Diagnostics.log(String(
-                format: "sweep: %d passes, %.0f ms on average, %.0f ms at worst",
-                sweepCount, sweepTotal / Double(sweepCount) * 1000, worstSweep * 1000
-            ))
-        }
-    }
 
     /// Asks the Codex probe, off this actor, and applies what it says when it
     /// says it.
@@ -742,6 +721,12 @@ final class StateStore: ObservableObject {
     func apply(_ action: ReducerAction, now: Date) {
         let next = StateReducer.reduce(state, action: action, now: now)
         guard next != state else { return }
+        if Diagnostics.isEnabled, next.sessions.count < state.sessions.count {
+            let gone = state.sessions.keys.filter { next.sessions[$0] == nil }
+                .compactMap { state.sessions[$0] }
+                .map { "\($0.id.prefix(8)) \($0.harness.rawValue)/\($0.entrypoint ?? "-")" }
+            Diagnostics.log("lost \(gone.count) to \(action.label): \(gone.joined(separator: ", "))")
+        }
         givePlaces(to: next)
         state = next
         publishSnapshot()

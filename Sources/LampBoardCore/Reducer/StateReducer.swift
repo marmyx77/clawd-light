@@ -86,6 +86,26 @@ public enum ReducerAction: Sendable, Equatable {
     case reset
 }
 
+extension ReducerAction {
+    /// A short name for the log, so a row that disappears names what removed it.
+    public var label: String {
+        switch self {
+        case .signal(let signal, _, _): return "signal \(signal.event.rawValue)"
+        case .remember: return "remember"
+        case .markSeen: return "markSeen"
+        case .markUnread: return "markUnread"
+        case .prune: return "prune"
+        case .reconcile(let alive, let harness, _):
+            return "reconcile \(harness.rawValue) keeping \(alive.count)"
+        case .observed: return "observed"
+        case .adopt: return "adopt"
+        case .derive: return "derive"
+        case .reset: return "reset"
+        case .forget: return "forget"
+        }
+    }
+}
+
 /// A pure state machine: `(state, action) -> new state`.
 ///
 /// No dependency on the clock, the filesystem or the network — `now` is a parameter.

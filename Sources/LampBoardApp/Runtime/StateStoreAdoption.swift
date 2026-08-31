@@ -107,7 +107,11 @@ extension StateStore {
     /// what is left here is arithmetic on a value: microseconds. See
     /// `StateStore.refreshCodexProbe`.
     func adoptCodexSessions(_ result: CodexScanResult, at now: Date) {
+        // A probe that could not answer removes nothing and forgets nothing:
+        // the set of confirmed ids stays as it was, so the age rule at the end
+        // of the sweep does not take rows the probe simply could not reach.
         guard case .observed(let evidence) = result else { return }
+        rememberLiveCodex(Set(evidence.map(\.meta.sessionId)))
 
         for item in evidence where state.sessions[item.meta.sessionId] == nil {
             apply(

@@ -1701,3 +1701,48 @@ looked up was `//host/path`. Neither side was wrong on its own.
 every function it passes through. When you invent one, follow it into the table
 and out again. The colon form — `host:/path` — cannot collide with a path, because
 a path begins with a slash.
+
+## The build that was verified and never installed
+
+**Symptom.** A defect is found, fixed, tested end to end, watched on the running
+app for two minutes, and reported as done. The next morning: "nothing has
+changed."
+
+**Cause.** There are two copies of this app on any machine that has ever
+installed one — `dist/LampBoard.app`, which `build-app.sh` writes, and
+`/Applications/LampBoard.app`, which is what starts at login. The night's work
+was built, launched and verified in `dist/`. At 06:12 the login item started the
+copy in `/Applications`, dated the previous evening, and that is the process that
+took the port and answered every question afterwards.
+
+Underneath it, a second one: the build script looked for a signing certificate by
+a name written into the script, and the project had been renamed since. Every
+build after the rename fell back to an **ad-hoc** signature — announced in one
+line nobody was reading — so installing it would have wiped the Accessibility and
+Automation grants, which are attached to the identity.
+
+**The lesson.** Verifying a build is not the same as installing it. The script
+now compares the two copies and says, every time, when the installed one is
+older; and it asks the keychain for the identity instead of remembering a name.
+
+## The sampler that blinked slower than the thing it watched
+
+**Symptom.** The panel flickers, visibly, several times a minute. Polling
+`/sessions` five times a second for fourteen seconds: perfectly constant. The
+window geometry, sampled once a second: perfectly constant.
+
+**Cause.** The rows disappeared for about **eighty milliseconds** at the end of
+every sweep. Both samplers were slower than that, so both reported a panel that
+never changed, twice, convincingly.
+
+What actually happened only showed up in a log line that named the action:
+`lost 6 to prune`. The twelve-hour age rule ran at the end of the sweep with the
+set of confirmed sessions, and the Codex probe's answer — which is what confirms
+those rows — now arrives from another actor a moment later.
+
+**The lesson.** When something visible disagrees with a measurement, the
+measurement is the suspect. Sample faster than the thing you are watching, or
+better, make the code say what it did: a first-person log line found this in one
+cycle after two rounds of sampling had found nothing. The first version of the
+end-to-end case for it slept 200 milliseconds between looks and passed against
+the unfixed code.

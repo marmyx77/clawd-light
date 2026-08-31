@@ -794,12 +794,57 @@ finished, so the application could not be driven; what is proved is the whole
 chain from the files to the row, end to end against the real binary, plus the row
 standing green on the real conversation for 130 consecutive samples.
 
+## 31 August — two ways to verify nothing
+
+The desktop work was finished, green and pushed. The first thing said about it
+the next morning was that nothing had changed.
+
+**It had not, because the build was never installed.** There are two copies of
+this app on a machine that has ever installed one: `dist/`, which the build
+script writes and which everything was verified against, and
+`/Applications/LampBoard.app`, which is what starts at login. At 06:12 the login
+item started the copy from the previous evening, and that is the process that
+took the port and answered every question after it. Two hours of measurement, all
+of it about a binary nobody was running.
+
+Underneath it a second failure, quieter and worse. The build script looked for a
+signing certificate by a name written into the script; the project had been
+renamed and the certificate had not, so every build since had fallen back to an
+**ad-hoc** signature, announced in one line nobody was reading. Installing one of
+those would have taken the Accessibility and Automation grants with it, because
+those are attached to the identity. The script asks the keychain now, Developer
+ID first, and compares the two copies out loud on every build.
+
+**Then the panel flickered**, and the second defect took three attempts to see at
+all. Polling the state five times a second for fourteen seconds: constant.
+Sampling the window geometry once a second: constant. Both wrong, because the
+rows were gone for about **eighty milliseconds** and both samplers blinked slower
+than that.
+
+What found it was making the code say what it did. One line — `lost 6 to prune` —
+and it was over: the twelve-hour age rule runs at the end of every sweep and
+exempts what is confirmed at that moment, and the Codex probe's answer now comes
+from another actor a moment later. Six conversations open since yesterday were
+pruned for being old and re-adopted eighty milliseconds afterwards, four times a
+minute. Moving that probe off the drawing thread is what put the answer on the
+wrong side of the prune.
+
+The fix is what the rule already meant: an open rollout is a conversation loaded,
+not a model working, so its last word can be days old while the process holding
+it is alive, and that descriptor is a confirmation. The age rule is the bound for
+rows nobody can confirm.
+
+The end-to-end case for it passed against the unfixed code on the first attempt,
+because it slept 200 milliseconds between looks — the same mistake as the two
+samplers, in the place that is supposed to catch it. It looks as often as the
+question can be asked now, and it fails when the exemption is removed.
+
 ## How the project stands now
 
 | | |
 |---|---|
 | Domain tests | **663**, instantaneous |
-| End-to-end tests | **94**, about a minute |
+| End-to-end tests | **95**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **10**, each with a mutation that proves it fails |

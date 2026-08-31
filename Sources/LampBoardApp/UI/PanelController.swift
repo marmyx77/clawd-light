@@ -249,6 +249,18 @@ final class PanelController {
 
         guard size != panel.frame.size else { return }
 
+        // Every resize says what it was computing from. A panel that changes
+        // height twice per sweep looks like a fault in the drawing and is
+        // usually a disagreement between two readings of the same state, so the
+        // readings are named rather than guessed at.
+        Diagnostics.log(
+            "resize: \(Int(panel.frame.height)) -> \(Int(size.height)) "
+                + "[rows \(rendering.rows.count), open "
+                + "\(rendering.rows.filter { preferences.expandedRows.contains($0.id) }.count), "
+                + "sessions \(state.sessions.count), extras \(extras), "
+                + "issue \(store.issue != nil), ceiling \(Int(ceiling))]"
+        )
+
         // Hung from the top it already has, and kept whole on the screen. The
         // second half is the one that was missing: the height was bounded and
         // the position was not, so an opened project pushed the bottom of the

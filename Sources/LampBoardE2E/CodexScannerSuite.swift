@@ -98,7 +98,7 @@ enum CodexScannerSuite {
         let file = directory.appendingPathComponent("rollout-2026-08-30T09-00-00-\(sessionId).jsonl")
 
         let lines = [
-            #"{"timestamp":"\#(momentsAgo(600))","type":"session_meta","payload":{"session_id":"\#(sessionId)","cwd":"\#(cwd)","originator":"codex-tui","source":"cli","cli_version":"0.151.0"}}"#,
+            #"{"timestamp":"\#(lastSpoken)","type":"session_meta","payload":{"session_id":"\#(sessionId)","cwd":"\#(cwd)","originator":"codex-tui","source":"cli","cli_version":"0.151.0"}}"#,
             #"{"timestamp":"\#(lastSpoken)","type":"event_msg","payload":{"type":"task_started"}}"#,
             // No timestamp, and it must not become the moment: this is the shape
             // that made three Claude projects read as active while untouched.
@@ -144,6 +144,35 @@ enum CodexScannerSuite {
                     CodexSurface.commandLine.entrypoint,
                     "read from the binary, not from what the transcript calls itself"
                 )
+            },
+
+            TestCase("a conversation open since yesterday keeps its row") { a in
+                // The defect that made the panel flicker, and it only appeared
+                // once the clock had moved: a rollout whose last word is older
+                // than sessionStaleAfter was pruned for being old at the end of
+                // every sweep, and re-adopted when the probe answered a moment
+                // later. Six rows, on and off, four times a minute.
+                //
+                // An open rollout is a conversation loaded, not a model working,
+                // so its last word can be days old while the process holding it
+                // is alive. That descriptor is a confirmation, and the age rule
+                // is the bound for rows nobody can confirm.
+                let old = AppConfig.sessionStaleAfter + 3600
+                guard let path = try? writeRollout(
+                        in: app.home, sessionId: "e2e-codex-old", cwd: "/tmp/lampboard-e2e-codex-old",
+                        lastSpoken: momentsAgo(old)
+                      ),
+                      let held = try? FakeCodex(holding: path, in: app.home)
+                else {
+                    a.expect(false, "the fixture could not be set up")
+                    return
+                }
+                defer { held.letGo() }
+
+                a.expect(app.waitUntil { app.session(id: "e2e-codex-old") != nil },
+                         "yesterday's conversation is still a row")
+                a.expect(app.holdsThroughTwoSweeps { app.session(id: "e2e-codex-old") != nil },
+                         "and it is still there two sweeps later, not blinking")
             },
 
             TestCase("letting the file go takes the row with it") { a in

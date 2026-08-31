@@ -44,3 +44,40 @@ struct SweepCost {
             + (named.isEmpty ? "" : String(format: ", the rest %.0f)", rest * 1000))
     }
 }
+
+/// What the sweeps have cost so far, kept across passes.
+///
+/// Separate from `SweepCost` because one is a measurement of a single pass and
+/// this is the memory of all of them, and separate from `StateStore` because
+/// that file is at the ceiling the project sets itself and bookkeeping about the
+/// store is not the store.
+enum SweepLog {
+    private static var worst: TimeInterval = 0
+    private static var count = 0
+    private static var total: TimeInterval = 0
+
+    /// Passes slower than this are named individually. Roughly three frames:
+    /// below it nobody could see the pause, above it somebody could.
+    private static let notable: TimeInterval = 0.05
+
+    static func record(from started: Date, _ cost: SweepCost) {
+        guard Diagnostics.isEnabled else { return }
+        let elapsed = Date().timeIntervalSince(started)
+        count += 1
+        total += elapsed
+        if elapsed > worst {
+            worst = elapsed
+            Diagnostics.log("sweep: \(cost.describing(elapsed)), the longest so far")
+        } else if elapsed > notable {
+            Diagnostics.log("sweep: \(cost.describing(elapsed))")
+        }
+        // A periodic average, because a worst case alone cannot say whether a
+        // pause is the cold start or the shape of every pass.
+        if count % 60 == 0 {
+            Diagnostics.log(String(
+                format: "sweep: %d passes, %.0f ms on average, %.0f ms at worst",
+                count, total / Double(count) * 1000, worst * 1000
+            ))
+        }
+    }
+}

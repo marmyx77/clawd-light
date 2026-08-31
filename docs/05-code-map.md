@@ -1,14 +1,14 @@
 # Code map
 
-~35,431 lines of Swift across five targets. For each file: what it contains, why
+~35,642 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,591 lines · 78 files   pure logic, zero AppKit
-  LampBoardApp/    14,153 lines · 74 files   shell: AppKit, network, windows
+  LampBoardCore/   9,611 lines · 78 files   pure logic, zero AppKit
+  LampBoardApp/    14,191 lines · 74 files   shell: AppKit, network, windows
   LampBoardTests/  8,931 lines · 47 files   663 cases, instantaneous
-  LampBoardE2E/    2,503 lines · 11 files   94 cases, the real binary
+  LampBoardE2E/    2,540 lines · 11 files   95 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -740,11 +740,11 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 785 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStore.swift` | 770 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 143 | the rows nobody announced: Codex from an open rollout, Claude Desktop from its index and transcript. Both obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
-| `SweepCost.swift` | 46 | where one realignment pass spent its time, phase by phase. Added because an audit said the sweep was too slow and neither side could settle it by reading |
+| `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `Preferences.swift` | 347 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
@@ -950,7 +950,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 94 cases
+## `LampBoardE2E/` — 95 cases
 
 | Suite | Covers |
 |---|---|
