@@ -71,7 +71,12 @@ if [ "$DRY_RUN" = "0" ]; then
         git -C "$ROOT" status --short >&2
         exit 1
     fi
-    VERSION="$(git -C "$ROOT" tag --points-at HEAD | sed -n 's/^v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$/\1/p' | head -1)"
+    # `[0-9][0-9]*` and not `[0-9]\+`: the second is GNU syntax, and the `sed`
+    # on macOS simply does not match it. Written that way this gate refused
+    # every release, including correctly tagged ones — a check that always says
+    # no is as broken as one that always says yes, and it hides better.
+    VERSION="$(git -C "$ROOT" tag --points-at HEAD \
+        | sed -n 's/^v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p' | head -1)"
     if [ -z "$VERSION" ]; then
         echo "HEAD carries no SemVer tag, so this release would have no identity." >&2
         echo "  tag it first:  git tag -a v0.2.0 -m 'lampboard 0.2.0' && git push origin v0.2.0" >&2
