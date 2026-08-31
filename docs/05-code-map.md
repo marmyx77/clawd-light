@@ -1,14 +1,14 @@
 # Code map
 
-~35,642 lines of Swift across five targets. For each file: what it contains, why
+~35,736 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/   9,611 lines · 78 files   pure logic, zero AppKit
+  LampBoardCore/   9,645 lines · 78 files   pure logic, zero AppKit
   LampBoardApp/    14,191 lines · 74 files   shell: AppKit, network, windows
-  LampBoardTests/  8,931 lines · 47 files   663 cases, instantaneous
-  LampBoardE2E/    2,540 lines · 11 files   95 cases, the real binary
+  LampBoardTests/  8,975 lines · 47 files   664 cases, instantaneous
+  LampBoardE2E/    2,556 lines · 11 files   95 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -66,7 +66,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 436
+### `SessionState.swift` · 444
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -559,7 +559,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 496
+### `StateReducer.swift` · 575
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -893,7 +893,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 663 cases
+## `LampBoardTests/` — 664 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

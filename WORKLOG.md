@@ -843,7 +843,7 @@ question can be asked now, and it fails when the exemption is removed.
 
 | | |
 |---|---|
-| Domain tests | **663**, instantaneous |
+| Domain tests | **664**, instantaneous |
 | End-to-end tests | **95**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
