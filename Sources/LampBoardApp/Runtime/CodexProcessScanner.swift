@@ -1,33 +1,6 @@
 import LampBoardCore
 import Foundation
 
-/// A Codex session proven to exist right now.
-struct CodexEvidence: Sendable, Equatable {
-    /// From the rollout's own first record, never from anything sent to us.
-    let meta: CodexSessionMeta
-    /// The rollout the process holds open.
-    let rolloutPath: String
-    let pid: Int32
-    /// The binary behind the pid, which is what names the surface.
-    let executable: String
-    let surface: CodexSurface
-    /// The last record in the rollout that carries a timestamp.
-    let lastActivity: Date
-}
-
-/// What the scanner learned, and whether it learned anything at all.
-///
-/// The distinction is the point of the type. A probe that answered and saw no
-/// open rollout is evidence that the sessions are over; a probe that could not
-/// run, or ran out of time, is **absence of evidence**, and treating the two the
-/// same would delete every Codex row the first time a network mount made `lsof`
-/// pause. The store already draws this line for a remote host that has gone
-/// quiet, and it draws it here for the same reason.
-enum CodexScanResult: Sendable, Equatable {
-    case observed([CodexEvidence])
-    case unavailable(String)
-}
-
 /// Finds the Codex sessions running on this machine, without being told.
 ///
 /// Codex inside the ChatGPT app registers our hooks, marks them trusted, runs a

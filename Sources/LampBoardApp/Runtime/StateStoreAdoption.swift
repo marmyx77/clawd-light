@@ -110,10 +110,13 @@ extension StateStore {
         // A probe that could not answer removes nothing and forgets nothing:
         // the set of confirmed ids stays as it was, so the age rule at the end
         // of the sweep does not take rows the probe simply could not reach.
-        guard case .observed(let evidence) = result else { return }
-        rememberLiveCodex(Set(evidence.map(\.meta.sessionId)))
+        // The rule itself is in `CodexAdmission`, where a test can hand it an
+        // unavailable probe without having to make `lsof` hang for real.
+        let known = Set(state.sessions.values.filter { $0.harness == .codex }.map(\.id))
+        guard let verdict = CodexAdmission.verdict(on: result, holding: known) else { return }
+        rememberLiveCodex(verdict.alive)
 
-        for item in evidence where state.sessions[item.meta.sessionId] == nil {
+        for item in verdict.arriving {
             apply(
                 .adopt(
                     SessionState(
@@ -139,7 +142,7 @@ extension StateStore {
         // conversation closes the descriptor, and that is the one signal Codex
         // gives us for free.
         apply(
-            .reconcile(alive: Set(evidence.map(\.meta.sessionId)), harness: .codex, evenIfEmpty: true),
+            .reconcile(alive: verdict.alive, harness: .codex, evenIfEmpty: true),
             now: now
         )
     }

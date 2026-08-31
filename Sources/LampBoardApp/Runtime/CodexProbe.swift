@@ -1,3 +1,4 @@
+import LampBoardCore
 import Foundation
 
 /// The Codex scanner, off the thread that draws and never running twice at once.

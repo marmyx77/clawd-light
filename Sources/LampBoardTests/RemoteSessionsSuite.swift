@@ -184,6 +184,59 @@ enum RemoteSessionsSuite {
             )
         },
 
+        TestCase("A slot, a mute and a move each land on one machine only") { t in
+            // The other half of the same proof. The row is drawn per machine and
+            // named per machine; what was not covered is everything a person
+            // *reaches* it with, and the slot is the sharp one — the click reads
+            // `workspace.host` directly and cannot be confused by a key, but the
+            // number keys address a row by exactly this string. Press 3 and the
+            // wrong machine's project opens is the failure shape.
+            let moment = Date(timeIntervalSince1970: 1_788_000_000)
+            func session(_ id: String, on host: String?) -> SessionState {
+                SessionState(
+                    id: id, status: .ready,
+                    workspace: Workspace(path: "/w/project", host: host),
+                    updatedAt: moment, statusSince: moment
+                )
+            }
+            let state = TrafficLightState(sessions: [
+                "here": session("here", on: nil),
+                "one": session("one", on: "node-one"),
+                "two": session("two", on: "node-two"),
+            ])
+            let keys = [
+                Workspace(path: "/w/project").key,
+                Workspace(path: "/w/project", host: "node-one").key,
+                Workspace(path: "/w/project", host: "node-two").key,
+            ]
+            t.expectEqual(Set(keys).count, 3, "three keys, or nothing below means anything")
+
+            // Slots: three places, not one shared by three.
+            let slots = keys.map { RowOrder.slot(of: $0, in: keys, limit: AppConfig.maxSlots) }
+            t.expectEqual(slots, [1, 2, 3], "each machine's folder holds a number of its own")
+
+            let rendered = ColumnLayout.render(state, options: ColumnOptions(order: keys)).rows
+            t.expectEqual(rendered.compactMap(\.slot), [1, 2, 3], "and the column agrees")
+            t.expectEqual(
+                rendered.map(\.workspace.host), [nil, "node-one", "node-two"],
+                "in the order the person put them in"
+            )
+
+            // Moving one moves one. The others keep the places they had.
+            let moved = RowOrder.moving(keys[2], by: -2, among: keys, in: keys)
+            t.expectEqual(moved, [keys[2], keys[0], keys[1]], "the second node goes to the top")
+            t.expectEqual(
+                RowOrder.slot(of: keys[0], in: moved, limit: AppConfig.maxSlots), 2,
+                "and the local folder moved down by exactly one"
+            )
+
+            // Muting is a set of the same keys, so one machine goes quiet alone.
+            let muted: Set<String> = [keys[1]]
+            t.expect(!muted.contains(keys[0]), "the local folder still alerts")
+            t.expect(muted.contains(keys[1]), "the one that was muted does not")
+            t.expect(!muted.contains(keys[2]), "and neither does the other node inherit it")
+        },
+
         TestCase("The label says where it is, the name does not") { t in
             let w = Workspace(path: "/home/dev/.notes", host: host)
             t.expectEqual(w.label, ".notes @node", "label")
