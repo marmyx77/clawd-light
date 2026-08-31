@@ -584,11 +584,25 @@ the name empty to go back to the original.
 ## Installation
 
 ```bash
-brew install --cask marmyx77/tap/lampboard
+brew tap marmyx77/tap
+brew trust marmyx77/tap
+brew install --cask lampboard
 lampboard install-hooks
 ```
 
-That is the whole of it. The app opens on install — it has no Dock icon and no
+That is the whole of it. The middle line is not ceremony: since Homebrew 6 a
+cask from a third-party tap is refused until the tap is trusted, and the refusal
+names neither the cask nor a reason a newcomer can act on. Measured here on
+Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
+from untrusted tap*.
+
+> **macOS asks once, and everything waits until you answer.** Homebrew marks
+> every download, so the first launch raises the *downloaded from the Internet*
+> dialog — while you are still reading the terminal. Click **Open**. Until you
+> do, the panel does not appear and every `lampboard` command hangs against a
+> server that has not bound its port, with nothing on screen to say why.
+
+The app opens on install — it has no Dock icon and no
 menu bar item, the panel *is* the interface — and `install-hooks` registers
 Claude Code's hooks, and Codex's too if you have it.
 

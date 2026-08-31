@@ -5,33 +5,30 @@ unlocked session and other people's applications running, so it cannot be a
 condition for merging. It is the record that the README's `live` column
 rests on.
 
-- **When:** 2026-08-31 08:23
-- **Build:** 0.1.0, signed by Developer ID Application: Marco Armellino (33Z4MPR4FF)
-- **Mode:** recognition only, nothing moved
+- **When:** 2026-08-31 13:23
+- **Build:** 0.2.2, signed by Developer ID Application: Marco Armellino (33Z4MPR4FF)
+- **Mode:** live, windows really raised
 
 | Slot | Row | Should lead to | Result | Window |
 |---|---|---|---|---|
-| 2 | AW events | an editor window | recognised | — |
-| 4 | sito-aworld | an editor window | recognised | — |
-| 5 | Virgilio | an editor window | recognised | — |
-| 6 | Clawd Light <logo | an editor window | recognised | — |
-| 7 | AI literacy | an editor window | recognised | — |
+| 2 | AW events | an editor window | raised | situazione? — awevents — Claude Minimal |
+| 4 | sito-aworld | an editor window | raised | analizza il progetto — sito-aworld — Claude Minimal |
+| 5 | Virgilio | an editor window | raised | Progetto unificato in cl… — marmyx-virgilio — Claude Minimal |
+| 6 | Clawd Light X | the ChatGPT app | raised | ChatGPT |
+| 7 | AI literacy | an editor window | raised | Documentazione progetto … — ai-act-literacy — Claude Minimal |
 
 **Not exercised**, because no session of that kind was running:
 
 - a Remote-SSH window
-- the ChatGPT app
 - the Claude desktop app
+- the terminal holding its tab
 
 **Out of reach of this script**, because they sit past the ninth row and
 `open` addresses slots. The panel's own click reaches them; nothing on the
 command line does:
 
-- marcoarmellino — the terminal holding its tab
 - Exit — an editor window
 - aworld-os-platform — an editor window
-- writer — the terminal holding its tab
-- yt — the terminal holding its tab
-- voci-digest — the terminal holding its tab
+- turing — an editor window
 
 Anything named above is something this run says nothing about.

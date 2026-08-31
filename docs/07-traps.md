@@ -1746,3 +1746,44 @@ better, make the code say what it did: a first-person log line found this in one
 cycle after two rounds of sampling had found nothing. The first version of the
 end-to-end case for it slept 200 milliseconds between looks and passed against
 the unfixed code.
+
+## The dialog nobody was looking at
+
+**Symptom.** Installed from the tap, the panel never appeared. `lampboard
+status`, `lampboard open`, every command: no output, no error, no timeout —
+each one sat there until it was killed. The process was running; `pgrep` found
+it. The port answered nothing.
+
+**Cause.** Homebrew quarantines every download, and since Homebrew 6
+`--no-quarantine` is gone, so the first launch raises the system's *downloaded
+from the Internet* dialog. The cask's `postflight` launches the app the moment
+the install finishes — which is the moment the person is reading the terminal,
+not watching the screen. The dialog waited behind other windows. The app never
+finished launching, the server never bound its port, and the CLI, which talks to
+that port, waited for a server that was never going to arrive.
+
+Nothing anywhere said so. Not the panel, not the CLI, not the install log.
+
+**What it cost.** Half an hour, three wrong diagnoses, and two measurements of
+the wrong object:
+
+- `pgrep -x LampBoard` said the app was not running. The executable is
+  `lampboard`, lowercase — `-x` matches exactly, so it never matched anything.
+  Every check built on it read as "not running", including the one that
+  concluded the postflight had failed.
+- `spctl` was pointed at `/Applications/LampBoard.app` to decide whether a
+  release was notarized. That is the installed copy, which carries the local
+  signature: `release.sh` deliberately never signs the bundle in use, because
+  macOS grants Accessibility and Automation to an identity and re-signing in
+  place would revoke them in silence. The candidate is `dist/*.dmg`, and it was
+  notarized the whole time. A release audit had been told the opposite.
+
+**The lesson.** Both mistakes have the same shape as the ones this file already
+catalogues: a measurement that returns cleanly while looking at something other
+than the thing being judged. `pgrep -x` on a name nobody verified, `spctl` on a
+path that was never the artefact. Neither failed. Both answered.
+
+**What holds now.** The cask's caveats and the README say that macOS asks once
+and that nothing works until it is answered. The trap itself cannot be closed
+from here: it is how macOS treats a downloaded application, and the alternative
+— an app that launches silently on install — is worse.

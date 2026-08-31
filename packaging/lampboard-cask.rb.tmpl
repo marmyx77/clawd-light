@@ -26,6 +26,14 @@ cask "lampboard" do
   # Opened on install. LampBoard has no Dock icon and its panel is the whole
   # interface: a fresh install that launches nothing is a fresh install that
   # looks like it failed, and the caveats have already scrolled past by then.
+  # Homebrew quarantines every cask and, since Homebrew 6, `--no-quarantine` is
+  # gone. So the first launch raises the system's "downloaded from the Internet"
+  # dialog — and this launch happens while the person is reading the terminal,
+  # not watching the screen. Measured: the dialog waits, the panel never starts,
+  # the server never binds, and every `lampboard` command hangs with no timeout
+  # against a port nobody is listening on. Nothing on screen explains it.
+  #
+  # The caveats say so, because the alternative is an install that looks broken.
   postflight do
     system_command "/usr/bin/open", args: ["-a", "#{appdir}/LampBoard.app"]
   end
@@ -48,6 +56,11 @@ cask "lampboard" do
   caveats <<~EOS
     LampBoard is opening now: the panel appears in the corner of the screen.
     It has no Dock icon and no menu bar item — the panel is the interface.
+
+    macOS asks once, because Homebrew marks every download: a dialog saying
+    LampBoard was downloaded from the Internet. Click Open. Until you do, the
+    panel does not start and every `lampboard` command waits for a server that
+    is not listening yet.
 
     To register the hooks that feed it:
 
