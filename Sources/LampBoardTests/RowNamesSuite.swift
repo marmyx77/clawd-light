@@ -45,47 +45,14 @@ enum RowNamesSuite {
                           "a session id that looks like a path is still a session id")
         },
 
-        TestCase("Each agent in a folder can carry its own name") { t in
-            // Two rows for one folder need two names, or they are told apart only
-            // by one letter inside a sixteen-point ring. Renaming one leaves the
-            // other alone.
-            var names: [String: String] = [:]
-            names = RowNames.renaming("/dev/project", harness: .claudeCode, to: "Design", in: names)
-            names = RowNames.renaming("/dev/project", harness: .codex, to: "Migration", in: names)
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .claudeCode, in: names),
-                          "Design", "the Claude row")
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .codex, in: names),
-                          "Migration", "the Codex row")
-        },
-
-        TestCase("A name given to the folder still covers both") { t in
-            // Every name set before rows could split is stored against the folder
-            // alone. Dropping those would rename somebody's whole column back to
-            // its folder names on the release that introduced the split, so the
-            // plain key stays readable as the fallback for a row that has no name
-            // of its own.
-            let names = ["/dev/project": "Virgilio"]
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .claudeCode, in: names),
-                          "Virgilio", "Claude")
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .codex, in: names),
-                          "Virgilio", "and Codex")
-        },
-
-        TestCase("Naming one agent does not disturb the folder's own name") { t in
+        TestCase("An empty name gives a conversation back what was underneath") { t in
             var names = ["/dev/project": "Virgilio"]
-            names = RowNames.renaming("/dev/project", harness: .codex, to: "Migration", in: names)
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .codex, in: names),
-                          "Migration", "the renamed one")
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .claudeCode, in: names),
-                          "Virgilio", "the other keeps the folder's name")
-        },
-
-        TestCase("An empty name gives a row back the folder's name") { t in
-            var names = ["/dev/project": "Virgilio"]
-            names = RowNames.renaming("/dev/project", harness: .codex, to: "Migration", in: names)
-            names = RowNames.renaming("/dev/project", harness: .codex, to: "", in: names)
-            t.expectEqual(RowNames.name(of: "/dev/project", harness: .codex, in: names),
-                          "Virgilio", "back to the fallback, not to nothing")
+            names = RowNames.renaming(session: "s1", to: "Migration", in: names)
+            names = RowNames.renaming(session: "s1", to: "", in: names)
+            t.expectNil(RowNames.name(ofSession: "s1", in: names),
+                        "the conversation has no name of its own again")
+            t.expectEqual(RowNames.name(of: "/dev/project", in: names),
+                          "Virgilio", "and the folder keeps the one it had")
         },
 
         TestCase("A name is stored by normalised folder, trimmed, bounded; blank removes it") { t in

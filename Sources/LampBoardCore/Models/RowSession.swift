@@ -63,25 +63,12 @@ extension RowSession {
             }
         }
 
-        // How many in this row share each lane, so a lane's name is only numbered
-        // when the number is the thing telling two lines apart.
-        var laneSize: [Harness: Int] = [:]
-        for session in ordered { laneSize[session.harness, default: 0] += 1 }
-        var laneSeen: [Harness: Int] = [:]
-
         return ordered.enumerated().map { index, session in
             let ordinal = index + 1
-            laneSeen[session.harness, default: 0] += 1
             return RowSession(
                 id: session.id,
                 ordinal: ordinal,
-                name: name(
-                    of: session,
-                    ordinal: ordinal,
-                    inLane: laneSeen[session.harness] ?? 1,
-                    laneSize: laneSize[session.harness] ?? 1,
-                    names: names
-                ),
+                name: name(of: session, ordinal: ordinal, names: names),
                 session: session
             )
         }
@@ -91,24 +78,23 @@ extension RowSession {
     ///
     /// The name you gave **this** conversation first: it is the most specific
     /// thing anybody said about it. Then its own title, which the transcript
-    /// writes after the first exchange. Then the name given to this agent's lane
-    /// in this project, numbered when the lane holds more than one, so naming the
-    /// Codex lane "migration" gives a fresh session "migration #2" rather than
-    /// "#2". Then its position, which is all there is in the first seconds of a
-    /// conversation that has not spoken yet.
+    /// writes after the first exchange. Then its position, which is all there is
+    /// in the first seconds of a conversation that has not spoken yet.
+    ///
+    /// There was a fourth, between the title and the position: a name given to
+    /// this agent in this project, which every conversation of that agent
+    /// inherited. It was removed on the day it was met — renaming one Codex
+    /// conversation appeared to rename all of them, because that is exactly what
+    /// it did, and the menu offered it one line under the entry that renames a
+    /// single conversation. A name that arrives on rows nobody named is worse
+    /// than no name at all.
     private static func name(
         of session: SessionState,
         ordinal: Int,
-        inLane place: Int,
-        laneSize: Int,
         names: [String: String]
     ) -> String {
         if let own = RowNames.name(ofSession: session.id, in: names) { return own }
         if let title = session.title { return title }
-        if let lane = RowNames.name(of: session.workspace.key, harness: session.harness, in: names),
-           lane != RowNames.name(of: session.workspace.key, in: names) {
-            return laneSize > 1 ? "\(lane) #\(place)" : lane
-        }
         return "#\(ordinal)"
     }
 }

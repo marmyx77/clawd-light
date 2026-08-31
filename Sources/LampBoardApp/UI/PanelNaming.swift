@@ -105,29 +105,5 @@ extension PanelController {
         rebuildContent()
     }
 
-    /// Names this agent's lane in this project.
-    ///
-    /// A lane and not a conversation, and the menu says so: a second Codex
-    /// session opened here tomorrow will carry this name too. That is what a name
-    /// per agent means, and it is the only per-agent name that can be kept, since
-    /// a conversation's own id dies with its process.
-    func renameLane(of member: RowSession) {
-        let harness = member.session.harness
-        let path = member.session.workspace.key
-        guard let answer = Alerts.ask(
-            title: "Rename the \(harness.displayName) lane",
-            message: "Every \(harness.displayName) conversation in this project that has no "
-                + "name of its own will be called this, including ones opened later. "
-                + "Leave it empty to go back to the project's own name.",
-            initialValue: RowNames.name(of: path, harness: harness, in: preferences.rowNames) ?? "",
-            placeholder: RowNames.name(of: path, in: preferences.rowNames) ?? member.session.workspace.name,
-            confirmTitle: "Rename"
-        ) else { return }
-        preferences.rowNames = RowNames.renaming(
-            path, harness: harness, to: answer, in: preferences.rowNames
-        )
-        store.republish()
-        rebuildContent()
-    }
 
 }

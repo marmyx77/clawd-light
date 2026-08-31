@@ -763,7 +763,7 @@ final class StateStore: ObservableObject {
                 of: session,
                 muted: muted.contains(session.workspace.key),
                 slot: RowOrder.slot(of: session.workspace.key, in: order, limit: AppConfig.maxSlots),
-                alias: RowNames.name(of: session.workspace.key, harness: session.harness, in: names)
+                alias: RowNames.name(of: session.workspace.key, in: names)
             )
         })
     }

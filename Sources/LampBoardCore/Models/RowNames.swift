@@ -10,16 +10,6 @@ import Foundation
 /// identity (D4, D23), so the name follows the row.
 public enum RowNames {
 
-    /// Where one row's own name lives: the folder and the agent together.
-    ///
-    /// A folder can hold a Claude row and a Codex row at once, and they need two
-    /// names or they are told apart by a single letter inside a sixteen-point
-    /// ring. The separator is a unit separator rather than a slash or a colon,
-    /// because a folder path may contain either and this key must not be
-    /// ambiguous for any path a filesystem allows.
-    private static func key(_ path: String, _ harness: Harness) -> String {
-        "\(PathNormalizer.normalize(path))\u{1F}\(harness.rawValue)"
-    }
 
     /// Where one conversation's own name lives.
     ///
@@ -52,16 +42,6 @@ public enum RowNames {
         return next
     }
 
-    /// The name to show a row: its own if it has one, otherwise the folder's.
-    ///
-    /// Two lookups and not one, because every name given before rows could split
-    /// is stored against the folder alone. Reading only the specific key would
-    /// rename somebody's entire column back to its folder names on the release
-    /// that introduced the split, which is the kind of upgrade nobody forgives.
-    public static func name(of path: String, harness: Harness, in names: [String: String]) -> String? {
-        names[key(path, harness)]?.trimmed.nilIfEmpty
-            ?? names[PathNormalizer.normalize(path)]?.trimmed.nilIfEmpty
-    }
 
     /// The name given to a folder, ignoring any agent. What the notifier and the
     /// command line use, because both speak about a project rather than a row.
@@ -69,23 +49,6 @@ public enum RowNames {
         names[PathNormalizer.normalize(path)]?.trimmed.nilIfEmpty
     }
 
-    /// The table with **one row** renamed.
-    ///
-    /// A blank name removes that row's own entry, which gives it the folder's
-    /// name back rather than no name at all: "rename" doubles as "undo", and
-    /// undoing a row's name should not also undo the project's.
-    public static func renaming(
-        _ path: String, harness: Harness, to name: String?, in names: [String: String]
-    ) -> [String: String] {
-        var next = names
-        let specific = key(path, harness)
-        if let name = name?.trimmed.nilIfEmpty {
-            next[specific] = String(name.prefix(maxLength))
-        } else {
-            next.removeValue(forKey: specific)
-        }
-        return next
-    }
 
     /// The table with a **folder** renamed, for every row that has no name of its
     /// own. This is what `lampboard rename` writes, and the split is deliberate:

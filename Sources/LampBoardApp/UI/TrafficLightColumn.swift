@@ -242,7 +242,6 @@ struct TrafficLightColumn: View {
                     now: now,
                     open: actions.openSession,
                     rename: actions.renameSession,
-                    renameLane: actions.renameLane,
                     move: { member, offset in actions.moveSession(row, member, offset) },
                     drag: compact ? nil : memberDragState(
                         for: member, at: index, in: shown, of: row
