@@ -13,10 +13,15 @@ final class PanelController {
     let store: StateStore
     private let installer: HookInstaller
     let preferences: Preferences
-    private let panel: FloatingPanel
+    let panel: FloatingPanel
 
     private var compact: Bool
     private var cancellables = Set<AnyCancellable>()
+
+    /// The lamp in the menu bar. It exists whether or not the panel lives up
+    /// there: two surfaces, one column, and the switch for each is its own.
+    let lamp = MenuBarLamp()
+    var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.
     private let permissions = PermissionWatcher()
@@ -42,6 +47,7 @@ final class PanelController {
         self.installer = installer
         self.preferences = preferences
         self.compact = preferences.isCompact
+        self.home = preferences.home
 
         let size = NSSize(
             width: Layout.width(compact: compact),
@@ -63,8 +69,9 @@ final class PanelController {
         // died with it. Left unreaped they accumulate one per crash per session.
         chats.reapStaleMailboxes()
 
+        wireLamp()
         rebuildContent()
-        panel.orderFrontRegardless()
+        applyHome(showing: home == .floating)
         logPanelState()
         observeStore()
         observePanelMoves()
@@ -72,8 +79,13 @@ final class PanelController {
 
     func close() {
         chats.close()
+        lamp.hide()
         panel.close()
     }
+
+    /// Kept alive for as long as the menu is: `NSMenuItem.target` is weak, and a
+    /// target that has been released is an entry that quietly does nothing.
+    var menuTargets: [MenuAction] = []
 
     /// Opens the chat window for the project bound to a slot, for `chat <n>`.
     ///
@@ -128,6 +140,11 @@ final class PanelController {
                 } else {
                     self.resizeToFit(state)
                 }
+                // The lamp is a summary of the column, so it learns from the same
+                // change and at the same instant. Anything else and the two could
+                // disagree, with the one that has no room to explain itself being
+                // the one somebody is reading from across the room.
+                self.lamp.update(self.currentSummary)
             }
             .store(in: &cancellables)
 
@@ -151,7 +168,11 @@ final class PanelController {
             .publisher(for: UserDefaults.didChangeNotification, object: Preferences.sharedDefaults)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                guard let self, self.columnOptions != self.renderedOptions else { return }
+                guard let self else { return }
+                // Hiding a project and silencing one both live here, and both
+                // change what the lamp should say.
+                self.lamp.update(self.currentSummary)
+                guard self.columnOptions != self.renderedOptions else { return }
                 self.rebuildContent()
             }
             .store(in: &cancellables)
@@ -175,6 +196,11 @@ final class PanelController {
             .publisher(for: NSWindow.didMoveNotification, object: panel)
             .sink { [weak self] _ in
                 guard let self else { return }
+                // A drop-down is put where the lamp is, not where anybody dragged
+                // it. Saving that would overwrite the corner the floating panel
+                // was left in, and it would be found the next time somebody
+                // brought the panel back and it came back somewhere else.
+                guard self.home == .floating else { return }
                 self.preferences.saveAnchor(PanelPlacement.anchor(of: self.panel.frame))
             }
             .store(in: &cancellables)
@@ -222,6 +248,8 @@ final class PanelController {
     private var panelFlags: PanelFlags {
         PanelFlags(
             compact: compact,
+            home: home,
+            showsMenuBarIcon: preferences.showsMenuBarIcon || home.requiresMenuBarIcon,
             opensSessionTab: preferences.opensSessionTab,
             onlyWaiting: preferences.showsOnlyWaiting,
             notificationsEnabled: preferences.notificationsEnabled,
@@ -292,6 +320,16 @@ final class PanelController {
         // the position was not, so an opened project pushed the bottom of the
         // panel under the edge of the display — and the move that did it was
         // saved, so the next launch started lower still.
+        // In the menu bar the panel hangs from the lamp rather than from wherever
+        // it was last dragged. It still grows downward from a fixed top; the fixed
+        // top is the bar. Re-hanging it on every resize is also what stops a
+        // drop-down walking down the screen as sessions appear.
+        guard home != .menuBar else {
+            panel.setFrame(NSRect(origin: panel.frame.origin, size: size), display: true)
+            positionUnderLamp()
+            return
+        }
+
         panel.setFrame(
             Preferences.placed(
                 size: size,
@@ -379,7 +417,7 @@ final class PanelController {
     ///
     /// It opens the same session a click opens — `primary`, the most urgent one —
     /// so the two gestures never disagree about which conversation this row is.
-    private func openChat(in row: ColumnRow) {
+    func openChat(in row: ColumnRow) {
         for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
         chats.show(selecting: row.primary.id)
     }
@@ -399,7 +437,7 @@ final class PanelController {
     ///   open two: first the existing one and then the new one.
     // MARK: - Updates
 
-    private func checkForUpdates() {
+    func checkForUpdates() {
         Task { @MainActor in
             await UpdateFlow.run(
                 report: { [weak self] in self?.store.reportError($0) },
@@ -572,48 +610,7 @@ final class PanelController {
 
     // MARK: - Panel actions
 
-    private func makeActions() -> PanelActions {
-        PanelActions(
-            openExtended: { [weak self] in self?.openExtendedWindow() },
-            openSettings: { [weak self] in self?.onOpenSettings?() },
-            openLegend: { [weak self] in self?.onOpenLegend?() },
-            toggleCompact: { [weak self] in self?.toggleCompact() },
-            toggleSessionTab: { [weak self] in
-                self?.preferences.opensSessionTab.toggle()
-                self?.rebuildContent()
-            },
-            toggleOnlyWaiting: { [weak self] in
-                self?.preferences.showsOnlyWaiting.toggle()
-                self?.rebuildContent()
-            },
-            toggleNotifications: { [weak self] in self?.toggleNotifications() },
-            toggleMessageSending: { [weak self] in self?.toggleMessageSending() },
-            togglePresence: { [weak self] in self?.togglePresence() },
-            toggleTerminalSessions: { [weak self] in self?.toggleTerminalSessions() },
-            muteForAnHour: { [weak self] in
-                self?.preferences.mutedUntil = Date().addingTimeInterval(3600)
-                self?.rebuildContent()
-            },
-            clearMute: { [weak self] in
-                self?.preferences.mutedUntil = nil
-                self?.rebuildContent()
-            },
-            toggleLaunchAtLogin: { [weak self] in self?.toggleLaunchAtLogin() },
-            installHooks: { [weak self] in self?.installHooks() },
-            uninstallHooks: { [weak self] in self?.uninstallHooks() },
-            requestAccessibility: { VSCodeFocuser.requestAccessibilityPermission() },
-            fixIssue: { PermissionRequest.offer($0) },
-            showHiddenAgain: { [weak self] in
-                self?.preferences.hiddenWorkspaces = []
-                self?.rebuildContent()
-            },
-            clearSessions: { [weak self] in self?.store.reset() },
-            checkForUpdates: { [weak self] in self?.checkForUpdates() },
-            quit: { NSApp.terminate(nil) }
-        )
-    }
-
-    private func toggleCompact() {
+    func toggleCompact() {
         compact.toggle()
         preferences.isCompact = compact
         rebuildContent()
@@ -621,7 +618,7 @@ final class PanelController {
 
     /// Turning notifications on makes the system prompt appear, and this is the
     /// right moment: the user has just asked for the feature.
-    private func toggleNotifications() {
+    func toggleNotifications() {
         let wanted = !preferences.notificationsEnabled
         preferences.notificationsEnabled = wanted
         onNotificationToggle?(wanted)
@@ -636,7 +633,7 @@ final class PanelController {
     ///
     /// The dialog says what it costs, because this is the one switch here whose
     /// default is about safety rather than noise.
-    private func toggleMessageSending() {
+    func toggleMessageSending() {
         let wanted = !preferences.messageSendingEnabled
 
         if wanted {
@@ -680,7 +677,7 @@ final class PanelController {
         }
     }
 
-    private func togglePresence() {
+    func togglePresence() {
         let wanted = !preferences.presenceEnabled
         preferences.presenceEnabled = wanted
 
@@ -704,7 +701,7 @@ final class PanelController {
 
     /// "Show terminal sessions" (D25). Off takes its rows away at once; on lets
     /// the next poll adopt what is there, within five seconds.
-    private func toggleTerminalSessions() {
+    func toggleTerminalSessions() {
         let wanted = !preferences.showsTerminalSessions
         preferences.showsTerminalSessions = wanted
         if wanted {
@@ -715,14 +712,14 @@ final class PanelController {
         rebuildContent()
     }
 
-    private func toggleLaunchAtLogin() {
+    func toggleLaunchAtLogin() {
         if let failure = LaunchAtLogin.setEnabled(!LaunchAtLogin.isEnabled) {
             Alerts.warn(title: "Launch at login", message: failure)
         }
         rebuildContent()
     }
 
-    private func installHooks() {
+    func installHooks() {
         // Every agent on this machine, and the alert names them: the menu used
         // to say "in Claude Code" and mean it, leaving Codex unregistered for
         // anyone who never opened a terminal to run the installer.
@@ -755,7 +752,7 @@ final class PanelController {
         Alerts.info(title: "Hooks installed", message: HookSetup.summary(of: reports))
     }
 
-    private func uninstallHooks() {
+    func uninstallHooks() {
         let reports = HookSetup.remove()
         rebuildContent()
         guard !HookSetup.hasFailure(in: reports) else {

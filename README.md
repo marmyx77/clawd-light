@@ -244,10 +244,55 @@ on a session that lives on another machine.
 
 ## Under the rows
 
-A hairline, then three controls. On the left, in the lights' own column, the one
-that narrows the panel to a strip of lights and widens it again. On the right, in
+A hairline, then four controls. On the left, in the lights' own column, the one
+that narrows the panel to a strip of lights and widens it again, and beside it
+the one that sends the panel to the menu bar or brings it back. On the right, in
 the drag handles' column, the legend — what the six colours and the two rings
 mean, with a live count of each — and the menu.
+
+## In the menu bar
+
+The panel can live in one of two places, and a lamp can sit in the menu bar in
+either case.
+
+**Its own window**, above everything, staying where you put it. That is what it
+has always been and what it still is by default.
+
+**Under a lamp in the menu bar**, opening and closing when you click it, the way
+a menu does. The button under the rows moves it either way, and so does *Live in
+the menu bar* in the panel's menu.
+
+**The lamp is a separate switch** (*Show a lamp in the menu bar*), because the
+panel floats below the system menus and a full-screen editor covers it: somebody
+who keeps the panel out all day may still want the lamp for those moments. Only
+one direction is forced — a panel that lives in the menu bar keeps its lamp,
+since nothing else could bring it back.
+
+### What the lamp says
+
+One lamp, carrying the most urgent state the column is showing, with a number
+beside it when more than one row is in that state **and** that state wants
+something from you. Six lamps up there would be a second column, worse than the
+first at everything the first is for, out of the scarcest space on the machine.
+
+It blinks for **amber, green and red** — the three states a click clears, which
+are the three that mean there is news nobody has taken in. Yellow and blue never
+blink: a session merely working is the ordinary condition of the machine, and a
+signal that is on most of the day is not a signal. *Don't blink* on a project
+silences the movement up here too, and not the colour.
+
+At rest it is a hollow ring that follows the menu bar's own light rather than the
+column's dim red. Dim red works among a dozen rows, where it reads as *this one
+is resting*; alone beside the clock it reads as a fault.
+
+Right-clicking the lamp opens a short menu: where the panel lives, the
+conversations, Settings, hiding the lamp, and quitting. Everything else is in the
+panel, one click away.
+
+The drop-down closes when you click elsewhere, because that is what makes it a
+drop-down rather than a window hanging off an icon. That is the whole difference
+between the two: everything else — the click on a row, the menus, the card — is
+identical. See [D40](docs/04-decisions.md).
 
 ## The right-hand slot
 
@@ -1167,7 +1212,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 699 domain tests, instantaneous
+swift run LampBoardTests              # 710 domain tests, instantaneous
 swift run LampBoardE2E                # 98 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

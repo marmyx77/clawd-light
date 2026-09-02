@@ -40,6 +40,7 @@ let suites: [TestSuite] = [
     TrafficLightStateSuite.suite,
     SessionStatusSuite.suite,
     ColumnLayoutSuite.suite,
+    MenuBarSuite.suite,
     RowOrderSuite.suite,
     ColumnSlotSuite.suite,
     IDEKindSuite.suite,

@@ -1723,3 +1723,77 @@ with the alternatives you are discarding. If the implementation then proves you
 wrong — as happened with D2 — rewrite the entry saying what you learned, instead
 of deleting it. A decision overturned by a fact is more instructive than one that
 was right first time.
+
+---
+
+## D40 · The panel has two homes, and the lamp in the menu bar is a surface of its own
+
+**Decided.** The panel can live in one of two places: a window of its own, above
+everything, staying where it was put — which is what it has always been and what
+it still is by default — or under a lamp in the menu bar, opening and closing
+from it like a menu. A lamp can sit in the menu bar in **either** case, and
+whether it is there is a separate switch from where the panel lives.
+
+**Why two switches and not one mode.** The obvious design is a single choice:
+*floating* or *menu bar*. It is wrong for a reason that only shows up in use.
+The panel floats above ordinary windows and below the system menus, which means
+a full-screen editor covers it. Somebody who keeps the panel out all day still
+loses it for the length of a full-screen session, and a lamp in the menu bar is
+exactly the thing that survives that. Tying the lamp to the drop-down would have
+told that person they cannot have it without giving up the panel they chose.
+
+So: `PanelHome` says where the panel is; `showsMenuBarIcon` says whether the
+lamp is there. One direction is forced and only one — a panel that lives in the
+menu bar keeps its lamp, because nothing else could bring it back. The switch
+that would strand it is refused, with the reason, rather than obeyed.
+
+**Why the drop-down is not also always on top.** A drop-down closes when you
+click elsewhere. That is what makes it a drop-down rather than a window that
+happens to hang off an icon, and it is the whole of the difference between the
+two homes: floating stays until you put it away, the menu bar goes away when you
+look elsewhere. Everything else is identical — same view, same rendering, same
+click on a row, same menus. Anything that behaved differently between the two
+would be a second product to keep true.
+
+**What the lamp draws, and why one lamp.** The menu bar is twenty-two points
+tall and shared with every other application. Six lamps up there would be a
+second column, worse than the first at everything the first is for, and spent out
+of the scarcest space on the machine. So the lamp says the one thing a glance can
+carry — the most urgent state the column is showing — with a number beside it
+when more than one row is in that state, and the panel says the rest.
+
+`idle` is drawn as a hollow monochrome ring rather than the column's dim red.
+Dim red works among a dozen rows, where it reads as *this one is resting*; alone
+beside the clock it reads as a fault. The ring follows the menu bar's own light
+and says *nothing is happening* without claiming anything is wrong, and it is
+the shape the lamp spends most of the day in.
+
+**What makes it blink, and it is not what was asked for.** The request was red
+and unseen green. The lamp blinks for **amber, green and red** — the three
+states a click clears, which are exactly the three that mean *there is news here
+nobody has taken in*. Leaving amber out would have made the lamp say less than
+the column it stands for, on the one state that stops the work. Yellow and blue
+never blink: a session merely working is the ordinary condition of this machine,
+and a signal that is on for most of the day is not a signal.
+
+*Don't blink* on a project silences the movement up here as well and not the
+colour, which is the same thing it means on a row.
+
+**Why the lamp reads the rendering and not the state.** Grouping, the
+*only what's waiting* filter and the hidden set all change which rows a person
+can see. A lamp computed from `TrafficLightState` would answer for rows the
+column is not showing, and then the two disagree — with the one that is wrong
+being the one that has no room to explain itself. So `MenuBarSummary.of` takes
+the `ColumnRendering` the panel is drawing. Hidden rows count, for D4's reason:
+a hidden project is not a forgotten one.
+
+**Alternatives.** A menu bar *only* application, with no floating panel: that is
+the competitor's shape, and it throws away the property this project was built
+on — a column you do not have to open. A second window instead of moving the
+one: two columns that can disagree. Six small lamps in the bar: measured against
+the space available and rejected above.
+
+**The cost, stated.** A drop-down cannot be always on top, so in that home the
+panel is gone whenever you look away, and getting to a row is two gestures rather
+than none. That is the trade somebody makes by choosing it, and the footer button
+makes it one click to change their mind.

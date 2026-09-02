@@ -1,13 +1,13 @@
 # Code map
 
-~37,396 lines of Swift across five targets. For each file: what it contains, why
+~38,324 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  10,197 lines · 84 files   pure logic, zero AppKit
-  LampBoardApp/    14,548 lines · 77 files   shell: AppKit, network, windows
-  LampBoardTests/  9,644 lines · 53 files   699 cases, instantaneous
+  LampBoardCore/  10,365 lines · 86 files   pure logic, zero AppKit
+  LampBoardApp/    15,079 lines · 80 files   shell: AppKit, network, windows
+  LampBoardTests/  9,828 lines · 54 files   710 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -350,6 +350,34 @@ not by string prefix: without that, `/dev/project-old` would come out as inside
 
 It deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
 the same source and are already consistent.
+
+### `PanelHome.swift` · 45
+Where the panel lives: a window of its own, or under a lamp in the menu bar.
+
+The column is the same column in both, drawn by the same view from the same
+rendering; what changes is where the window sits, what it floats above, and
+whether looking elsewhere puts it away. That last one is the whole of the
+difference: a drop-down closes when you click elsewhere, and that is what makes
+it a drop-down rather than a window hanging off an icon.
+
+Whether the lamp is in the menu bar is a **separate** switch, because somebody
+who keeps the panel floating all day may still want the lamp for the moments the
+panel is behind a full-screen window. Only one direction is forced: a panel that
+lives up there needs the lamp, because nothing else could bring it back.
+
+### `MenuBarSummary.swift` · 123
+What the lamp shows, computed from the `ColumnRendering` the panel draws rather
+than from the state behind it.
+
+Grouping, the filter and the hidden set all change which rows a person can see,
+and a lamp computed from `TrafficLightState` would answer for rows the column is
+not showing. Then the two disagree, and the one that is wrong is the one with no
+room to explain itself. Hidden rows count, for the reason D4 gives: a hidden
+project is not a forgotten one.
+
+It blinks for exactly the three states a click clears — the three that mean
+*there is news here nobody has taken in*. Yellow and blue never blink, because a
+signal that is on for most of the day is not a signal.
 
 ### `PanelPlacement.swift`
 Where the panel hangs, and why it hangs from the **top**.
@@ -956,14 +984,14 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 700 | holds everything together; row and panel actions |
+| `PanelController.swift` | 769 | holds everything together; row and panel actions |
 | `PanelActivation.swift` | 149 | where a click goes, which is a different question for every surface |
 | `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 393 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 447 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -974,7 +1002,10 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 317 | colors and measurements |
-| `FloatingPanel.swift` | 97 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click |
+| `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
+| `PanelHomes.swift` | 230 | the two homes and the lamp that stands for the panel up there, plus the list of every switch the menus offer |
+| `MenuBarLamp.swift` | 196 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person |
+| `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 197 | the two columns, and one row of the list |
@@ -995,7 +1026,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 699 cases
+## `LampBoardTests/` — 710 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

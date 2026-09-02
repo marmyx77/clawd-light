@@ -11,6 +11,10 @@ struct PanelActions {
     /// live count of each beside it.
     let openLegend: () -> Void
     let toggleCompact: () -> Void
+    /// Moves the panel between its own window and the menu bar.
+    let toggleHome: () -> Void
+    /// Shows or hides the lamp in the menu bar, leaving the panel where it is.
+    let toggleMenuBarIcon: () -> Void
     let toggleSessionTab: () -> Void
     let toggleOnlyWaiting: () -> Void
     let toggleNotifications: () -> Void
@@ -35,6 +39,10 @@ struct PanelActions {
 /// The menu's checkmarks, gathered together so twelve of them don't travel separately.
 struct PanelFlags {
     let compact: Bool
+    /// Where the panel lives right now.
+    let home: PanelHome
+    /// Whether the lamp is in the menu bar.
+    let showsMenuBarIcon: Bool
     let opensSessionTab: Bool
     let onlyWaiting: Bool
     let notificationsEnabled: Bool
@@ -185,6 +193,7 @@ struct PanelRootView: View {
                         // Under the lights, in their column: it is the control
                         // that decides whether the lights are all there is.
                         sizeButton
+                        homeButton
                         Spacer(minLength: 0)
                         legendButton
                         menuButton
@@ -210,6 +219,21 @@ struct PanelRootView: View {
             // The width of a light, so the glyph's centre is the lights' centre.
             width: Layout.dotSize,
             action: actions.toggleCompact
+        )
+    }
+
+    /// Sends the panel to the menu bar, or brings it back.
+    ///
+    /// Beside the width control and not beside the gear, because the two are the
+    /// same kind of thing: they both change what the panel *is* rather than what
+    /// it shows. One decides how wide, the other decides where.
+    private var homeButton: some View {
+        FooterButton(
+            symbol: flags.home == .menuBar
+                ? "menubar.arrow.down.rectangle"
+                : "menubar.arrow.up.rectangle",
+            help: flags.home.moveAwayVerb,
+            action: actions.toggleHome
         )
     }
 
@@ -271,6 +295,14 @@ struct PanelRootView: View {
         Divider()
 
         Button(check(flags.compact, "Traffic lights only"), action: actions.toggleCompact)
+        Button(
+            check(flags.home == .menuBar, "Live in the menu bar"),
+            action: actions.toggleHome
+        )
+        Button(
+            check(flags.showsMenuBarIcon, "Show a lamp in the menu bar"),
+            action: actions.toggleMenuBarIcon
+        )
         Button(check(flags.onlyWaiting, "Show only what's waiting"), action: actions.toggleOnlyWaiting)
         Button(check(flags.showsTerminalSessions, "Show terminal sessions"), action: actions.toggleTerminalSessions)
         // The wording says what it costs, not just what it does: VS Code asks for

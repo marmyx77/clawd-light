@@ -35,6 +35,8 @@ struct Preferences {
         static let calmBlinkWorkspaces = "panel.calmBlink"
         static let expandedRows = "panel.expandedRows"
         static let conversationOrder = "panel.conversationOrder"
+        static let menuBarIcon = "menubar.icon"
+        static let panelPlacement = "panel.placement"
     }
 
     private let defaults: UserDefaults
@@ -104,6 +106,29 @@ struct Preferences {
     var isCompact: Bool {
         get { defaults.bool(forKey: Key.compact) }
         nonmutating set { defaults.set(newValue, forKey: Key.compact) }
+    }
+
+    /// `true` when a lamp sits in the menu bar beside the clock. **Off by
+    /// default**, like everything here that puts something on screen the user
+    /// did not ask for.
+    ///
+    /// Independent of `home` on purpose. The icon is a second surface and
+    /// not a second mode: somebody who keeps the panel floating all day may
+    /// still want the lamp up there for the moments the panel is behind a full
+    /// screen window, and the two switches let them have both.
+    var showsMenuBarIcon: Bool {
+        get { defaults.bool(forKey: Key.menuBarIcon) }
+        nonmutating set { defaults.set(newValue, forKey: Key.menuBarIcon) }
+    }
+
+    /// Where the panel appears. Floating unless it was moved into the menu bar.
+    ///
+    /// Stored as a string rather than an integer: a number in a preferences file
+    /// means nothing to whoever reads it later, and this one is going to be read
+    /// by somebody debugging a panel that did not come back.
+    var home: PanelHome {
+        get { PanelHome(rawValue: defaults.string(forKey: Key.panelPlacement) ?? "") ?? .floating }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.panelPlacement) }
     }
 
     /// `true` when the click, after raising the window, also opens the session's

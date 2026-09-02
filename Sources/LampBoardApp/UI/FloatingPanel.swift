@@ -1,4 +1,5 @@
 import AppKit
+import LampBoardCore
 
 /// The floating panel.
 ///
@@ -33,6 +34,29 @@ final class FloatingPanel: NSPanel {
 
         // It must not show up in the window switcher, nor be resizable.
         isExcludedFromWindowsMenu = true
+    }
+
+    /// Called when the panel stops being key, so a drop-down can put itself away
+    /// the way a menu does. Nil in the floating home, where losing focus is the
+    /// ordinary case and means nothing.
+    var onResignKey: (() -> Void)?
+
+    /// Where the panel lives, and the only thing about the window that changes
+    /// with it.
+    ///
+    /// A drop-down has to clear the menu bar's own windows and anything else
+    /// floating, so it sits at `.popUpMenu`; a panel that stays out all day sits
+    /// at `.floating`, below the system menus, because a widget that covered a
+    /// menu somebody pulled down would be worse than one that hid behind it.
+    func adopt(home: PanelHome) {
+        level = home == .menuBar ? .popUpMenu : .floating
+        // A drop-down belongs to the space it was opened on. Following the user
+        // between spaces is what an always-there panel is for, and doing it to a
+        // menu would leave it hanging under an icon nobody clicked.
+        collectionBehavior = home == .menuBar
+            ? [.fullScreenAuxiliary, .ignoresCycle, .transient]
+            : [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        isMovableByWindowBackground = home == .floating
     }
 
     /// A borderless panel doesn't become key on its own, but it needs to so that
@@ -93,5 +117,6 @@ final class FloatingPanel: NSPanel {
     override func resignKey() {
         super.resignKey()
         Diagnostics.log("panel resigned key")
+        onResignKey?()
     }
 }
