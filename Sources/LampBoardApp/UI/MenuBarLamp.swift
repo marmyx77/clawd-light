@@ -67,7 +67,13 @@ final class MenuBarLamp: NSObject {
         // `variableLength` because the count sits beside the lamp when more than
         // one row is in the loudest state, and a fixed width would either clip it
         // or leave a hole for the days it is not there.
-        created.behavior = [.removalAllowed]
+        // NOT `.removalAllowed`. A lamp somebody can command-drag out of the bar
+        // is a lamp that can be removed while the panel lives under it, and then
+        // nothing on the machine can bring the panel back — the exact stranding
+        // the *Hide this lamp* entry refuses, reachable by a gesture that gives no
+        // warning and asks nothing. Hiding it has a door, and that door knows when
+        // to say no.
+        created.behavior = []
         if let button = created.button {
             button.target = self
             button.action = #selector(clicked(_:))

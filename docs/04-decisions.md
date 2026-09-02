@@ -1793,6 +1793,13 @@ on — a column you do not have to open. A second window instead of moving the
 one: two columns that can disagree. Six small lamps in the bar: measured against
 the space available and rejected above.
 
+**The lamp cannot be dragged out of the bar.** macOS offers `.removalAllowed`,
+which lets somebody command-drag a status item away, and it was set in the first
+draft. It is the same stranding the *Hide this lamp* entry refuses — a panel
+living up there with nothing left to open it — reachable by a gesture that gives
+no warning and asks nothing. Hiding it has a door, and that door knows when to
+say no; a drag does not.
+
 **The cost, stated.** A drop-down cannot be always on top, so in that home the
 panel is gone whenever you look away, and getting to a row is two gestures rather
 than none. That is the trade somebody makes by choosing it, and the footer button
