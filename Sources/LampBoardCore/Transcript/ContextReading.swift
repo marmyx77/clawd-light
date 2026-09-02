@@ -168,8 +168,49 @@ public enum ContextWindows {
     /// (`claude-sonnet-4-5-20250929`) about as often as without, so the suffix
     /// comes off before the lookup. Only a trailing group of exactly eight
     /// digits: `claude-3-5-haiku` must keep its own numbers.
+    ///
+    /// A POINT RELEASE INHERITS, AND THE ALTERNATIVE WAS MEASURED
+    /// `claude-fable-5-1` shipped while this table said `claude-fable-5`, and
+    /// nothing here knew it: the installed Claude Code 2.1.251 registry does not
+    /// carry that id either, so the check that holds this table against the
+    /// binary stayed green while every session on that model lost its arc. The
+    /// failure was silent in the worst way — the ring still drew, so it read as
+    /// *nothing has been measured* rather than as *this model is unknown*.
+    ///
+    /// So a trailing minor group falls back to its parent. `claude-fable-5-1`
+    /// asks `claude-fable-5` and gets a million. That is an inheritance and not
+    /// an invention: it is the same model family and generation, and the number
+    /// it borrows was read out of the registry like every other one here.
+    ///
+    /// It can still be wrong, on the day a point release moves its own window.
+    /// That is why it is not silent either: `inheritedParent(of:)` names what was
+    /// borrowed, and `Scripts/check-contract.sh` reads the model ids out of real
+    /// transcripts and reports every one that only resolved this way.
     public static func window(for model: String) -> Int? {
-        byModel[stripped(model)]
+        let key = stripped(model)
+        if let exact = byModel[key] { return exact }
+        if let parent = parentOf(key) { return byModel[parent] }
+        return nil
+    }
+
+    /// The parent a model borrowed its window from, or `nil` when it needed none.
+    public static func inheritedParent(of model: String) -> String? {
+        let key = stripped(model)
+        guard byModel[key] == nil, let parent = parentOf(key), byModel[parent] != nil else {
+            return nil
+        }
+        return parent
+    }
+
+    /// `claude-fable-5-1` → `claude-fable-5`. Only a trailing group of one or two
+    /// digits, so `claude-3-5-haiku` — whose numbers are in the middle — and
+    /// `claude-sonnet-4-5`, whose `5` is its own generation, are reached the
+    /// ordinary way and never come through here.
+    private static func parentOf(_ key: String) -> String? {
+        let parts = key.split(separator: "-")
+        guard parts.count > 2, let last = parts.last,
+              last.count <= 2, last.allSatisfy(\.isNumber) else { return nil }
+        return parts.dropLast().joined(separator: "-")
     }
 
     public static func stripped(_ model: String) -> String {

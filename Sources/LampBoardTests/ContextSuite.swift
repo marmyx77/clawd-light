@@ -102,6 +102,34 @@ enum ContextSuite {
             t.expectEqual(ContextWindows.stripped("claude-3-5-haiku"), "claude-3-5-haiku", "unchanged")
         },
 
+        TestCase("A point release inherits its parent's window") { t in
+            // Measured on 2026-09-02: transcripts carried `claude-fable-5-1`
+            // while this table and Claude Code 2.1.251's own registry both knew
+            // only `claude-fable-5`. Every session on it drew a ring with no arc,
+            // which reads as "nothing measured" rather than "model unknown".
+            t.expectEqual(ContextWindows.window(for: "claude-fable-5-1"), 1_000_000, "fable 5.1")
+            t.expectEqual(ContextWindows.inheritedParent(of: "claude-fable-5-1"),
+                          "claude-fable-5", "and it says where it came from")
+            t.expectEqual(ContextWindows.window(for: "claude-fable-5-1-20260901"),
+                          1_000_000, "dated point release too")
+        },
+
+        TestCase("A model whose own key is known never inherits") { t in
+            t.expectEqual(ContextWindows.window(for: "claude-sonnet-4-5"), 200_000, "its own entry")
+            t.expectNil(ContextWindows.inheritedParent(of: "claude-sonnet-4-5"),
+                        "the 5 is its generation, not a point release")
+            t.expectNil(ContextWindows.inheritedParent(of: "claude-3-5-haiku"),
+                        "numbers in the middle are part of the name")
+        },
+
+        TestCase("Inheritance stops at a parent nobody knows") { t in
+            // `claude-opus-4` is not in the table, so `claude-opus-4-9` must not
+            // borrow from it. A fallback that reaches an absent parent would be
+            // the guess this whole table refuses to make.
+            t.expectNil(ContextWindows.window(for: "claude-opus-4-9"), "no parent, no window")
+            t.expectNil(ContextWindows.window(for: "claude-quartet-7-1"), "nor a family we lack")
+        },
+
         TestCase("An unknown model gets no percentage rather than a guess") { t in
             let reading = ContextScanner.read(tail: reply(model: "claude-something-next"))
             t.expectNotNil(reading, "the tokens are still read")

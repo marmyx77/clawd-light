@@ -302,6 +302,88 @@ CTXPY
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "Models the transcripts actually carry"
+
+# THE CHECK ABOVE HAS A BLIND SPOT, AND IT COST A DAY.
+#
+# It holds the table against the binary's registry, so it can only see a model
+# both of them have heard of. On 2026-09-02 the transcripts were writing
+# `claude-fable-5-1` while the table said `claude-fable-5` and Claude Code
+# 2.1.251's registry said `claude-fable-5` too: two sources agreeing with each
+# other about a model neither of them was being asked about. Every session on it
+# drew a ring with no arc, which reads as "nothing measured" rather than "model
+# unknown", and the check above stayed green throughout.
+#
+# So the third source is the ground truth for whether a ring will draw: the model
+# ids a real transcript contains. It reads the user's own, because that is where
+# the evidence is; it prints ids and never a path, a folder or a word anybody
+# wrote.
+if [ ! -d "$HOME/.claude/projects" ]; then
+    skip "no transcripts on this machine - the models in use were not examined"
+else
+    python3 - "$SPEC" <<'SEENPY' && ok "every model a transcript carries resolves to a window" || bad "a model in use has no window - see above"
+import json, re, sys, pathlib, itertools
+
+recorded = json.load(open(sys.argv[1]))["modelContextWindows"]["windows"]
+
+
+def stripped(model):
+    parts = model.split("-")
+    if parts and len(parts[-1]) == 8 and parts[-1].isdigit():
+        return "-".join(parts[:-1])
+    return model
+
+
+def resolve(model):
+    """Mirrors ContextWindows.window(for:). Returns (window, inherited-from)."""
+    key = stripped(model)
+    if key in recorded:
+        return recorded[key], None
+    parts = key.split("-")
+    if len(parts) > 2 and len(parts[-1]) <= 2 and parts[-1].isdigit():
+        parent = "-".join(parts[:-1])
+        if parent in recorded:
+            return recorded[parent], parent
+    return None, None
+
+
+root = pathlib.Path.home() / ".claude" / "projects"
+files = sorted(root.rglob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)[:80]
+seen = set()
+for path in files:
+    try:
+        with path.open("rb") as fh:
+            fh.seek(max(0, path.stat().st_size - 400_000))
+            blob = fh.read().decode("utf-8", "replace")
+    except OSError:
+        continue
+    seen.update(re.findall(r'"model":"(claude-[a-z0-9.-]+)"', blob))
+
+if not seen:
+    print("    no model id found in any recent transcript - this check read nothing",
+          file=sys.stderr)
+    sys.exit(0)
+
+problems, inherited = [], []
+for model in sorted(seen):
+    window, parent = resolve(model)
+    if window is None:
+        problems.append(f"{model} is in a transcript and resolves to no window"
+                        " - every session on it shows a ring with no arc")
+    elif parent:
+        inherited.append(f"{model} borrows its {window:,} from {parent}"
+                         " - confirm the point release kept the same window")
+
+print(f"    {len(seen)} model id(s) in the last {len(files)} transcripts", file=sys.stderr)
+for line in inherited:
+    print(f"    inherited: {line}", file=sys.stderr)
+for problem in problems:
+    print(f"    {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+SEENPY
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 head_ "Where a session actually gets compacted"
 
 # The other half of the denominator, and the half that nearly went in wrong.

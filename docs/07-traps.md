@@ -1843,3 +1843,45 @@ passed and use would have exposed.
 request because it changes mid-session (D38). Not knowing shows the request.
 `check-contract.sh` fails if a `turn_context` stops carrying the field, so a
 format change turns a check red rather than turning a feature off.
+
+---
+
+## The two sources that agreed about a model neither was asked about
+
+**Symptom.** Reported from use on 2026-09-02, in these words: *the residual
+context is gone in many of the projects*. The ring beside the lamp still drew,
+still carried its letter, and had no arc — on five of the six rows on screen.
+
+**Cause.** The transcripts were writing `claude-fable-5-1`. `ContextWindows`
+knew `claude-fable-5`. A point release had shipped and the table said nothing
+about it, so `window(for:)` answered `nil`, and `nil` means no denominator, no
+percentage, and no arc.
+
+**Why the gate that exists did not see it.** `check-contract.sh` holds the table
+against the model registry inside the Claude Code binary, and it was green:
+*16 models in the binary, 16 recorded*. All three installed versions — 2.1.246,
+2.1.247, 2.1.251 — carry `claude-fable-5` and none of them carries
+`claude-fable-5-1`. The two sources agreed with each other perfectly about a
+model neither of them was being asked about, which is the shape of the failure
+worth remembering: **a check between two sources cannot see a third**.
+
+The model reaches a transcript because the API served it, not because the local
+CLI registry lists it. So the registry is the wrong ground truth for the
+question *will a ring draw*. The transcript is.
+
+**Why it read as the wrong thing.** An empty ring with a letter in it looks like
+*nothing has been measured yet*, which is a state the panel really has. It does
+not look like *this model is unknown*. The dashed circle exists to say the
+first, and it was not drawn, so the row said the one thing that was false.
+
+**Fixed twice, because one of the two would have happened again.** A trailing
+minor group now falls back to its parent: `claude-fable-5-1` asks
+`claude-fable-5` and inherits its million. Inheritance stops at a parent the
+table does not have, so nothing is invented. And a third check reads the model
+ids out of real transcripts, reports any that resolve to no window, and names
+every one that resolved only by inheriting — because the day a point release
+moves its own window, that line is the only warning there will be.
+
+**The cost of the silence, measured.** Five sessions, between 45% and 97% of a
+million tokens, none of them showing a figure. One was four percent from the end
+of its window.

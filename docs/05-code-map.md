@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  10,156 lines · 84 files   pure logic, zero AppKit
+  LampBoardCore/  10,197 lines · 84 files   pure logic, zero AppKit
   LampBoardApp/    14,548 lines · 77 files   shell: AppKit, network, windows
-  LampBoardTests/  9,616 lines · 53 files   696 cases, instantaneous
+  LampBoardTests/  9,644 lines · 53 files   699 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -564,7 +564,7 @@ Two rules are inherited from the Claude side because both were paid for there:
 `last_token_usage` and never the cumulative total, and backwards **by position**,
 never sorted by timestamp.
 
-### `ContextReading.swift` · 170 · `ContextScanner.swift` · 117
+### `ContextReading.swift` · 223 · `ContextScanner.swift` · 117
 How full a session's context is, read backwards from the end of its transcript.
 
 The numerator is the sum of `input_tokens`, `cache_creation_input_tokens` and
@@ -995,7 +995,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 696 cases
+## `LampBoardTests/` — 699 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
