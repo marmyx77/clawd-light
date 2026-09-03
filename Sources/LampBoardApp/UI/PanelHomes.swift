@@ -32,7 +32,11 @@ extension PanelController {
             : nil
 
         if showing {
-            if home == .menuBar { positionUnderLamp() }
+            if home == .menuBar {
+                positionUnderLamp()
+            } else {
+                returnToItsOwnCorner()
+            }
             panel.orderFrontRegardless()
             if home == .menuBar { panel.makeKey() }
         } else {
@@ -124,6 +128,7 @@ extension PanelController {
 
     /// Moves the panel between its two homes, from the footer button or the menu.
     func toggleHome() {
+        Diagnostics.log("toggleHome: \(home.rawValue) -> \(home.other.rawValue)")
         home = home.other
         preferences.home = home
         if home == .menuBar { preferences.showsMenuBarIcon = true }
@@ -149,6 +154,31 @@ extension PanelController {
         rebuildContent()
     }
 
+    /// Puts the floating panel back where it lived.
+    ///
+    /// Without this the panel came back **exactly where the drop-down was** —
+    /// hanging under the lamp, the same width, the same rows — and the only
+    /// difference was that it no longer went away when you looked elsewhere.
+    /// Reported as *the button doesn't work*, and that reading was right: a
+    /// button that says it will bring the panel back to its own window has not
+    /// done its job while the panel is still standing where the menu left it.
+    ///
+    /// The corner is the one `observePanelMoves` saved, which only ever records a
+    /// position somebody chose, because it refuses to save a drop-down's. With no
+    /// saved corner — a fresh install that went to the menu bar first — the
+    /// default hangs it from the top right, which is where a new panel goes.
+    private func returnToItsOwnCorner() {
+        panel.setFrame(
+            Preferences.placed(
+                size: panel.frame.size,
+                anchor: preferences.savedAnchor,
+                on: panel.screen ?? NSScreen.main
+            ),
+            display: true
+        )
+        Diagnostics.log("panel back in its own corner at \(panel.frame)")
+    }
+
     /// Hangs the panel under the lamp, kept whole on the screen it is on.
     ///
     /// Centred on the lamp and then pulled back inside the screen, because a lamp
@@ -167,6 +197,7 @@ extension PanelController {
         // bar itself with a hair of daylight, the way a menu does.
         let y = visible.maxY - size.height - 4
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        Diagnostics.log("drop-down hung at \(panel.frame) under lamp \(onScreen)")
     }
 
     /// What the lamp stands for, computed from the same rendering the column draws.

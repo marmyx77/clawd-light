@@ -260,7 +260,8 @@ has always been and what it still is by default.
 
 **Under a lamp in the menu bar**, opening and closing when you click it, the way
 a menu does. The button under the rows moves it either way, and so does *Live in
-the menu bar* in the panel's menu.
+the menu bar* in the panel's menu. Coming back, the panel returns to the corner
+you last left it in rather than to wherever the drop-down was hanging.
 
 **The lamp is a separate switch** (*Show a lamp in the menu bar*), because the
 panel floats below the system menus and a full-screen editor covers it: somebody

@@ -1885,3 +1885,51 @@ moves its own window, that line is the only warning there will be.
 **The cost of the silence, measured.** Five sessions, between 45% and 97% of a
 million tokens, none of them showing a figure. One was four percent from the end
 of its window.
+
+---
+
+## The button that worked, and looked like it had not
+
+**Symptom.** Reported from use the morning after the menu bar was added: *the
+button that brings it back to a floating window, when it is in the bar, does not
+work*. Pressed, and nothing appears to happen.
+
+**Cause, and it is not the button.** It fired every time. `toggleHome` ran, the
+home changed, the preference was written, the panel was ordered front. What it
+did not do was **move**: it came back exactly where the drop-down had been,
+hanging under the lamp, the same width with the same rows. The only difference
+was that it no longer went away when you looked elsewhere, which is not
+something anybody sees in the second after pressing a button.
+
+The reading was right and the wording was generous. A control that says it will
+bring the panel back to its own window has not done its job while the panel is
+still standing where the menu left it.
+
+**Fix.** Returning to the floating home now places the panel at the corner
+`observePanelMoves` remembers — which only ever records a position somebody
+chose, because it refuses to save a drop-down's. With no remembered corner, a
+fresh install that went to the menu bar first, it hangs from the top right where
+a new panel goes.
+
+**What made it expensive to find, and it was the instrument.** Six attempts, and
+five of them measured nothing at all. `System Events`' `click at` is an
+**accessibility action**, not a mouse event: it asks the element under the point
+to act on itself. A borderless panel whose content is a SwiftUI hosting view
+exposes no such element, so every one of those clicks landed nowhere — no event
+to the panel, and no other application activated either. The signature was a
+panel that stayed key and a log with nothing in it, which reads exactly like a
+dead button and is instead a dead instrument.
+
+Two false leads came out of that. Clicks were tried at coordinates derived from
+screenshots, and the screenshots themselves closed the drop-down, because
+`do shell script` takes the focus and a drop-down closes when it loses key. And
+`strings` was used to check whether an instrumented log line had reached the
+binary: it had, and `strings` cannot see it, because Swift stores a literal of
+fifteen bytes or fewer inline rather than in the string section. `panel home=`
+is eleven bytes and is not in the binary either, while it is plainly in the log.
+
+What finally measured it was a real `CGEvent` posted at the point. That is the
+tool to reach for the next time something inside this panel has to be clicked
+from a script, and the reason is worth keeping: **the panel is invisible to
+accessibility on purpose**, so anything that drives it through accessibility is
+measuring something else.
